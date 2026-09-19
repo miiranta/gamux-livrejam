@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { DUNGEON_DROP } from '../config';
+import { FACE_SMASHING } from '../config';
 import { createDungeonLevel } from '../level';
 import { FallerSpawner } from './faller-spawner';
 
@@ -10,21 +10,21 @@ describe('FallerSpawner', () => {
     it('spawns nothing before the first interval elapses', () => {
         const spawner = new FallerSpawner({ level, random: () => 0.5 });
 
-        expect(spawner.update(DUNGEON_DROP.drop.baseInterval * 0.5)).toBeNull();
+        expect(spawner.update(FACE_SMASHING.drop.baseInterval * 0.5)).toBeNull();
     });
 
     it('spawns a faller once the interval elapses', () => {
         const spawner = new FallerSpawner({ level, random: () => 0.5 });
-        const faller = spawner.update(DUNGEON_DROP.drop.baseInterval);
+        const faller = spawner.update(FACE_SMASHING.drop.baseInterval);
 
         expect(faller).not.toBeNull();
-        expect(faller?.physics.body.velocity.y).toBe(DUNGEON_DROP.drop.baseSpeed);
+        expect(faller?.physics.body.velocity.y).toBe(FACE_SMASHING.drop.baseSpeed);
         expect(faller?.state).toBe('falling');
     });
 
     it('keeps spawns inside the playable span', () => {
         const spawner = new FallerSpawner({ level, random: () => 0 });
-        const faller = spawner.update(DUNGEON_DROP.drop.baseInterval);
+        const faller = spawner.update(FACE_SMASHING.drop.baseInterval);
 
         expect(faller?.position.x).toBeGreaterThanOrEqual(level.grid.left);
         expect(faller?.position.x).toBeLessThan(level.playRight);
@@ -60,7 +60,7 @@ describe('FallerSpawner', () => {
             spawner.accelerate();
         }
 
-        expect(spawner.speed).toBe(DUNGEON_DROP.drop.maxSpeed);
+        expect(spawner.speed).toBe(FACE_SMASHING.drop.maxSpeed);
     });
 
     it('shortens the interval as the speed grows', () => {
@@ -79,7 +79,7 @@ describe('FallerSpawner', () => {
         spawner.update(1);
         spawner.reset();
 
-        expect(spawner.speed).toBe(DUNGEON_DROP.drop.baseSpeed);
+        expect(spawner.speed).toBe(FACE_SMASHING.drop.baseSpeed);
         expect(spawner.update(0.01)).toBeNull();
     });
 });

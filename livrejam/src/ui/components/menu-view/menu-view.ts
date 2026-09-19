@@ -11,6 +11,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 
 import { FullscreenToggle } from '../fullscreen-toggle/fullscreen-toggle';
 import { LanguageSelect } from '../language-select/language-select';
+import { ParticleField } from '../particle-field/particle-field';
 import { PixelButton } from '../pixel-button/pixel-button';
 import { PixelPanel } from '../pixel-panel/pixel-panel';
 import { SettingsPanel } from '../settings-panel/settings-panel';
@@ -36,6 +37,7 @@ const PANEL_TITLE_KEYS: Record<Exclude<MenuPanelId, 'none'>, string> = {
     imports: [
         FullscreenToggle,
         LanguageSelect,
+        ParticleField,
         PixelButton,
         PixelPanel,
         SettingsPanel,

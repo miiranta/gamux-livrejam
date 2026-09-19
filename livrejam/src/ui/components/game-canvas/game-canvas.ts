@@ -14,8 +14,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 
 import { InferenceWorkerClient } from '../../../engine/ai';
 import { IdlePolicy, RemoteDodgerPolicy, type PolicyLike } from '../../../game/ai';
-import { DUNGEON_DROP } from '../../../game/config';
-import { DungeonDrop, type DropStats } from '../../../game/dungeon-drop';
+import { FACE_SMASHING } from '../../../game/config';
+import { FaceSmashing, type DropStats } from '../../../game/face-smashing';
 import {
     formatDuration,
     GameFlowService,
@@ -35,7 +35,7 @@ const INITIAL_STATS: DropStats = {
     dodgerSpeed: 0,
     fallerSpeed: 0,
     timeLeft: 0,
-    matchDuration: DUNGEON_DROP.match.defaultDurationSeconds,
+    matchDuration: FACE_SMASHING.match.defaultDurationSeconds,
 };
 
 @Component({
@@ -51,11 +51,11 @@ export class GameCanvas {
     private readonly flow = inject(GameFlowService);
     private readonly settings = inject(GameSettingsService);
     private readonly inference = new InferenceWorkerClient({
-        url: DUNGEON_DROP.ai.modelUrl,
+        url: FACE_SMASHING.ai.modelUrl,
         onError: (message) => this.failModel(message),
     });
 
-    private game: DungeonDrop | null = null;
+    private game: FaceSmashing | null = null;
     private policy: PolicyLike = new IdlePolicy();
     private lastScreen: GameScreen = 'menu';
     private lastRestartToken = 0;
@@ -65,7 +65,7 @@ export class GameCanvas {
     protected readonly modelStatus = signal<ModelStatus>('idle');
     protected readonly modelMessage = signal('');
     protected readonly stats = signal<DropStats>(INITIAL_STATS);
-    /** Flips once `DungeonDrop` exists, so the sync effect can react to it. */
+    /** Flips once `FaceSmashing` exists, so the sync effect can react to it. */
     private readonly matchReady = signal(false);
 
     /** The HUD is only useful while a match is on screen. */
@@ -98,7 +98,7 @@ export class GameCanvas {
         }
 
         try {
-            const game = new DungeonDrop({
+            const game = new FaceSmashing({
                 canvas,
                 matchDurationSeconds: this.settings.matchTimeSeconds(),
                 callbacks: {
@@ -181,7 +181,7 @@ export class GameCanvas {
         game.resume();
     }
 
-    private async loadModel(game: DungeonDrop): Promise<void> {
+    private async loadModel(game: FaceSmashing): Promise<void> {
         this.modelStatus.set('loading');
         this.modelMessage.set('');
 

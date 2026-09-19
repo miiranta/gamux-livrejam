@@ -1,11 +1,11 @@
-"""Simulacao vetorizada do jogo, espelhando src/game/dungeon-drop.ts."""
+"""Simulacao vetorizada do jogo, espelhando src/game/face-smashing.ts."""
 
 import torch
 
 import config as cfg
 
 
-class DungeonDropSim:
+class FaceSmashingSim:
     def __init__(self, envs, device="cpu", seed=0):
         self.envs = envs
         self.device = torch.device(device)

@@ -1,6 +1,6 @@
 import { Faller, pickFallerSprite } from '../entities';
 import type { DungeonLevel } from '../level';
-import { DUNGEON_DROP } from '../config';
+import { FACE_SMASHING } from '../config';
 import { fallerSpriteSize } from '../assets';
 
 export interface SpawnerOptions {
@@ -10,7 +10,7 @@ export interface SpawnerOptions {
 
 export class FallerSpawner {
     private timer = 0;
-    private current = DUNGEON_DROP.drop.baseSpeed;
+    private current = FACE_SMASHING.drop.baseSpeed;
 
     constructor(private readonly options: SpawnerOptions) {}
 
@@ -20,20 +20,20 @@ export class FallerSpawner {
 
     get interval(): number {
         return Math.max(
-            DUNGEON_DROP.drop.minInterval,
-            (DUNGEON_DROP.drop.baseInterval * DUNGEON_DROP.drop.baseSpeed) / this.current,
+            FACE_SMASHING.drop.minInterval,
+            (FACE_SMASHING.drop.baseInterval * FACE_SMASHING.drop.baseSpeed) / this.current,
         );
     }
 
     reset(): void {
         this.timer = 0;
-        this.current = DUNGEON_DROP.drop.baseSpeed;
+        this.current = FACE_SMASHING.drop.baseSpeed;
     }
 
     accelerate(): void {
         this.current = Math.min(
-            this.current + DUNGEON_DROP.drop.speedStep,
-            DUNGEON_DROP.drop.maxSpeed,
+            this.current + FACE_SMASHING.drop.speedStep,
+            FACE_SMASHING.drop.maxSpeed,
         );
     }
 
@@ -51,14 +51,14 @@ export class FallerSpawner {
     spawn(aim?: number): Faller {
         const { grid } = this.options.level;
         const size = fallerSpriteSize();
-        const margin = DUNGEON_DROP.faller.spawnMargin;
+        const margin = FACE_SMASHING.faller.spawnMargin;
         const usable = Math.max(grid.width - margin * 2 - size, 1);
-        const jitter = (this.options.random() * 2 - 1) * DUNGEON_DROP.drop.aimJitter;
+        const jitter = (this.options.random() * 2 - 1) * FACE_SMASHING.drop.aimJitter;
 
         const randomX = margin + this.options.random() * usable;
         const aimedX = aim !== undefined ? aim + jitter - size / 2 : randomX;
         const x = grid.left + Math.min(Math.max(aimedX, margin), margin + usable);
-        const drift = (this.options.random() * 2 - 1) * DUNGEON_DROP.faller.lateralSpeed;
+        const drift = (this.options.random() * 2 - 1) * FACE_SMASHING.faller.lateralSpeed;
 
         return new Faller({
             x,

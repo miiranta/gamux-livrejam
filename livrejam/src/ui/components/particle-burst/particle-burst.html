@@ -1,0 +1,13 @@
+<span class="particle-burst" aria-hidden="true" [style]="style()">
+    @for (particle of particles(); track $index) {
+        <span
+            class="particle-burst__shard"
+            [class]="'particle-burst__shard--tone-' + particle.tone"
+            [style.--lj-angle]="particle.angle + 'deg'"
+            [style.--lj-distance]="particle.distance"
+            [style.--lj-size]="particle.size + 'em'"
+            [style.animation-delay]="particle.delay + 's'"
+            [style.animation-duration]="particle.duration + 's'"
+        ></span>
+    }
+</span>

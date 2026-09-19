@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { PhysicsWorld } from '../../engine/physics';
-import { DUNGEON_DROP } from '../config';
+import { FACE_SMASHING } from '../config';
 import { Dodger, randomMaxSpeed } from './dodger';
 import { Faller, pickFallerSprite } from './faller';
 import { createDungeonLevel } from '../level';
@@ -45,7 +45,7 @@ describe('Dodger', () => {
 
         expect(dodger.physics.body.velocity.x).toBeGreaterThan(0);
         expect(dodger.physics.body.velocity.x).toBeCloseTo(
-            150 * Math.exp(-DUNGEON_DROP.dodger.dragX),
+            150 * Math.exp(-FACE_SMASHING.dodger.dragX),
             3,
         );
     });
@@ -64,11 +64,11 @@ describe('Dodger', () => {
 
         dodger.requestJump();
         dodger.consumeJump();
-        expect(dodger.physics.body.velocity.y).toBeCloseTo(-DUNGEON_DROP.dodger.jumpSpeed, 4);
+        expect(dodger.physics.body.velocity.y).toBeCloseTo(-FACE_SMASHING.dodger.jumpSpeed, 4);
 
         world.step(dodger.physics, 1 / 60);
         dodger.consumeJump();
-        expect(dodger.physics.body.velocity.y).not.toBeCloseTo(-DUNGEON_DROP.dodger.jumpSpeed, 4);
+        expect(dodger.physics.body.velocity.y).not.toBeCloseTo(-FACE_SMASHING.dodger.jumpSpeed, 4);
     });
 
     it('derives the animation from the grounded state', () => {
@@ -92,8 +92,8 @@ describe('randomMaxSpeed', () => {
     it('stays inside the configured range', () => {
         const values = [0, 0.25, 0.5, 0.75, 1].map((value) => randomMaxSpeed(() => value));
 
-        expect(Math.min(...values)).toBe(DUNGEON_DROP.dodger.maxSpeedMin);
-        expect(Math.max(...values)).toBe(DUNGEON_DROP.dodger.maxSpeedMax);
+        expect(Math.min(...values)).toBe(FACE_SMASHING.dodger.maxSpeedMin);
+        expect(Math.max(...values)).toBe(FACE_SMASHING.dodger.maxSpeedMax);
     });
 });
 

@@ -24,7 +24,7 @@ export const EMPTY_RESULT: MatchResult = {
  * State machine for the game shell: which screen is visible, whether the
  * match canvas should be running, and the last match result.
  *
- * The actual `DungeonDrop` instance is owned by `GameCanvas`; this service
+ * The actual `FaceSmashing` instance is owned by `GameCanvas`; this service
  * only publishes the intent, and `GameCanvas` reacts to it through an effect.
  */
 @Injectable({ providedIn: 'root' })

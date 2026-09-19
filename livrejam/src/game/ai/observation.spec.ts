@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { DUNGEON_DROP } from '../config';
+import { FACE_SMASHING } from '../config';
 import { Dodger, Faller } from '../entities';
 import { createDungeonLevel } from '../level';
 import {
@@ -51,7 +51,7 @@ describe('writeObservation', () => {
         const result = writeObservation(buffer, { level, dodger: buildDodger(320), fallers: [] });
 
         expect(result).toBe(buffer);
-        expect(buffer.length).toBe(DUNGEON_DROP.ai.observationSize);
+        expect(buffer.length).toBe(FACE_SMASHING.ai.observationSize);
     });
 
     it('centres the position channel for a dodger in the middle of the arena', () => {
@@ -80,16 +80,16 @@ describe('writeObservation', () => {
         writeObservation(buffer, { level, dodger, fallers: [] });
 
         expect(buffer[1]).toBeCloseTo(0.5, 5);
-        expect(buffer[2]).toBeCloseTo(200 / DUNGEON_DROP.dodger.maxSpeedMax, 5);
+        expect(buffer[2]).toBeCloseTo(200 / FACE_SMASHING.dodger.maxSpeedMax, 5);
     });
 
     it('always reports the round max speed so the policy can adapt', () => {
         const buffer = createObservationBuffer();
-        const slow = buildDodger(320, DUNGEON_DROP.dodger.maxSpeedMin);
+        const slow = buildDodger(320, FACE_SMASHING.dodger.maxSpeedMin);
         writeObservation(buffer, { level, dodger: slow, fallers: [] });
 
         expect(buffer[2]).toBeCloseTo(
-            DUNGEON_DROP.dodger.maxSpeedMin / DUNGEON_DROP.dodger.maxSpeedMax,
+            FACE_SMASHING.dodger.maxSpeedMin / FACE_SMASHING.dodger.maxSpeedMax,
             5,
         );
     });
@@ -112,12 +112,12 @@ describe('writeObservation', () => {
 
         expect(buffer[3]).toBe(1);
         expect(buffer[4]).toBeCloseTo(
-            (420 + FALLER_SIZE / 2 - 320) / DUNGEON_DROP.ai.observeRadius,
+            (420 + FALLER_SIZE / 2 - 320) / FACE_SMASHING.ai.observeRadius,
             5,
         );
         expect(buffer[5]).toBeCloseTo(
             (100 + FALLER_SIZE / 2 - dodger.physics.body.position.y) /
-                DUNGEON_DROP.ai.observeRadius,
+                FACE_SMASHING.ai.observeRadius,
             5,
         );
     });
@@ -131,7 +131,7 @@ describe('writeObservation', () => {
         writeObservation(buffer, { level, dodger, fallers: [far, near] });
 
         const nearOffset = near.centerX - dodger.feet.x;
-        expect(buffer[4]).toBeCloseTo(nearOffset / DUNGEON_DROP.ai.observeRadius, 5);
+        expect(buffer[4]).toBeCloseTo(nearOffset / FACE_SMASHING.ai.observeRadius, 5);
     });
 
     it('reports the settled flag once a faller has landed', () => {

@@ -1,7 +1,7 @@
 import type { Dodger } from '../entities';
 import type { Faller } from '../entities';
 import type { DungeonLevel } from '../level';
-import { DUNGEON_DROP } from '../config';
+import { FACE_SMASHING } from '../config';
 
 export const DODGER_ACTIONS = {
     none: 0,
@@ -36,7 +36,7 @@ export function decodeAction(action: number): ActionIntent {
     }
 }
 
-const OBSERVATION_SIZE = DUNGEON_DROP.ai.observationSize;
+const OBSERVATION_SIZE = FACE_SMASHING.ai.observationSize;
 const FALLER_FEATURES = 7;
 const GLOBAL_FEATURES = 3;
 
@@ -55,7 +55,7 @@ export function writeObservation(target: Float32Array, context: ObservationConte
     const { grid } = level;
     const { body } = dodger.physics;
     const span = level.playRight - level.playLeft;
-    const radius = DUNGEON_DROP.ai.observeRadius;
+    const radius = FACE_SMASHING.ai.observeRadius;
     const maxSpeed = Math.max(dodger.maxSpeedX, 1);
 
     const halfSpan = span / 2;
@@ -63,7 +63,7 @@ export function writeObservation(target: Float32Array, context: ObservationConte
 
     target[0] = (body.position.x + dodger.size.width / 2 - centerX) / halfSpan;
     target[1] = body.velocity.x / maxSpeed;
-    target[2] = dodger.maxSpeedX / DUNGEON_DROP.dodger.maxSpeedMax;
+    target[2] = dodger.maxSpeedX / FACE_SMASHING.dodger.maxSpeedMax;
 
     const slots = (OBSERVATION_SIZE - GLOBAL_FEATURES) / FALLER_FEATURES;
     const dodgerX = body.position.x + dodger.size.width / 2;
@@ -87,8 +87,8 @@ export function writeObservation(target: Float32Array, context: ObservationConte
         target[base] = 1;
         target[base + 1] = dx / radius;
         target[base + 2] = dy / radius;
-        target[base + 3] = faller.physics.body.velocity.x / DUNGEON_DROP.faller.lateralSpeed;
-        target[base + 4] = faller.physics.body.velocity.y / DUNGEON_DROP.faller.maxFallSpeed;
+        target[base + 3] = faller.physics.body.velocity.x / FACE_SMASHING.faller.lateralSpeed;
+        target[base + 4] = faller.physics.body.velocity.y / FACE_SMASHING.faller.maxFallSpeed;
         target[base + 5] = faller.state === 'falling' ? 0 : 1;
         target[base + 6] = faller.size / grid.tileSize;
     }
@@ -103,7 +103,7 @@ function selectNearest(fallers: readonly Faller[], x: number, y: number, limit: 
             faller,
             score: fallerThreat(faller, x, y),
         }))
-        .filter((entry) => entry.score < DUNGEON_DROP.ai.observeRadius)
+        .filter((entry) => entry.score < FACE_SMASHING.ai.observeRadius)
         .sort((a, b) => a.score - b.score);
 
     return ranked.slice(0, limit).map((entry) => entry.faller);

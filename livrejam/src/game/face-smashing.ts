@@ -6,7 +6,7 @@ import { PhysicsWorld } from '../engine/physics';
 import { CHARACTER_CLIPS, loadDungeonSprites } from './assets';
 import type { ActionIntent, PolicyLike } from './ai';
 import { IdlePolicy, createObservationBuffer, decodeAction, writeObservation } from './ai';
-import { DUNGEON_DROP } from './config';
+import { FACE_SMASHING } from './config';
 import { Dodger, Faller, randomMaxSpeed } from './entities';
 import type { DungeonLevel } from './level';
 import { createDungeonLevel } from './level';
@@ -29,15 +29,15 @@ export interface DropStats {
     matchDuration: number;
 }
 
-export interface DungeonDropCallbacks {
+export interface FaceSmashingCallbacks {
     onStats: (stats: DropStats) => void;
     /** Fired once when the match timer reaches zero. */
     onMatchEnd?: (stats: DropStats) => void;
 }
 
-export interface DungeonDropOptions {
+export interface FaceSmashingOptions {
     canvas: HTMLCanvasElement;
-    callbacks: DungeonDropCallbacks;
+    callbacks: FaceSmashingCallbacks;
     random?: () => number;
     policy?: PolicyLike;
     /** Match length in seconds; falls back to the configured default. */
@@ -58,12 +58,12 @@ const DODGER_ANIMATIONS = CHARACTER_CLIPS;
 const DROPPED_ACCELERATION = 400;
 
 function normalizeMatchDuration(seconds: number | undefined): number {
-    const { defaultDurationSeconds, minDurationSeconds, maxDurationSeconds } = DUNGEON_DROP.match;
+    const { defaultDurationSeconds, minDurationSeconds, maxDurationSeconds } = FACE_SMASHING.match;
     const value = Number.isFinite(seconds) ? Number(seconds) : defaultDurationSeconds;
     return clamp(value, minDurationSeconds, maxDurationSeconds);
 }
 
-export class DungeonDrop {
+export class FaceSmashing {
     private readonly level: DungeonLevel;
     private readonly world = new PhysicsWorld();
     private readonly input: KeyboardActionMap<DropAction>;
@@ -72,7 +72,7 @@ export class DungeonDrop {
     private readonly loop: GameLoop;
     private readonly observation = createObservationBuffer();
     private readonly random: () => number;
-    private readonly callbacks: DungeonDropCallbacks;
+    private readonly callbacks: FaceSmashingCallbacks;
 
     private scene: SceneRenderer | null = null;
     private dodger: Dodger | null = null;
@@ -94,7 +94,7 @@ export class DungeonDrop {
     private timeLeft: number;
     private matchOver = false;
 
-    constructor(private readonly options: DungeonDropOptions) {
+    constructor(private readonly options: FaceSmashingOptions) {
         this.random = options.random ?? Math.random;
         this.callbacks = options.callbacks;
         this.policy = options.policy ?? new IdlePolicy();
@@ -112,11 +112,11 @@ export class DungeonDrop {
     }
 
     get viewWidth(): number {
-        return Math.round(this.level.grid.width * DUNGEON_DROP.viewScale);
+        return Math.round(this.level.grid.width * FACE_SMASHING.viewScale);
     }
 
     get viewHeight(): number {
-        return Math.round(this.level.grid.height * DUNGEON_DROP.viewScale);
+        return Math.round(this.level.grid.height * FACE_SMASHING.viewScale);
     }
 
     get dodgerMaxSpeed(): number {
@@ -128,7 +128,7 @@ export class DungeonDrop {
         const renderer = new CanvasRenderer(
             this.options.canvas,
             new Camera({
-                scale: DUNGEON_DROP.viewScale,
+                scale: FACE_SMASHING.viewScale,
                 viewportWidth: this.viewWidth,
                 viewportHeight: this.viewHeight,
             }),
@@ -238,13 +238,16 @@ export class DungeonDrop {
 
         if (airborne && active) {
             const body = active.physics.body;
-            body.velocity.x = intent.axis * DUNGEON_DROP.drop.horizontalSpeed;
+            body.velocity.x = intent.axis * FACE_SMASHING.drop.horizontalSpeed;
             body.velocity.y = intent.fast
-                ? DUNGEON_DROP.drop.fastFallSpeed
-                : Math.min(body.velocity.y + DROPPED_ACCELERATION * dt, DUNGEON_DROP.drop.maxSpeed);
+                ? FACE_SMASHING.drop.fastFallSpeed
+                : Math.min(
+                      body.velocity.y + DROPPED_ACCELERATION * dt,
+                      FACE_SMASHING.drop.maxSpeed,
+                  );
         } else if (intent.axis !== 0) {
             this.dropAimX = clamp(
-                this.dropAimX + intent.axis * DUNGEON_DROP.drop.aimSpeed * dt,
+                this.dropAimX + intent.axis * FACE_SMASHING.drop.aimSpeed * dt,
                 this.level.playLeft,
                 this.level.playRight,
             );
@@ -261,7 +264,7 @@ export class DungeonDrop {
         const active = this.active;
 
         if (active && active.state === 'falling') {
-            active.physics.body.velocity.y = DUNGEON_DROP.drop.fastFallSpeed;
+            active.physics.body.velocity.y = FACE_SMASHING.drop.fastFallSpeed;
             return;
         }
 
@@ -326,7 +329,7 @@ export class DungeonDrop {
 
         const { velocity, position } = dodger.physics.body;
         const travel = this.level.floorTop - position.y;
-        const leadSeconds = Math.min(travel / DUNGEON_DROP.faller.maxFallSpeed, 0.6);
+        const leadSeconds = Math.min(travel / FACE_SMASHING.faller.maxFallSpeed, 0.6);
         return dodger.feet.x + velocity.x * leadSeconds;
     }
 
@@ -355,12 +358,12 @@ export class DungeonDrop {
         }
 
         this.survived += dt;
-        this.score += DUNGEON_DROP.score.survivedPerSecond * dt;
+        this.score += FACE_SMASHING.score.survivedPerSecond * dt;
 
         const outcome = this.impacts.evaluate(this.fallers, dodger);
 
         if (outcome.hit) {
-            this.deathTimer = DUNGEON_DROP.dodger.deathDelay;
+            this.deathTimer = FACE_SMASHING.dodger.deathDelay;
             dodger.setAnimation('hurt');
             dodger.physics.body.velocity.y = -240;
             this.publishStats();
@@ -370,8 +373,8 @@ export class DungeonDrop {
         this.dodges += outcome.dodges;
         this.nearMisses += outcome.nearMisses;
         this.score +=
-            outcome.dodges * DUNGEON_DROP.score.dodge +
-            outcome.nearMisses * DUNGEON_DROP.score.nearMiss;
+            outcome.dodges * FACE_SMASHING.score.dodge +
+            outcome.nearMisses * FACE_SMASHING.score.nearMiss;
 
         this.publishStats();
     }

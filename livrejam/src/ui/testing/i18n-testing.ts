@@ -7,7 +7,7 @@ import { TranslateService, provideTranslateService } from '@ngx-translate/core';
  * as a broken assertion instead of silently falling back.
  */
 export const TEST_EN = {
-    app: { title: 'LivreJam', subtitle: 'Dungeon Drop' },
+    app: { title: 'Face Smashing', subtitle: 'LivreJam' },
     menu: {
         play: 'Play',
         resume: 'Resume',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { DUNGEON_DROP } from '../config';
+import { FACE_SMASHING } from '../config';
 import { Dodger, Faller } from '../entities';
 import { createDungeonLevel } from '../level';
 import { createObservationBuffer, writeObservation } from './observation';
@@ -22,8 +22,8 @@ const FALLER_SIZE = 32;
 
 describe('observation contract with the Python simulator', () => {
     it('keeps the fixture the same size as the configured observation', () => {
-        expect(DUNGEON_DROP.ai.observationSize).toBe(24);
-        expect(PYTHON_FIXTURE.observation.length).toBe(DUNGEON_DROP.ai.observationSize);
+        expect(FACE_SMASHING.ai.observationSize).toBe(24);
+        expect(PYTHON_FIXTURE.observation.length).toBe(FACE_SMASHING.ai.observationSize);
     });
 
     it('produces exactly the vector the Python simulator reproduces', () => {

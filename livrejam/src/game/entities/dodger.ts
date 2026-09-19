@@ -1,5 +1,5 @@
 import { Character, type CharacterOptions } from '../../engine/entities';
-import { DUNGEON_DROP } from '../config';
+import { FACE_SMASHING } from '../config';
 
 export interface DodgerOptions {
     feetX: number;
@@ -11,18 +11,18 @@ export class Dodger extends Character {
     jumpQueued = false;
 
     constructor(options: DodgerOptions) {
-        const config = DUNGEON_DROP.dodger;
+        const config = FACE_SMASHING.dodger;
         const characterOptions: CharacterOptions = {
             feet: { x: options.feetX, y: options.feetY },
             box: config.box,
             animation: 'walk',
-            gravity: DUNGEON_DROP.physics.gravity,
+            gravity: FACE_SMASHING.physics.gravity,
             maxSpeedX: options.maxSpeedX,
             accelerationX: config.accelerationX,
             dragX: config.dragX,
             jumpSpeed: config.jumpSpeed,
             maxFallSpeed: config.maxFallSpeed,
-            friction: DUNGEON_DROP.physics.friction,
+            friction: FACE_SMASHING.physics.friction,
         };
 
         super(characterOptions);
@@ -51,6 +51,6 @@ export class Dodger extends Character {
 }
 
 export function randomMaxSpeed(random: () => number): number {
-    const { maxSpeedMin, maxSpeedMax } = DUNGEON_DROP.dodger;
+    const { maxSpeedMin, maxSpeedMax } = FACE_SMASHING.dodger;
     return maxSpeedMin + random() * (maxSpeedMax - maxSpeedMin);
 }

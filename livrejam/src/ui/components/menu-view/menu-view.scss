@@ -13,9 +13,17 @@
 .menu-view__backdrop {
     position: absolute;
     inset: 0;
+    /* Opaque enough that the HUD behind the menu does not bleed through. */
     background:
         radial-gradient(circle at 50% 40%, rgb(60 44 28 / 35%) 0%, transparent 60%),
-        rgb(5 4 4 / 88%);
+        rgb(5 4 4 / 96%);
+}
+
+/* Ambient motes drifting behind everything else. */
+.menu-view__particles {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
 }
 
 /* Decorative pixel vignette in each corner of the screen. */
@@ -57,15 +65,20 @@
 }
 
 .menu-view__fullscreen {
+    /* Sits on the diagonal, mirroring the corner ornament's own symmetric
+       inset (0.75rem), and clears it on both axes. */
+    --lj-fullscreen-inset: 5.25rem;
+
     position: absolute;
-    top: 1.25rem;
-    right: 1.25rem;
+    top: var(--lj-fullscreen-inset);
+    right: var(--lj-fullscreen-inset);
     z-index: 2;
     animation: menu-fullscreen-in 0.3s ease-out 0.15s both;
 }
 
 .menu-view__stack {
     position: relative;
+    z-index: 1;
     display: grid;
     justify-items: center;
     gap: 1.75rem;
@@ -108,6 +121,11 @@
     width: 100%;
 }
 
+/* Destructive action sits apart from the rest of the list. */
+.menu-view__abandon {
+    margin-top: 0.9rem;
+}
+
 .menu-view__actions > * {
     animation: menu-item-in 0.24s ease-out both;
 }
@@ -116,6 +134,23 @@
     .menu-view__actions > *:nth-child(#{$i}) {
         animation-delay: #{0.05 + $i * 0.05}s;
     }
+}
+
+/* Small pixel globe shown next to the language entry. */
+.menu-view__button-icon {
+    display: inline-grid;
+    place-items: center;
+    margin-right: 0.45rem;
+    vertical-align: -0.15em;
+}
+
+.menu-view__icon {
+    width: 1.05em;
+    height: 1.05em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+    shape-rendering: crispEdges;
 }
 
 /* --- Panels ------------------------------------------------------------- */

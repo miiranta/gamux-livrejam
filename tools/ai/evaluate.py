@@ -8,7 +8,7 @@ import torch
 import config as cfg
 from dropper import DropperPolicy
 from model import batched_forward, load_policy, stack_policies
-from sim import DungeonDropSim
+from sim import FaceSmashingSim
 
 
 def parse_args():
@@ -22,7 +22,7 @@ def parse_args():
 
 
 def run(actions_fn, args, seed_offset=0):
-    sim = DungeonDropSim(args.episodes, device=args.device, seed=args.seed + seed_offset)
+    sim = FaceSmashingSim(args.episodes, device=args.device, seed=args.seed + seed_offset)
     dropper = DropperPolicy(seed=args.seed + 500 + seed_offset)
     observation = sim.reset()
 

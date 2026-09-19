@@ -14,7 +14,7 @@ import torch
 import config as cfg
 from dropper import DropperPolicy
 from model import batched_forward, export_json, initial_policy, stack_policies
-from sim import DungeonDropSim
+from sim import FaceSmashingSim
 
 
 def parse_args():
@@ -64,7 +64,7 @@ def evaluate(theta, perturbations, args):
     candidates = theta[None, :] + args.sigma * perturbations
 
     stacked = stack_policies(expand_candidates(candidates, sizes))
-    sim = DungeonDropSim(total_envs, device=args.device, seed=args.seed + 1000)
+    sim = FaceSmashingSim(total_envs, device=args.device, seed=args.seed + 1000)
     dropper = DropperPolicy(seed=args.seed + 2000)
     observation = sim.reset()
 

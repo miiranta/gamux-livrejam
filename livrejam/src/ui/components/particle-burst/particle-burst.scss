@@ -1,0 +1,67 @@
+:host {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: block;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.particle-burst {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: block;
+    width: 0;
+    height: 0;
+}
+
+.particle-burst__shard {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--lj-size, 0.2em);
+    height: var(--lj-size, 0.2em);
+    background: var(--lj-accent-hi);
+    /* Start collapsed at the centre, then fly outwards. */
+    transform: rotate(var(--lj-angle, 0deg)) translateX(0) scale(0);
+    animation-name: particle-burst-fly;
+    animation-timing-function: cubic-bezier(0.15, 0.85, 0.3, 1);
+    animation-fill-mode: both;
+
+    &--tone-0 {
+        background: var(--lj-accent-hi);
+    }
+
+    &--tone-1 {
+        background: var(--lj-accent);
+    }
+
+    &--tone-2 {
+        background: var(--lj-ink);
+    }
+
+    &--tone-3 {
+        background: var(--lj-danger);
+    }
+}
+
+@keyframes particle-burst-fly {
+    0% {
+        opacity: 0;
+        transform: rotate(var(--lj-angle, 0deg)) translateX(0) scale(0);
+    }
+
+    15% {
+        opacity: 1;
+        transform: rotate(var(--lj-angle, 0deg))
+            translateX(calc(var(--lj-distance, 1) * 0.35 * var(--lj-burst-spread, 9em))) scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: rotate(var(--lj-angle, 0deg))
+            translateX(calc(var(--lj-distance, 1) * var(--lj-burst-spread, 9em))) scale(0.4);
+    }
+}

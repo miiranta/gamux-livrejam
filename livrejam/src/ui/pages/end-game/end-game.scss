@@ -15,7 +15,7 @@
     inset: 0;
     background:
         radial-gradient(circle at 50% 45%, rgb(120 48 32 / 30%) 0%, transparent 62%),
-        rgb(4 3 3 / 92%);
+        rgb(4 3 3 / 96%);
     animation: end-fade 0.35s ease-out both;
 }
 
@@ -68,9 +68,10 @@
 /* --- 1) Title ----------------------------------------------------------- */
 
 .end-game__header {
+    position: relative;
     --lj-tilt: -1.4deg;
 
-    @include ornaments.punch-in(0.05s);
+    @include ornaments.impact-in(0.05s, 0.9s);
 }
 
 .end-game__title {
@@ -93,11 +94,35 @@
 
 /* --- 2) Score ----------------------------------------------------------- */
 
-.end-game__score-panel {
-    --lj-tilt: 1deg;
+/* Positioning context for the cracks and the shard burst. */
+.end-game__score-wrap {
+    position: relative;
+    display: grid;
+    place-items: center;
     width: min(100%, 22rem);
+}
 
-    @include ornaments.punch-in(0.3s);
+/* Fracture spreading across the backdrop, behind the card. */
+.end-game__cracks {
+    position: absolute;
+    inset: -45% -35%;
+    z-index: 0;
+    opacity: 0;
+    animation: end-cracks-in 0.5s ease-out 0.9s both;
+}
+
+.end-game__score-panel {
+    position: relative;
+    z-index: 1;
+    --lj-tilt: 1deg;
+    width: 100%;
+
+    @include ornaments.impact-in(0.55s, 0.9s);
+}
+
+/* Shard bursts sit above the card so they read as debris flying off it. */
+.end-game__burst {
+    z-index: 2;
 }
 
 /* Keep the ornamented frame: `bare` only removes the panel's own chrome. */
@@ -157,10 +182,20 @@
     justify-content: center;
     gap: 0.8rem;
 
-    @include ornaments.fade-in(0.72s, 0.2s);
+    @include ornaments.fade-in(1.5s, 0.3s);
 }
 
 @keyframes end-fade {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes end-cracks-in {
     from {
         opacity: 0;
     }

@@ -3,7 +3,7 @@ import type { CollisionResult, PhysicsBody } from '../../engine/physics';
 import { createBody, dampVelocity } from '../../engine/physics';
 import type { FallerSpriteKey } from '../assets';
 import { FALLER_KEYS } from '../assets';
-import { DUNGEON_DROP } from '../config';
+import { FACE_SMASHING } from '../config';
 
 export type FallerState = 'falling' | 'landed' | 'settled';
 
@@ -30,8 +30,8 @@ export class Faller {
             body: createBody(
                 { x: options.x, y: options.y },
                 {
-                    gravity: DUNGEON_DROP.faller.gravity,
-                    maxFallSpeed: DUNGEON_DROP.faller.maxFallSpeed,
+                    gravity: FACE_SMASHING.faller.gravity,
+                    maxFallSpeed: FACE_SMASHING.faller.maxFallSpeed,
                     initialVelocity: { x: options.velocityX, y: options.velocityY },
                 },
             ),
@@ -70,10 +70,10 @@ export class Faller {
 
     update(dt: number): void {
         if (this.state === 'landed') {
-            dampVelocity(this.physics.body, 'x', DUNGEON_DROP.faller.slideDragX, dt);
+            dampVelocity(this.physics.body, 'x', FACE_SMASHING.faller.slideDragX, dt);
             this.settleTimer += dt;
 
-            if (this.settleTimer >= DUNGEON_DROP.faller.settleSeconds) {
+            if (this.settleTimer >= FACE_SMASHING.faller.settleSeconds) {
                 this.state = 'settled';
             }
         }

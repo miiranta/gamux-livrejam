@@ -1,1 +1,1 @@
-export * from './dungeon-drop.config';
+export * from './face-smashing.config';

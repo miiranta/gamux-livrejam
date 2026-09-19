@@ -1,6 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 
-import { DUNGEON_DROP } from '../../game/config';
+import { FACE_SMASHING } from '../../game/config';
 
 export interface GameSettings {
     musicVolume: number;
@@ -18,9 +18,9 @@ export const GAME_SETTINGS_STORAGE_KEY = 'livrejam.settings';
 
 function settingsLimits(): GameSettingsLimits {
     return {
-        minMatchTimeSeconds: DUNGEON_DROP.match.minDurationSeconds,
-        maxMatchTimeSeconds: DUNGEON_DROP.match.maxDurationSeconds,
-        matchTimeStepSeconds: DUNGEON_DROP.match.durationStepSeconds,
+        minMatchTimeSeconds: FACE_SMASHING.match.minDurationSeconds,
+        maxMatchTimeSeconds: FACE_SMASHING.match.maxDurationSeconds,
+        matchTimeStepSeconds: FACE_SMASHING.match.durationStepSeconds,
     };
 }
 
@@ -28,7 +28,7 @@ function defaultSettings(): GameSettings {
     return {
         musicVolume: 0.7,
         sfxVolume: 0.9,
-        matchTimeSeconds: DUNGEON_DROP.match.defaultDurationSeconds,
+        matchTimeSeconds: FACE_SMASHING.match.defaultDurationSeconds,
     };
 }
 

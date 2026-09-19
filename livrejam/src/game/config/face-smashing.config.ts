@@ -1,4 +1,4 @@
-export const DUNGEON_DROP = {
+export const FACE_SMASHING = {
     viewScale: 2.25,
     background: '#0b0d12',
     tile: {
@@ -66,10 +66,10 @@ export const DUNGEON_DROP = {
     match: {
         /** Fallback duration when the player never configured one. */
         defaultDurationSeconds: 90,
-        minDurationSeconds: 30,
+        minDurationSeconds: 5,
         maxDurationSeconds: 300,
         durationStepSeconds: 15,
     },
 };
 
-export type DungeonDropConfig = typeof DUNGEON_DROP;
+export type FaceSmashingConfig = typeof FACE_SMASHING;

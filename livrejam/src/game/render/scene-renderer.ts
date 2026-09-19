@@ -5,7 +5,7 @@ import type { CharacterAnimationKey, DungeonSprites } from '../assets';
 import { CHARACTER_CLIPS, fallerSpriteSize } from '../assets';
 import type { Dodger, Faller } from '../entities';
 import type { DungeonLevel } from '../level';
-import { DUNGEON_DROP } from '../config';
+import { FACE_SMASHING } from '../config';
 
 const CHARACTER_FRAME_SIZE = 64;
 const FOOT_OFFSET = 62;
@@ -34,7 +34,7 @@ export class SceneRenderer {
         const { camera } = this.renderer;
         const ctx = this.renderer.context;
 
-        this.renderer.clear(DUNGEON_DROP.background);
+        this.renderer.clear(FACE_SMASHING.background);
         this.renderTiles(level);
 
         for (const faller of fallers) {

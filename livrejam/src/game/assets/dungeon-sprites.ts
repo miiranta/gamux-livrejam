@@ -1,5 +1,5 @@
 import { loadImage, type SpriteSheet } from '../../engine/render';
-import { DUNGEON_DROP } from '../config';
+import { FACE_SMASHING } from '../config';
 
 export type TileSpriteKey = 'wall' | 'floor';
 export type FallerSpriteKey = 'smallCrate' | 'barrel' | 'bigCrate' | 'bucket' | 'orb' | 'shelf';
@@ -53,7 +53,7 @@ export const CHARACTER_CLIPS: Record<
 };
 
 export function fallerSpriteSize(): number {
-    return DUNGEON_DROP.tile.size * DUNGEON_DROP.tile.scale;
+    return FACE_SMASHING.tile.size * FACE_SMASHING.tile.scale;
 }
 
 export function loadDungeonSprites(): Promise<DungeonSprites> {

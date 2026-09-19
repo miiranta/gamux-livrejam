@@ -1,4 +1,4 @@
-"""Constantes da simulacao. Espelham src/game/config/dungeon-drop.config.ts."""
+"""Constantes da simulacao. Espelham src/game/config/face-smashing.config.ts."""
 
 TILE_SOURCE = 16
 TILE_SCALE = 2

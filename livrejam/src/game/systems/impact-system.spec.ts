@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { DUNGEON_DROP } from '../config';
+import { FACE_SMASHING } from '../config';
 import { Dodger, Faller } from '../entities';
 import { createDungeonLevel } from '../level';
 import { ImpactSystem } from './impact-system';
 
-const FALLER_SIZE = DUNGEON_DROP.impact.fallerHalfWidth * 2;
-const CONTACT_GAP = DUNGEON_DROP.impact.fallerHalfWidth + DUNGEON_DROP.impact.dodgerHalfWidth;
+const FALLER_SIZE = FACE_SMASHING.impact.fallerHalfWidth * 2;
+const CONTACT_GAP = FACE_SMASHING.impact.fallerHalfWidth + FACE_SMASHING.impact.dodgerHalfWidth;
 
 function buildDodger(feetX = 300): Dodger {
     const level = createDungeonLevel();
@@ -45,7 +45,7 @@ describe('ImpactSystem', () => {
     it('does not score a dodge beyond the dodge radius', () => {
         const impacts = new ImpactSystem();
         const dodger = buildDodger();
-        const far = CONTACT_GAP + DUNGEON_DROP.score.dodgeDistance + 40;
+        const far = CONTACT_GAP + FACE_SMASHING.score.dodgeDistance + 40;
 
         const outcome = impacts.evaluate([landAtGap(dodger, far)], dodger);
 
@@ -76,7 +76,7 @@ describe('ImpactSystem', () => {
     it('does not flag a near miss for a wide margin', () => {
         const impacts = new ImpactSystem();
         const dodger = buildDodger();
-        const gap = CONTACT_GAP + DUNGEON_DROP.impact.nearMissDistance + 6;
+        const gap = CONTACT_GAP + FACE_SMASHING.impact.nearMissDistance + 6;
 
         const outcome = impacts.evaluate([landAtGap(dodger, gap)], dodger);
 
@@ -123,8 +123,8 @@ describe('ImpactSystem', () => {
     });
 
     it('keeps the dodge radius wider than the near miss radius', () => {
-        expect(DUNGEON_DROP.score.dodgeDistance).toBeGreaterThan(
-            DUNGEON_DROP.impact.nearMissDistance,
+        expect(FACE_SMASHING.score.dodgeDistance).toBeGreaterThan(
+            FACE_SMASHING.impact.nearMissDistance,
         );
     });
 });

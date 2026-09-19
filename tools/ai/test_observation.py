@@ -10,7 +10,7 @@ import os
 import torch
 
 import config as cfg
-from sim import DungeonDropSim
+from sim import FaceSmashingSim
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURE = os.path.join(HERE, "fixtures", "observation_fixture.json")
@@ -22,7 +22,7 @@ def load_fixture():
 
 
 def build_sim(fixture, device="cpu"):
-    sim = DungeonDropSim(1, device=device, seed=0)
+    sim = FaceSmashingSim(1, device=device, seed=0)
     sim.reset()
 
     dodger = fixture["dodger"]

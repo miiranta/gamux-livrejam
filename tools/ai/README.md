@@ -1,13 +1,13 @@
 # Dodger AI
 
-Politica neural que controla o personagem no `DungeonDrop` (desviar dos objetos
+Politica neural que controla o personagem no `FaceSmashing` (desviar dos objetos
 que caem). Treinada com Evolution Strategies em PyTorch/CUDA.
 
 ## Estrutura
 
 | arquivo | papel |
 | --- | --- |
-| `config.py` | constantes da simulacao, espelho de `src/game/config/dungeon-drop.config.ts` |
+| `config.py` | constantes da simulacao, espelho de `src/game/config/face-smashing.config.ts` |
 | `sim.py` | simulacao vetorizada (uma copia do jogo por ambiente, tudo no GPU) |
 | `dropper.py` | politica do "jogador" que solta os objetos durante o treino |
 | `model.py` | rede MLP, forward em lote e serializacao JSON |
@@ -67,7 +67,7 @@ Alem dele, um spec do lado do TypeScript
 O `DropperPolicy` imita o jogador humano: mira onde o desviador **vai estar**
 quando o objeto chegar ao chao (antecipando a velocidade dele), com um jitter
 que torna o alvo imperfeito — do mesmo modo que o jogo faz em
-`dungeon-drop.ts:aimPoint()`.
+`face-smashing.ts:aimPoint()`.
 
 Isso importa: um oponente que sempre acerta o alvo exato tornaria o jogo
 impossivel e ensinaria a politica a apenas fugir para o canto. Por isso a

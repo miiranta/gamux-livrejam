@@ -6,19 +6,38 @@
     <span class="end-game__corner end-game__corner--br" aria-hidden="true"></span>
 
     <div class="end-game__stack">
-        <!-- 1) Title + subtitle, punched in with a small tilt. -->
+        <!-- 1) Title + subtitle: slams in, then throws shards. -->
         <header class="end-game__header">
             <h1 class="end-game__title">{{ 'end.title' | translate }}</h1>
             <p class="end-game__subtitle">{{ 'end.subtitle' | translate }}</p>
+            <app-particle-burst
+                class="end-game__burst"
+                [count]="20"
+                [seed]="11"
+                [delay]="0.42"
+                [spread]="11"
+            />
         </header>
 
-        <!-- 2) Score card, also punched in with a small opposite tilt. -->
-        <app-pixel-panel bare class="end-game__score-panel">
-            <div class="end-game__score">
-                <span class="end-game__score-label">{{ 'end.score' | translate }}</span>
-                <span class="end-game__score-value">{{ score() }}</span>
-            </div>
-        </app-pixel-panel>
+        <!-- 2) Score card: slams in, cracks the backdrop and throws shards. -->
+        <div class="end-game__score-wrap">
+            <app-crack-overlay class="end-game__cracks" [branches]="8" [seed]="23" [delay]="0.95" />
+
+            <app-pixel-panel bare class="end-game__score-panel">
+                <div class="end-game__score">
+                    <span class="end-game__score-label">{{ 'end.score' | translate }}</span>
+                    <span class="end-game__score-value">{{ score() }}</span>
+                </div>
+            </app-pixel-panel>
+
+            <app-particle-burst
+                class="end-game__burst"
+                [count]="26"
+                [seed]="29"
+                [delay]="0.95"
+                [spread]="13"
+            />
+        </div>
 
         <!-- 3) Actions: no tilt, quick fade-in. -->
         <div class="end-game__actions">

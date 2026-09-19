@@ -2,7 +2,7 @@ import type { SolidBox } from '../../engine/physics';
 import { solidBox } from '../../engine/physics';
 import { TileGrid } from '../../engine/level';
 import type { TileSpriteKey } from '../assets';
-import { DUNGEON_DROP } from '../config';
+import { FACE_SMASHING } from '../config';
 
 export interface TilePlacement {
     column: number;
@@ -25,7 +25,7 @@ const LAYER_WALL = 1;
 const LAYER_FLOOR = 2;
 
 export function createDungeonLevel(): DungeonLevel {
-    const { size, scale, columns, rows, wallThickness, floorThickness } = DUNGEON_DROP.tile;
+    const { size, scale, columns, rows, wallThickness, floorThickness } = FACE_SMASHING.tile;
     const grid = new TileGrid({ columns, rows, tileSize: size * scale });
     const floorRow = rows - floorThickness;
     const tiles: TilePlacement[] = [];
@@ -63,8 +63,8 @@ export function createDungeonLevel(): DungeonLevel {
         floorTop,
         playLeft: grid.columnX(wallThickness),
         playRight: grid.columnX(columns - wallThickness),
-        spawnY: grid.top + DUNGEON_DROP.faller.spawnHeight,
-        despawnY: grid.bottom + DUNGEON_DROP.faller.despawnBelow,
+        spawnY: grid.top + FACE_SMASHING.faller.spawnHeight,
+        despawnY: grid.bottom + FACE_SMASHING.faller.despawnBelow,
     };
 }
 

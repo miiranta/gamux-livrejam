@@ -1,7 +1,7 @@
 import { overlaps } from '../../engine/physics';
 import { bodyBox } from '../../engine/physics';
 import type { Dodger, Faller } from '../entities';
-import { DUNGEON_DROP } from '../config';
+import { FACE_SMASHING } from '../config';
 
 export interface ImpactOutcome {
     hit: boolean;
@@ -19,7 +19,7 @@ export class ImpactSystem {
     evaluate(fallers: readonly Faller[], dodger: Dodger): ImpactOutcome {
         const outcome: ImpactOutcome = { hit: false, dodges: 0, nearMisses: 0 };
         const dodgerBox = bodyBox(dodger.physics);
-        const { fallerHalfWidth, dodgerHalfWidth, nearMissDistance } = DUNGEON_DROP.impact;
+        const { fallerHalfWidth, dodgerHalfWidth, nearMissDistance } = FACE_SMASHING.impact;
         const safeGap = fallerHalfWidth + dodgerHalfWidth;
 
         for (const faller of fallers) {
@@ -37,7 +37,7 @@ export class ImpactSystem {
             }
 
             const gap = Math.abs(faller.centerX - dodger.feet.x);
-            if (gap > safeGap + DUNGEON_DROP.score.dodgeDistance) {
+            if (gap > safeGap + FACE_SMASHING.score.dodgeDistance) {
                 continue;
             }
 

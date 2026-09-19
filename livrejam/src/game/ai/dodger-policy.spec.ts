@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseNetwork } from '../../engine/ai';
-import { DUNGEON_DROP } from '../config';
+import { FACE_SMASHING } from '../config';
 import { IdlePolicy, intentFor, type PolicyLike } from './dodger-policy';
 import { DODGER_ACTIONS, createObservationBuffer } from './observation';
 
@@ -17,16 +17,16 @@ class FixedPolicy implements PolicyLike {
 
 describe('policy contract', () => {
     it('exposes the observation size the model expects', () => {
-        expect(DUNGEON_DROP.ai.observationSize).toBe(24);
-        expect(DUNGEON_DROP.ai.actionCount).toBe(6);
+        expect(FACE_SMASHING.ai.observationSize).toBe(24);
+        expect(FACE_SMASHING.ai.actionCount).toBe(6);
     });
 
     it('keeps the model URL under the served assets root', () => {
-        expect(DUNGEON_DROP.ai.modelUrl.startsWith('models/')).toBe(true);
+        expect(FACE_SMASHING.ai.modelUrl.startsWith('models/')).toBe(true);
     });
 
     it('sizes the observation buffer to the configured size', () => {
-        expect(createObservationBuffer().length).toBe(DUNGEON_DROP.ai.observationSize);
+        expect(createObservationBuffer().length).toBe(FACE_SMASHING.ai.observationSize);
     });
 
     it('maps policy output into an action intent', () => {
