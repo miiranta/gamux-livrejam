@@ -1,78 +1,86 @@
 <div class="game-canvas">
     <canvas #canvas class="game-canvas__surface"></canvas>
 
-    @if (showHud()) {
-        <div class="game-canvas__hud">
-            <span class="game-canvas__chip game-canvas__chip--clock">
-                <i class="game-canvas__dot game-canvas__dot--clock"></i>
-                <b>{{ timeLeft() }}</b>
-            </span>
-            <span class="game-canvas__chip">
-                <i class="game-canvas__dot"></i>
-                {{ 'hud.score' | translate }} <b>{{ stats().score }}</b>
-            </span>
-            <span class="game-canvas__chip">
-                <i class="game-canvas__dot"></i>
-                {{ 'hud.best' | translate }} <b>{{ stats().best }}</b>
-            </span>
-            <span class="game-canvas__chip">
-                <i class="game-canvas__dot"></i>
-                {{ 'hud.survived' | translate }} <b>{{ formatSeconds(stats().survived) }}s</b>
-            </span>
-            <span class="game-canvas__chip">
-                <i class="game-canvas__dot"></i>
-                {{ 'hud.dodges' | translate }} <b>{{ stats().dodges }}</b>
-            </span>
-            <span class="game-canvas__chip">
-                <i class="game-canvas__dot"></i>
-                {{ 'hud.nearMisses' | translate }} <b>{{ stats().nearMisses }}</b>
-            </span>
-            <span class="game-canvas__chip">
-                <i class="game-canvas__dot game-canvas__dot--warn"></i>
-                {{ 'hud.maxSpeed' | translate }} <b>{{ stats().dodgerSpeed }}</b>
-            </span>
-            <span class="game-canvas__chip">
-                <i class="game-canvas__dot game-canvas__dot--danger"></i>
-                {{ 'hud.dropSpeed' | translate }} <b>{{ stats().fallerSpeed }}</b>
-            </span>
-            <span
-                class="game-canvas__chip"
-                [class.game-canvas__chip--error]="modelStatus() === 'error'"
-            >
-                <i
-                    class="game-canvas__dot"
-                    [class.game-canvas__dot--warn]="modelStatus() !== 'ready'"
-                ></i>
-                {{ 'hud.ai' | translate }}
-                <b>
-                    {{
-                        (modelStatus() === 'ready' ? 'hud.policy' : 'hud.state.' + modelStatus())
-                            | translate
-                    }}
-                </b>
-            </span>
-        </div>
+    @if (status() === 'ready') {
+        <div class="game-canvas__topbar">
+            <div class="game-canvas__hud">
+                <span class="game-canvas__chip">
+                    <i class="game-canvas__dot"></i>
+                    score <b>{{ stats().score }}</b>
+                </span>
+                <span class="game-canvas__chip">
+                    <i class="game-canvas__dot"></i>
+                    best <b>{{ stats().best }}</b>
+                </span>
+                <span class="game-canvas__chip">
+                    <i class="game-canvas__dot"></i>
+                    survived <b>{{ formatSeconds(stats().survived) }}s</b>
+                </span>
+                <span class="game-canvas__chip">
+                    <i class="game-canvas__dot game-canvas__dot--accent"></i>
+                    round <b>{{ formatRound(stats().survived, stats().roundTime) }}</b>
+                </span>
+                <span class="game-canvas__chip">
+                    <i class="game-canvas__dot"></i>
+                    dodges <b>{{ stats().dodges }}</b>
+                </span>
+                <span class="game-canvas__chip">
+                    <i class="game-canvas__dot"></i>
+                    near <b>{{ stats().nearMisses }}</b>
+                </span>
+                <span
+                    class="game-canvas__chip"
+                    [class.game-canvas__chip--danger]="stats().level >= 4"
+                >
+                    <i class="game-canvas__dot game-canvas__dot--danger"></i>
+                    damage <b>{{ formatDamage(stats().damage) }}</b>
+                </span>
+                <span class="game-canvas__chip">
+                    <i
+                        class="game-canvas__dot"
+                        [class.game-canvas__dot--danger]="stats().level >= 4"
+                        [class.game-canvas__dot--warn]="stats().level > 0 && stats().level < 4"
+                    ></i>
+                    tier <b>{{ stats().level }}</b>
+                </span>
+                <span class="game-canvas__chip">
+                    <i class="game-canvas__dot game-canvas__dot--warn"></i>
+                    max speed <b>{{ stats().dodgerSpeed }}</b>
+                </span>
+                <span class="game-canvas__chip">
+                    <i class="game-canvas__dot game-canvas__dot--danger"></i>
+                    drop <b>{{ stats().itemSpeed }}</b>
+                </span>
+                <span
+                    class="game-canvas__chip"
+                    [class.game-canvas__chip--error]="modelStatus() === 'error'"
+                >
+                    <i
+                        class="game-canvas__dot"
+                        [class.game-canvas__dot--warn]="modelStatus() !== 'ready'"
+                    ></i>
+                    ai
+                    <b>{{ modelStatus() === 'ready' ? 'policy' : modelStatus() }}</b>
+                </span>
+            </div>
 
-        <div class="game-canvas__controls">
-            @if (modelStatus() === 'error') {
-                <button type="button" class="game-canvas__control" (click)="reloadModel()">
-                    {{ 'hud.dev.reloadAi' | translate }}
+            <div class="game-canvas__controls">
+                <button type="button" class="game-canvas__button" (click)="restart()">Restart</button>
+                <button type="button" class="game-canvas__button" (click)="accelerate()">
+                    Faster
                 </button>
-            }
-
-            <button
-                type="button"
-                class="game-canvas__control game-canvas__control--pause"
-                [attr.aria-label]="'hud.pause' | translate"
-                [attr.title]="'hud.pause' | translate"
-                (click)="pause()"
-            >
-                <span class="game-canvas__pause-rim" aria-hidden="true"></span>
-                <span class="game-canvas__pause-glyph" aria-hidden="true"></span>
-            </button>
+                <button type="button" class="game-canvas__button" (click)="toggleColliders()">
+                    Colliders
+                </button>
+                <button type="button" class="game-canvas__button" (click)="reloadModel()">
+                    Reload AI
+                </button>
+            </div>
         </div>
 
-        <p class="game-canvas__hint">{{ 'hud.hint' | translate }}</p>
+        <p class="game-canvas__hint">
+            A / D mira ou move a caixa · S acelera a queda · Espaço solta · a IA pilota o personagem
+        </p>
 
         @if (modelStatus() === 'error') {
             <p class="game-canvas__debug">{{ modelMessage() }}</p>
@@ -82,7 +90,7 @@
     @if (status() === 'loading') {
         <div class="game-canvas__veil">
             <span class="game-canvas__spinner"></span>
-            <p>{{ 'hud.loading' | translate }}</p>
+            <p>Carregando a masmorra…</p>
         </div>
     }
 

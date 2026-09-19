@@ -29,9 +29,9 @@ export class Character {
     readonly physics: PhysicsBody;
     readonly accelerationX: number;
     readonly dragX: number;
-    readonly jumpSpeed: number;
     facing: Facing;
     animation: string;
+    jumpSpeed: number;
     frame = 0;
     elapsed = 0;
 
@@ -108,7 +108,6 @@ export class Character {
         this.physics.body.velocity.y = -this.jumpSpeed;
         return true;
     }
-
     setAnimation(animation: string): void {
         if (animation === this.animation) {
             return;

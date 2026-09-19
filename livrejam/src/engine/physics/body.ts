@@ -12,6 +12,12 @@ export interface Body {
     maxSpeed: Point2D;
 
     grounded: boolean;
+
+    angle: number;
+
+    angularVelocity: number;
+
+    angularDamping: number;
 }
 
 export interface BodyOptions {
@@ -19,6 +25,14 @@ export interface BodyOptions {
     maxFallSpeed?: number;
     friction?: number;
     initialVelocity?: Partial<Point2D>;
+    angle?: number;
+    angularVelocity?: number;
+    angularDamping?: number;
+}
+
+export function dampAngular(body: Body, dt: number): void {
+    body.angularVelocity *= Math.exp(-body.angularDamping * dt);
+    body.angle += body.angularVelocity * dt;
 }
 
 export function accelerate(
@@ -46,6 +60,9 @@ export function createBody(position: Point2D, options: BodyOptions): Body {
         friction,
         maxSpeed: { x: Infinity, y: maxFallSpeed },
         grounded: false,
+        angle: options.angle ?? 0,
+        angularVelocity: options.angularVelocity ?? 0,
+        angularDamping: options.angularDamping ?? 0,
     };
 }
 

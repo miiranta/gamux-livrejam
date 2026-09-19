@@ -1,42 +1,54 @@
 import { describe, expect, it } from 'vitest';
 
 import { PhysicsWorld } from '../../engine/physics';
-import { FACE_SMASHING } from '../config';
-import { Dodger, randomMaxSpeed } from './dodger';
-import { Faller, pickFallerSprite } from './faller';
+import { FACE_SMASHING, ITEMS, ITEM_WEIGHT_TOTAL } from '../config';
+import { DAMAGE_PER_LEVEL, TIER_LAST, damageLevel, damageScale } from '../damage';
+import { Dodger } from './dodger';
+import { Item, pickItem } from './item';
 import { createDungeonLevel } from '../level';
 
-function createTestDodger(maxSpeed = 200): Dodger {
+function createTestDodger(): Dodger {
     const level = createDungeonLevel();
     return new Dodger({
         feetX: level.grid.left + level.grid.width / 2,
         feetY: level.floorTop,
-        maxSpeedX: maxSpeed,
+    });
+}
+
+function createTestItem(): Item {
+    return new Item({
+        x: 100,
+        y: 0,
+        velocityX: 30,
+        velocityY: 200,
+        definition: ITEMS[0],
+        spin: 6,
+        damageRoll: 0,
     });
 }
 
 describe('Dodger', () => {
-    it('accelerates towards the requested direction up to the round max speed', () => {
-        const dodger = createTestDodger(200);
+    it('starts at the intact tier with the fastest stats', () => {
+        const dodger = createTestDodger();
+        const config = FACE_SMASHING.dodger;
+
+        expect(dodger.level).toBe(0);
+        expect(dodger.maxSpeedX).toBe(config.maxSpeedStart);
+        expect(dodger.jumpSpeed).toBe(config.jumpStart);
+    });
+
+    it('accelerates towards the requested direction up to its own max speed', () => {
+        const dodger = createTestDodger();
         for (let step = 0; step < 120; step++) {
             dodger.move(1, 1 / 60);
         }
 
-        expect(dodger.physics.body.velocity.x).toBeCloseTo(200, 4);
+        expect(dodger.physics.body.velocity.x).toBeCloseTo(dodger.maxSpeedX, 4);
         expect(dodger.facing).toBe('right');
     });
 
-    it('never exceeds its own max speed even when the round cap is higher', () => {
-        const dodger = createTestDodger(120);
-        for (let step = 0; step < 240; step++) {
-            dodger.move(-1, 1 / 60);
-        }
-
-        expect(dodger.physics.body.velocity.x).toBeCloseTo(-120, 4);
-    });
-
     it('coasts to a stop when the axis intent is neutral', () => {
-        const dodger = createTestDodger(200);
+        const dodger = createTestDodger();
         dodger.physics.body.velocity.x = 150;
 
         for (let step = 0; step < 60; step++) {
@@ -50,7 +62,7 @@ describe('Dodger', () => {
         );
     });
 
-    it('only jumps when grounded and consumes the request once', () => {
+    it('only jumps when grounded', () => {
         const world = new PhysicsWorld();
         const level = createDungeonLevel();
         for (const collider of level.colliders) {
@@ -62,13 +74,38 @@ describe('Dodger', () => {
             world.step(dodger.physics, 1 / 60);
         }
 
+        expect(dodger.physics.body.grounded).toBe(true);
         dodger.requestJump();
         dodger.consumeJump();
-        expect(dodger.physics.body.velocity.y).toBeCloseTo(-FACE_SMASHING.dodger.jumpSpeed, 4);
+        expect(dodger.physics.body.velocity.y).toBeCloseTo(-dodger.jumpSpeed, 4);
+    });
 
-        world.step(dodger.physics, 1 / 60);
+    it('ignores a jump request while airborne', () => {
+        const dodger = createTestDodger();
+        dodger.physics.body.grounded = true;
+        dodger.requestJump();
         dodger.consumeJump();
-        expect(dodger.physics.body.velocity.y).not.toBeCloseTo(-FACE_SMASHING.dodger.jumpSpeed, 4);
+        const launch = dodger.physics.body.velocity.y;
+
+        dodger.physics.body.grounded = false;
+        for (let step = 0; step < 8; step++) {
+            dodger.physics.body.velocity.y += FACE_SMASHING.physics.gravity / 60;
+        }
+
+        const falling = dodger.physics.body.velocity.y;
+        dodger.requestJump();
+        dodger.consumeJump();
+
+        expect(dodger.physics.body.velocity.y).toBeCloseTo(falling, 6);
+        expect(falling).toBeGreaterThan(launch);
+    });
+
+    it('clears a queued jump even when the attempt fails', () => {
+        const dodger = createTestDodger();
+        dodger.physics.body.grounded = false;
+        dodger.requestJump();
+        dodger.consumeJump();
+        expect(dodger.jumpQueued).toBe(false);
     });
 
     it('derives the animation from the grounded state', () => {
@@ -88,66 +125,160 @@ describe('Dodger', () => {
     });
 });
 
-describe('randomMaxSpeed', () => {
-    it('stays inside the configured range', () => {
-        const values = [0, 0.25, 0.5, 0.75, 1].map((value) => randomMaxSpeed(() => value));
+describe('damage tiers', () => {
+    it('keeps the dodger at tier 0 below the first threshold', () => {
+        const dodger = createTestDodger();
+        dodger.takeDamage(DAMAGE_PER_LEVEL - 1);
+        expect(dodger.level).toBe(0);
+    });
 
-        expect(Math.min(...values)).toBe(FACE_SMASHING.dodger.maxSpeedMin);
-        expect(Math.max(...values)).toBe(FACE_SMASHING.dodger.maxSpeedMax);
+    it('advances exactly one tier per threshold crossed', () => {
+        const dodger = createTestDodger();
+        expect(dodger.takeDamage(DAMAGE_PER_LEVEL)).toBe(1);
+        expect(dodger.level).toBe(1);
+        expect(dodger.takeDamage(DAMAGE_PER_LEVEL * 2)).toBe(2);
+        expect(dodger.level).toBe(3);
+    });
+
+    it('weakens max speed and jump as the tiers progress', () => {
+        const dodger = createTestDodger();
+        const config = FACE_SMASHING.dodger;
+        const startSpeed = dodger.maxSpeedX;
+        const startJump = dodger.jumpSpeed;
+
+        dodger.takeDamage(DAMAGE_PER_LEVEL * TIER_LAST);
+
+        expect(dodger.level).toBe(TIER_LAST);
+        expect(dodger.maxSpeedX).toBeCloseTo(config.maxSpeedEnd, 4);
+        expect(dodger.jumpSpeed).toBeCloseTo(config.jumpEnd, 4);
+        expect(dodger.maxSpeedX).toBeLessThan(startSpeed);
+        expect(dodger.jumpSpeed).toBeLessThan(startJump);
+    });
+
+    it('stops weakening beyond the last tier', () => {
+        const dodger = createTestDodger();
+        dodger.takeDamage(DAMAGE_PER_LEVEL * TIER_LAST);
+        const wornSpeed = dodger.maxSpeedX;
+
+        dodger.takeDamage(DAMAGE_PER_LEVEL * 10);
+
+        expect(dodger.level).toBe(TIER_LAST);
+        expect(dodger.isWorn).toBe(true);
+        expect(dodger.maxSpeedX).toBeCloseTo(wornSpeed, 6);
+    });
+
+    it('scales stats monotonically', () => {
+        const speeds = Array.from({ length: 8 }, (_, level) =>
+            damageScale(level, FACE_SMASHING.dodger.maxSpeedStart, FACE_SMASHING.dodger.maxSpeedEnd),
+        );
+
+        for (let index = 1; index < speeds.length; index++) {
+            expect(speeds[index]).toBeLessThan(speeds[index - 1]);
+        }
+    });
+
+    it('clamps the tier index at both ends', () => {
+        expect(damageLevel(-100)).toBe(0);
+        expect(damageLevel(1e9)).toBe(TIER_LAST);
     });
 });
 
-describe('Faller', () => {
-    it('starts falling with the initial velocity', () => {
-        const faller = new Faller({
-            x: 100,
-            y: 0,
-            velocityX: 30,
-            velocityY: 200,
-            sprite: 'barrel',
-            size: 32,
-        });
+describe('Item', () => {
+    it('starts falling with the initial velocity and spin', () => {
+        const item = createTestItem();
 
-        expect(faller.state).toBe('falling');
-        expect(faller.physics.body.velocity.y).toBe(200);
-        expect(faller.centerX).toBeCloseTo(116, 4);
+        expect(item.state).toBe('falling');
+        expect(item.physics.body.velocity.y).toBe(200);
+        expect(item.spinRate).toBe(6);
+        expect(item.centerX).toBeCloseTo(100 + item.halfWidth, 4);
     });
 
-    it('switches to landed on the first ground contact', () => {
-        const faller = new Faller({
-            x: 100,
-            y: 0,
-            velocityX: 0,
-            velocityY: 200,
-            sprite: 'barrel',
-            size: 32,
-        });
+    it('switches to landed on the first ground contact and dumps spin', () => {
+        const item = createTestItem();
+        item.applyCollision({ grounded: true, hitWall: null, hitCeiling: false, layer: 2 });
 
-        faller.applyCollision({ grounded: true, hitWall: null, hitCeiling: false, layer: 2 });
-        expect(faller.state).toBe('landed');
+        expect(item.state).toBe('landed');
+        expect(item.spinRate).toBeCloseTo(6 * FACE_SMASHING.item.spinTransfer, 4);
     });
 
     it('expires after the settle window', () => {
-        const faller = new Faller({
-            x: 100,
-            y: 0,
-            velocityX: 0,
-            velocityY: 200,
-            sprite: 'barrel',
-            size: 32,
-        });
+        const item = createTestItem();
+        item.applyCollision({ grounded: true, hitWall: null, hitCeiling: false, layer: 2 });
 
-        faller.applyCollision({ grounded: true, hitWall: null, hitCeiling: false, layer: 2 });
         for (let step = 0; step < 120; step++) {
-            faller.update(1 / 60);
+            item.update(1 / 60);
         }
 
-        expect(faller.expired).toBe(true);
+        expect(item.expired).toBe(true);
     });
 
-    it('always picks a known sprite', () => {
-        for (const value of [0, 0.2, 0.5, 0.99]) {
-            expect(typeof pickFallerSprite(() => value)).toBe('string');
+    it('rolls damage inside the item range', () => {
+        const definition = ITEMS[0];
+        const low = new Item({
+            x: 0,
+            y: 0,
+            velocityX: 0,
+            velocityY: 0,
+            definition,
+            damageRoll: 0,
+        });
+        const high = new Item({
+            x: 0,
+            y: 0,
+            velocityX: 0,
+            velocityY: 0,
+            definition,
+            damageRoll: 1,
+        });
+
+        expect(low.baseDamage).toBeCloseTo(definition.damage.min, 6);
+        expect(high.baseDamage).toBeCloseTo(definition.damage.max, 6);
+    });
+
+    it('scales damage with impact speed and spin', () => {
+        const slow = new Item({
+            x: 0,
+            y: 0,
+            velocityX: 0,
+            velocityY: 0,
+            definition: ITEMS[0],
+            spin: 0,
+            damageRoll: 1,
+        });
+        const fast = new Item({
+            x: 0,
+            y: 0,
+            velocityX: 0,
+            velocityY: FACE_SMASHING.item.referenceSpeed * 2,
+            definition: ITEMS[0],
+            spin: ITEMS[0].spin.max,
+            damageRoll: 1,
+        });
+
+        expect(fast.damage).toBeGreaterThan(slow.damage);
+    });
+});
+
+describe('pickItem', () => {
+    it('always returns a known item', () => {
+        const keys = new Set(ITEMS.map((item) => item.key));
+        for (const value of [0, 0.01, 0.25, 0.5, 0.75, 0.99]) {
+            expect(keys.has(pickItem(() => value).key)).toBe(true);
+        }
+    });
+
+    it('respects the weight distribution', () => {
+        const counts = new Map<string, number>();
+        const samples = 20000;
+        for (let index = 0; index < samples; index++) {
+            const roll = (index + 0.5) / samples;
+            const key = pickItem(() => roll).key;
+            counts.set(key, (counts.get(key) ?? 0) + 1);
+        }
+
+        for (const item of ITEMS) {
+            const observed = (counts.get(item.key) ?? 0) / samples;
+            expect(observed).toBeCloseTo(item.weight / ITEM_WEIGHT_TOTAL, 4);
         }
     });
 });

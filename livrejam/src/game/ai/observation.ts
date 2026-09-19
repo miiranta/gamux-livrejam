@@ -1,7 +1,7 @@
-import type { Dodger } from '../entities';
-import type { Faller } from '../entities';
+import type { Dodger, Item } from '../entities';
 import type { DungeonLevel } from '../level';
-import { FACE_SMASHING } from '../config';
+import { FACE_SMASHING, ITEM_MAX_DAMAGE } from '../config';
+import { DAMAGE_CEILING, TIER_LAST } from '../damage';
 
 export const DODGER_ACTIONS = {
     none: 0,
@@ -37,8 +37,9 @@ export function decodeAction(action: number): ActionIntent {
 }
 
 const OBSERVATION_SIZE = FACE_SMASHING.ai.observationSize;
-const FALLER_FEATURES = 7;
-const GLOBAL_FEATURES = 3;
+const GLOBAL_FEATURES = 7;
+const ITEM_FEATURES = 8;
+const ITEM_SLOTS = (OBSERVATION_SIZE - GLOBAL_FEATURES) / ITEM_FEATURES;
 
 export function createObservationBuffer(): Float32Array {
     return new Float32Array(OBSERVATION_SIZE);
@@ -47,70 +48,68 @@ export function createObservationBuffer(): Float32Array {
 export interface ObservationContext {
     level: DungeonLevel;
     dodger: Dodger;
-    fallers: readonly Faller[];
+    items: readonly Item[];
 }
 
 export function writeObservation(target: Float32Array, context: ObservationContext): Float32Array {
-    const { level, dodger, fallers } = context;
+    const { level, dodger, items } = context;
     const { grid } = level;
     const { body } = dodger.physics;
+    const config = FACE_SMASHING;
     const span = level.playRight - level.playLeft;
-    const radius = FACE_SMASHING.ai.observeRadius;
-    const maxSpeed = Math.max(dodger.maxSpeedX, 1);
-
+    const radius = config.ai.observeRadius;
     const halfSpan = span / 2;
     const centerX = level.playLeft + halfSpan;
-
-    target[0] = (body.position.x + dodger.size.width / 2 - centerX) / halfSpan;
-    target[1] = body.velocity.x / maxSpeed;
-    target[2] = dodger.maxSpeedX / FACE_SMASHING.dodger.maxSpeedMax;
-
-    const slots = (OBSERVATION_SIZE - GLOBAL_FEATURES) / FALLER_FEATURES;
     const dodgerX = body.position.x + dodger.size.width / 2;
     const dodgerTop = body.position.y;
-    const selected = selectNearest(fallers, dodgerX, dodgerTop, slots);
 
-    for (let slot = 0; slot < slots; slot++) {
-        const base = GLOBAL_FEATURES + slot * FALLER_FEATURES;
-        const faller = selected[slot];
+    target[0] = (dodgerX - centerX) / halfSpan;
+    target[1] = body.velocity.x / Math.max(dodger.maxSpeedX, 1);
+    target[2] = dodger.maxSpeedX / config.dodger.maxSpeedStart;
+    target[3] = body.grounded ? 1 : 0;
+    target[4] = body.velocity.y / config.dodger.maxFallSpeed;
+    target[5] = dodger.damage / DAMAGE_CEILING;
+    target[6] = dodger.level / TIER_LAST;
 
-        if (!faller) {
-            for (let feature = 0; feature < FALLER_FEATURES; feature++) {
+    const selected = selectThreats(items, dodgerX, dodgerTop, ITEM_SLOTS);
+
+    for (let slot = 0; slot < ITEM_SLOTS; slot++) {
+        const base = GLOBAL_FEATURES + slot * ITEM_FEATURES;
+        const item = selected[slot];
+
+        if (!item) {
+            for (let feature = 0; feature < ITEM_FEATURES; feature++) {
                 target[base + feature] = 0;
             }
             continue;
         }
 
-        const dx = faller.centerX - dodgerX;
-        const dy = faller.centerY - dodgerTop;
-
         target[base] = 1;
-        target[base + 1] = dx / radius;
-        target[base + 2] = dy / radius;
-        target[base + 3] = faller.physics.body.velocity.x / FACE_SMASHING.faller.lateralSpeed;
-        target[base + 4] = faller.physics.body.velocity.y / FACE_SMASHING.faller.maxFallSpeed;
-        target[base + 5] = faller.state === 'falling' ? 0 : 1;
-        target[base + 6] = faller.size / grid.tileSize;
+        target[base + 1] = (item.centerX - dodgerX) / radius;
+        target[base + 2] = (item.centerY - dodgerTop) / radius;
+        target[base + 3] = item.physics.body.velocity.x / config.item.lateralSpeed;
+        target[base + 4] = item.physics.body.velocity.y / config.item.maxFallSpeed;
+        target[base + 5] = item.state === 'falling' ? 0 : 1;
+        target[base + 6] =
+            Math.max(item.definition.half.width, item.definition.half.height) / grid.tileSize;
+        target[base + 7] = item.baseDamage / ITEM_MAX_DAMAGE;
     }
 
     return target;
 }
 
-function selectNearest(fallers: readonly Faller[], x: number, y: number, limit: number): Faller[] {
-    const ranked = fallers
-        .filter((faller) => !faller.expired)
-        .map((faller) => ({
-            faller,
-            score: fallerThreat(faller, x, y),
-        }))
+function selectThreats(items: readonly Item[], x: number, y: number, limit: number): Item[] {
+    const ranked = items
+        .filter((item) => !item.expired)
+        .map((item) => ({ item, score: itemThreat(item, x, y) }))
         .filter((entry) => entry.score < FACE_SMASHING.ai.observeRadius)
         .sort((a, b) => a.score - b.score);
 
-    return ranked.slice(0, limit).map((entry) => entry.faller);
+    return ranked.slice(0, limit).map((entry) => entry.item);
 }
 
-function fallerThreat(faller: Faller, x: number, y: number): number {
-    const horizontal = Math.abs(faller.centerX - x);
-    const below = faller.centerY - y;
+function itemThreat(item: Item, x: number, y: number): number {
+    const horizontal = Math.abs(item.centerX - x);
+    const below = item.centerY - y;
     return horizontal + Math.max(below, 0);
 }

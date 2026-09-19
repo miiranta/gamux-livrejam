@@ -1,5 +1,4 @@
 export * from './ai';
-export * from './assets';
 export * from './entities';
 export * from './input';
 export * from './level';

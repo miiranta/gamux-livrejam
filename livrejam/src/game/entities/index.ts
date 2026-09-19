@@ -1,2 +1,2 @@
 export * from './dodger';
-export * from './faller';
+export * from './item';

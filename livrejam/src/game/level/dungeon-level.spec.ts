@@ -35,4 +35,34 @@ describe('createDungeonLevel', () => {
         expect(level.spawnY).toBeGreaterThanOrEqual(0);
         expect(level.despawnY).toBeGreaterThan(level.grid.bottom);
     });
+
+    it('places decorative props on both inner wall faces', () => {
+        const left = level.grid.columnAt(level.playLeft) - 1;
+        const right = level.grid.columnAt(level.playRight);
+        const columns = new Set(level.decorations.torches.map((torch) => torch.column));
+
+        expect(level.decorations.torches.length).toBeGreaterThan(0);
+        expect(columns.has(left)).toBe(true);
+        expect(columns.has(right)).toBe(true);
+    });
+
+    it('keeps every torch clear of the floor row', () => {
+        const floorRow = level.grid.rowAt(level.floorTop);
+
+        for (const torch of level.decorations.torches) {
+            expect(torch.row).toBeLessThan(floorRow);
+        }
+    });
+
+
+    it('covers the same wall and floor footprint as the solid grid', () => {
+        const floorRow = level.grid.rowAt(level.floorTop);
+        const wallThickness = level.grid.columnAt(level.playLeft);
+        const walls = level.decorations.walls.length;
+        const floors = level.decorations.floors.length;
+
+        expect(walls).toBe(level.grid.columns * 0 + wallThickness * 2 * floorRow);
+        expect(floors).toBe(level.grid.columns - wallThickness * 2);
+    });
+
 });

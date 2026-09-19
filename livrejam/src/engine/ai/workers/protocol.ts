@@ -3,6 +3,8 @@ import type { NeuralNetwork } from '../neural-network';
 export interface InferenceInitRequest {
     type: 'init';
     url: string;
+    expectedInputSize: number;
+    expectedOutputSize: number;
 }
 
 export interface InferenceObserveRequest {

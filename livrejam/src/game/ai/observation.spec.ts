@@ -1,165 +1,184 @@
 import { describe, expect, it } from 'vitest';
-
-import { FACE_SMASHING } from '../config';
-import { Dodger, Faller } from '../entities';
+import { FACE_SMASHING, ITEMS } from '../config';
 import { createDungeonLevel } from '../level';
-import {
-    DODGER_ACTIONS,
-    createObservationBuffer,
-    decodeAction,
-    writeObservation,
-} from './observation';
+import type { DungeonLevel } from '../level';
+import { Dodger, Item } from '../entities';
+import { createObservationBuffer, writeObservation } from './observation';
 
-const FALLER_SIZE = 32;
+const RADIUS = FACE_SMASHING.ai.observeRadius;
+const GLOBAL_FEATURES = 7;
+const ITEM_FEATURES = 8;
+const SLOTS = (FACE_SMASHING.ai.observationSize - GLOBAL_FEATURES) / ITEM_FEATURES;
+const ARENA = FACE_SMASHING.tile.columns - FACE_SMASHING.tile.wallThickness * 2;
 
-function buildDodger(feetX: number, maxSpeedX = 200): Dodger {
+interface ItemSpec {
+    definition: number;
+    centerX: number;
+    y: number;
+    velocityX?: number;
+    velocityY?: number;
+    roll?: number;
+    state?: 'falling' | 'landed' | 'settled';
+}
+
+function buildDodger(level: DungeonLevel, feetX: number): Dodger {
+    const dodger = new Dodger({ feetX, feetY: level.floorTop, facing: 'right' });
+    dodger.applyTier();
+    return dodger;
+}
+
+function buildItem(spec: ItemSpec): Item {
+    const definition = ITEMS[spec.definition];
+    const item = new Item({
+        x: spec.centerX - definition.half.width,
+        y: spec.y,
+        velocityX: spec.velocityX ?? 0,
+        velocityY: spec.velocityY ?? 0,
+        definition,
+        damageRoll: spec.roll ?? 0.5,
+    });
+    item.state = spec.state ?? 'falling';
+    return item;
+}
+
+function observe(specs: ItemSpec[], feetX = 320): Float32Array {
     const level = createDungeonLevel();
-    return new Dodger({ feetX, feetY: level.floorTop, maxSpeedX });
+    const dodger = buildDodger(level, feetX);
+    const buffer = createObservationBuffer();
+
+    writeObservation(buffer, {
+        level,
+        dodger,
+        items: specs.map((spec) => buildItem(spec)),
+    });
+
+    return buffer;
 }
 
-function buildFaller(level: ReturnType<typeof createDungeonLevel>, x: number, y: number): Faller {
-    return new Faller({
-        x,
-        y,
-        velocityX: 0,
-        velocityY: 200,
-        sprite: 'smallCrate',
-        size: FALLER_SIZE,
-    });
+function slot(buffer: Float32Array, index: number): number[] {
+    const base = GLOBAL_FEATURES + index * ITEM_FEATURES;
+    return Array.from(buffer.slice(base, base + ITEM_FEATURES));
 }
-
-describe('decodeAction', () => {
-    it('maps every action to an axis and jump intent', () => {
-        expect(decodeAction(DODGER_ACTIONS.none)).toEqual({ axis: 0, jump: false });
-        expect(decodeAction(DODGER_ACTIONS.left)).toEqual({ axis: -1, jump: false });
-        expect(decodeAction(DODGER_ACTIONS.right)).toEqual({ axis: 1, jump: false });
-        expect(decodeAction(DODGER_ACTIONS.jump)).toEqual({ axis: 0, jump: true });
-        expect(decodeAction(DODGER_ACTIONS.jumpLeft)).toEqual({ axis: -1, jump: true });
-        expect(decodeAction(DODGER_ACTIONS.jumpRight)).toEqual({ axis: 1, jump: true });
-    });
-
-    it('falls back to doing nothing for an unknown index', () => {
-        expect(decodeAction(99)).toEqual({ axis: 0, jump: false });
-    });
-});
 
 describe('writeObservation', () => {
-    const level = createDungeonLevel();
-
-    it('produces a vector of the configured size', () => {
-        const buffer = createObservationBuffer();
-        const result = writeObservation(buffer, { level, dodger: buildDodger(320), fallers: [] });
-
-        expect(result).toBe(buffer);
-        expect(buffer.length).toBe(FACE_SMASHING.ai.observationSize);
+    it('writes one value per configured input', () => {
+        expect(createObservationBuffer()).toHaveLength(FACE_SMASHING.ai.observationSize);
+        expect(observe([])).toHaveLength(FACE_SMASHING.ai.observationSize);
     });
 
-    it('centres the position channel for a dodger in the middle of the arena', () => {
+    it('reports the dodger state in the global features', () => {
+        const level = createDungeonLevel();
+        const dodger = buildDodger(level, level.playLeft + (ARENA * 32) / 2);
+        dodger.physics.body.velocity.x = dodger.maxSpeedX / 2;
+        dodger.physics.body.velocity.y = -FACE_SMASHING.dodger.maxFallSpeed / 2;
+        dodger.physics.body.grounded = true;
+        dodger.damage = FACE_SMASHING.damage.perLevel * 2;
+
         const buffer = createObservationBuffer();
-        writeObservation(buffer, { level, dodger: buildDodger(320), fallers: [] });
+        writeObservation(buffer, { level, dodger, items: [] });
 
-        expect(buffer[0]).toBeCloseTo(0, 5);
-    });
-
-    it('signs the position channel by the side of the arena', () => {
-        const buffer = createObservationBuffer();
-        writeObservation(buffer, { level, dodger: buildDodger(100), fallers: [] });
-        const left = buffer[0];
-
-        writeObservation(buffer, { level, dodger: buildDodger(540), fallers: [] });
-
-        expect(left).toBeLessThan(0);
-        expect(buffer[0]).toBeGreaterThan(0);
-    });
-
-    it('normalises the horizontal velocity by the round max speed', () => {
-        const buffer = createObservationBuffer();
-        const dodger = buildDodger(320, 200);
-        dodger.physics.body.velocity.x = 100;
-
-        writeObservation(buffer, { level, dodger, fallers: [] });
-
-        expect(buffer[1]).toBeCloseTo(0.5, 5);
-        expect(buffer[2]).toBeCloseTo(200 / FACE_SMASHING.dodger.maxSpeedMax, 5);
-    });
-
-    it('always reports the round max speed so the policy can adapt', () => {
-        const buffer = createObservationBuffer();
-        const slow = buildDodger(320, FACE_SMASHING.dodger.maxSpeedMin);
-        writeObservation(buffer, { level, dodger: slow, fallers: [] });
-
-        expect(buffer[2]).toBeCloseTo(
-            FACE_SMASHING.dodger.maxSpeedMin / FACE_SMASHING.dodger.maxSpeedMax,
-            5,
-        );
-    });
-
-    it('zeroes every slot when there is no faller', () => {
-        const buffer = createObservationBuffer();
-        writeObservation(buffer, { level, dodger: buildDodger(320), fallers: [] });
-
-        for (let index = 3; index < buffer.length; index++) {
-            expect(buffer[index]).toBe(0);
-        }
-    });
-
-    it('describes the nearest faller in the first slot', () => {
-        const buffer = createObservationBuffer();
-        const dodger = buildDodger(320);
-        const faller = buildFaller(level, 420, 100);
-
-        writeObservation(buffer, { level, dodger, fallers: [faller] });
-
+        expect(buffer[0]).toBeCloseTo(0, 6);
+        expect(buffer[1]).toBeCloseTo(0.5, 6);
+        expect(buffer[2]).toBeCloseTo(1, 6);
         expect(buffer[3]).toBe(1);
-        expect(buffer[4]).toBeCloseTo(
-            (420 + FALLER_SIZE / 2 - 320) / FACE_SMASHING.ai.observeRadius,
-            5,
-        );
-        expect(buffer[5]).toBeCloseTo(
-            (100 + FALLER_SIZE / 2 - dodger.physics.body.position.y) /
-                FACE_SMASHING.ai.observeRadius,
-            5,
-        );
+        expect(buffer[4]).toBeCloseTo(-0.5, 6);
+        expect(buffer[5]).toBeCloseTo((FACE_SMASHING.damage.perLevel * 2) / 4000, 6);
+        expect(buffer[6]).toBeCloseTo(2 / 7, 6);
     });
 
-    it('ranks closer threats ahead of distant ones', () => {
-        const buffer = createObservationBuffer();
-        const dodger = buildDodger(320);
-        const near = buildFaller(level, 340, 120);
-        const far = buildFaller(level, 560, 120);
+    it('leaves every item slot empty without items', () => {
+        const buffer = observe([]);
 
-        writeObservation(buffer, { level, dodger, fallers: [far, near] });
-
-        const nearOffset = near.centerX - dodger.feet.x;
-        expect(buffer[4]).toBeCloseTo(nearOffset / FACE_SMASHING.ai.observeRadius, 5);
-    });
-
-    it('reports the settled flag once a faller has landed', () => {
-        const buffer = createObservationBuffer();
-        const faller = buildFaller(level, 340, 120);
-        faller.applyCollision({ grounded: true, hitWall: null, hitCeiling: false, layer: 2 });
-
-        writeObservation(buffer, { level, dodger: buildDodger(320), fallers: [faller] });
-
-        expect(buffer[8]).toBe(1);
-    });
-
-    it('never leaves the buffer with non-finite values', () => {
-        const buffer = createObservationBuffer();
-        const fallers = [buildFaller(level, 100, 0), buildFaller(level, 320, 50)];
-
-        writeObservation(buffer, { level, dodger: buildDodger(320), fallers });
-
-        for (const value of buffer) {
-            expect(Number.isFinite(value)).toBe(true);
+        for (let index = 0; index < SLOTS; index++) {
+            expect(slot(buffer, index)).toEqual(new Array(ITEM_FEATURES).fill(0));
         }
     });
 
-    it('reuses the supplied buffer without reallocating', () => {
-        const buffer = createObservationBuffer();
-        const dodger = buildDodger(320);
-        const first = writeObservation(buffer, { level, dodger, fallers: [] });
+    it('orders items by threat, nearest first', () => {
+        const buffer = observe([
+            { definition: 0, centerX: 520, y: 100 },
+            { definition: 8, centerX: 240, y: 100 },
+        ]);
+        const nearest = buffer[GLOBAL_FEATURES + 1];
+        const farthest = buffer[GLOBAL_FEATURES + ITEM_FEATURES + 1];
 
-        expect(first).toBe(buffer);
+        expect(nearest).toBeLessThan(0);
+        expect(farthest).toBeGreaterThan(0);
+        expect(Math.abs(nearest)).toBeLessThan(Math.abs(farthest));
+    });
+
+    it('describes the nearest item', () => {
+        const definition = ITEMS[4];
+        const centerX = 420;
+        const y = 96;
+        const buffer = observe([
+            {
+                definition: 4,
+                centerX,
+                y,
+                velocityX: 12,
+                velocityY: 180,
+                roll: 0.25,
+            },
+        ]);
+        const level = createDungeonLevel();
+        const dodgerTop = level.floorTop - FACE_SMASHING.dodger.box.height;
+        const values = slot(buffer, 0);
+
+        expect(values[0]).toBe(1);
+        expect(values[1]).toBeCloseTo((centerX - 320) / RADIUS, 6);
+        expect(values[2]).toBeCloseTo((y + definition.half.height - dodgerTop) / RADIUS, 6);
+        expect(values[3]).toBeCloseTo(12 / FACE_SMASHING.item.lateralSpeed, 6);
+        expect(values[4]).toBeCloseTo(180 / FACE_SMASHING.item.maxFallSpeed, 6);
+        expect(values[5]).toBe(0);
+        expect(values[6]).toBeCloseTo(
+            Math.max(definition.half.width, definition.half.height) / level.grid.tileSize,
+            6,
+        );
+        expect(values[7]).toBeCloseTo(
+            (definition.damage.min + (definition.damage.max - definition.damage.min) * 0.25) /
+                Math.max(...ITEMS.map((item) => item.damage.max)),
+            3,
+        );
+    });
+
+    it('marks items that already landed', () => {
+        const buffer = observe([{ definition: 2, centerX: 360, y: 300, state: 'landed' }]);
+
+        expect(slot(buffer, 0)[5]).toBe(1);
+    });
+
+    it('ignores items that already settled', () => {
+        const buffer = observe([{ definition: 2, centerX: 360, y: 300, state: 'settled' }]);
+
+        expect(slot(buffer, 0)[0]).toBe(0);
+    });
+
+    it('sees the far edge of the arena from the opposite corner', () => {
+        const level = createDungeonLevel();
+        const leftEdge = level.playLeft + ITEMS[3].half.width;
+        const rightEdge = level.playRight - ITEMS[3].half.width;
+
+        const fromLeft = observe([{ definition: 3, centerX: leftEdge, y: 300 }], rightEdge);
+        const fromRight = observe([{ definition: 3, centerX: rightEdge, y: 300 }], leftEdge);
+
+        expect(slot(fromLeft, 0)[0]).toBe(1);
+        expect(slot(fromRight, 0)[0]).toBe(1);
+        expect(Math.abs(slot(fromLeft, 0)[1]) * RADIUS).toBeLessThan(RADIUS);
+    });
+
+    it('uses every slot when the arena is crowded', () => {
+        const span = createDungeonLevel().playRight - createDungeonLevel().playLeft;
+        const step = span / SLOTS;
+        const specs = Array.from({ length: SLOTS }, (_, index) => ({
+            definition: index,
+            centerX: 64 + step * index + step / 2,
+            y: 300,
+        }));
+        const buffer = observe(specs);
+
+        for (let index = 0; index < SLOTS; index++) {
+            expect(slot(buffer, index)[0]).toBe(1);
+        }
     });
 });

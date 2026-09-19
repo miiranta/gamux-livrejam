@@ -1,18 +1,13 @@
 import type { SolidBox } from '../../engine/physics';
 import { solidBox } from '../../engine/physics';
 import { TileGrid } from '../../engine/level';
-import type { TileSpriteKey } from '../assets';
+import type { DecorationPlan } from './decoration-plan';
+import { planDecorations } from './decoration-plan';
 import { FACE_SMASHING } from '../config';
-
-export interface TilePlacement {
-    column: number;
-    row: number;
-    kind: TileSpriteKey;
-}
 
 export interface DungeonLevel {
     grid: TileGrid;
-    tiles: TilePlacement[];
+    decorations: DecorationPlan;
     colliders: SolidBox[];
     floorTop: number;
     playLeft: number;
@@ -28,7 +23,6 @@ export function createDungeonLevel(): DungeonLevel {
     const { size, scale, columns, rows, wallThickness, floorThickness } = FACE_SMASHING.tile;
     const grid = new TileGrid({ columns, rows, tileSize: size * scale });
     const floorRow = rows - floorThickness;
-    const tiles: TilePlacement[] = [];
     const solid = new Set<string>();
 
     for (let row = 0; row < rows; row++) {
@@ -36,21 +30,16 @@ export function createDungeonLevel(): DungeonLevel {
             const isWall = column < wallThickness || column >= columns - wallThickness;
             const isFloor = row >= floorRow;
 
-            if (isWall) {
-                tiles.push({ column, row, kind: 'wall' });
-                solid.add(`${column},${row}`);
-            } else if (isFloor) {
-                tiles.push({ column, row, kind: 'floor' });
+            if (isWall || isFloor) {
                 solid.add(`${column},${row}`);
             }
         }
     }
 
     const floorTop = grid.rowY(floorRow);
-
-    return {
+    const level: DungeonLevel = {
         grid,
-        tiles,
+        decorations: { walls: [], floors: [], torches: [] },
         colliders: mergeColliders(
             solid,
             columns,
@@ -63,9 +52,13 @@ export function createDungeonLevel(): DungeonLevel {
         floorTop,
         playLeft: grid.columnX(wallThickness),
         playRight: grid.columnX(columns - wallThickness),
-        spawnY: grid.top + FACE_SMASHING.faller.spawnHeight,
-        despawnY: grid.bottom + FACE_SMASHING.faller.despawnBelow,
+        spawnY: grid.top + FACE_SMASHING.item.spawnHeight,
+        despawnY: grid.bottom + FACE_SMASHING.item.despawnBelow,
     };
+
+    level.decorations = planDecorations(level);
+
+    return level;
 }
 
 function mergeColliders(

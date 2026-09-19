@@ -1,7 +1,17 @@
 """Treino da politica do desviador por Evolution Strategies (OpenAI-ES).
 
-Sem gradiente pela simulacao: amostra perturbacoes, avalia em lote no GPU e
-atualiza a media com pesos por ranking. Robusto para recompensa nao diferenciavel.
+Por que ES e nao gradiente: a recompensa nao e diferenciavel (colisoes, saltos,
+respawn) e ES paraleliza trivialmente no GPU.
+
+Orcamento: cada passo da simulacao custa ~2 ms independente do numero de
+ambientes, entao o custo esta no lancamento dos kernels. Por isso a simulacao
+roda com lotes enormes: 64 politicas x 512 ambientes = 32768 ambientes num
+unico tensor, o que da ~12 milhoes de passos-ambiente por segundo.
+
+Fitness (por candidato):
+    vida_media/horizonte + worst_weight * pior_vida/horizonte + 0.05 * (1 - mortes)
+O termo da pior vida e o que empurra a politica para "sobrevive em qualquer
+situacao" em vez de maximizar so a media.
 """
 
 import argparse
@@ -19,14 +29,17 @@ from sim import FaceSmashingSim
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--generations", type=int, default=400)
-    parser.add_argument("--population", type=int, default=48)
-    parser.add_argument("--envs", type=int, default=32)
-    parser.add_argument("--episode-steps", type=int, default=1500)
+    parser.add_argument("--generations", type=int, default=300)
+    parser.add_argument("--population", type=int, default=64)
+    parser.add_argument("--envs", type=int, default=512)
+    parser.add_argument("--episode-steps", type=int, default=3660)
     parser.add_argument("--sigma", type=float, default=0.05)
     parser.add_argument("--learning-rate", type=float, default=0.06)
+    parser.add_argument("--worst-weight", type=float, default=0.5)
+    parser.add_argument("--dodge-weight", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--out", default="livrejam/public/models/dodger-policy.json")
+    parser.add_argument("--checkpoint-every", type=int, default=10)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     return parser.parse_args()
 
@@ -36,8 +49,7 @@ def rank_weights(fitness):
     order = torch.argsort(fitness)
     ranks = torch.empty_like(order, dtype=torch.float32)
     ranks[order] = torch.arange(population, dtype=torch.float32, device=fitness.device)
-    centered = ranks / (population - 1) - 0.5
-    return centered / (population - 1)
+    return (ranks / (population - 1) - 0.5) / (population - 1)
 
 
 def expand_candidates(candidates, sizes):
@@ -57,44 +69,63 @@ def expand_candidates(candidates, sizes):
     return policies
 
 
+def to_layers(vector, sizes):
+    return expand_candidates(vector[None, :], sizes)[0]
+
+
 def evaluate(theta, perturbations, args):
     sizes = cfg.NETWORK_SIZES
     population = perturbations.shape[0]
-    total_envs = population * args.envs
+    total = population * args.envs
     candidates = theta[None, :] + args.sigma * perturbations
 
     stacked = stack_policies(expand_candidates(candidates, sizes))
-    sim = FaceSmashingSim(total_envs, device=args.device, seed=args.seed + 1000)
+    sim = FaceSmashingSim(total, device=args.device, seed=args.seed + 1000)
     dropper = DropperPolicy(seed=args.seed + 2000)
     observation = sim.reset()
 
-    alive_steps = torch.zeros(total_envs, device=args.device)
-    survived = torch.zeros(total_envs, device=args.device)
-    episodes = torch.zeros(total_envs, device=args.device)
-
     for _ in range(args.episode_steps):
         with torch.no_grad():
-            logits = batched_forward(observation, stacked, sizes, population, args.envs)
-            actions = torch.argmax(logits, dim=1)
-            observation = sim.step(actions, dropper)
-            metrics = sim.metrics()
-            alive = metrics["alive"].to(torch.float32)
-            alive_steps = alive_steps + alive
-            survived = survived + alive
-            episodes = metrics["episodes"]
+            scores = batched_forward(observation, stacked, sizes, population, args.envs)
+            observation = sim.step(torch.argmax(scores, dim=1), dropper)
 
-    average_life = survived / torch.clamp(episodes, min=1.0)
-    coverage = alive_steps / args.episode_steps
-    combined = (average_life / args.episode_steps + coverage * 0.1).view(
-        population, args.envs
-    ).mean(dim=1)
+    metrics = sim.metrics()
+    mean_damage = metrics["damage_mean"].view(population, args.envs)
+    worst_episode = metrics["damage_worst"].view(population, args.envs)
+    dodges = metrics["dodges"].view(population, args.envs)
+    hits = metrics["hits"].view(population, args.envs)
+
+    ceiling = cfg.DAMAGE_CEILING
+
+    fitness = (
+        1.0
+        - mean_damage.mean(dim=1) / ceiling
+        - args.worst_weight * worst_episode.mean(dim=1) / ceiling
+        + args.dodge_weight * (dodges.mean(dim=1) / (cfg.ROUND_SECONDS * 2))
+    )
 
     return (
-        combined,
-        coverage.mean(),
-        episodes.mean(),
-        (average_life * cfg.DT).mean(),
+        fitness,
+        mean_damage.mean().item(),
+        worst_episode.mean().item(),
+        mean_damage.max().item(),
+        hits.mean().item(),
+        dodges.mean().item(),
     )
+
+
+def save(theta, sizes, path, extra):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    payload = export_json(to_layers(theta, sizes), path, sizes)
+
+    report = dict(extra)
+    report["weights"] = len(payload["weights"])
+    report["biases"] = len(payload["biases"])
+
+    with open(os.path.splitext(path)[0] + ".train.json", "w", encoding="utf-8") as handle:
+        json.dump(report, handle, indent=2)
+
+    return payload
 
 
 def main():
@@ -103,8 +134,9 @@ def main():
 
     device = torch.device(args.device)
     sizes = cfg.NETWORK_SIZES
-    policy = initial_policy(sizes, device=args.device, seed=args.seed)
-    theta = torch.cat([tensor.reshape(-1) for tensor in policy]).to(torch.float32)
+    theta = torch.cat(
+        [tensor.reshape(-1) for tensor in initial_policy(sizes, device=args.device, seed=args.seed)]
+    ).to(torch.float32)
     parameters = theta.numel()
 
     best_theta = theta.clone()
@@ -113,7 +145,8 @@ def main():
 
     print(
         f"device={device} parameters={parameters} population={args.population} "
-        f"envs={args.envs} steps={args.episode_steps}"
+        f"envs={args.envs} total={args.population * args.envs} steps={args.episode_steps}",
+        flush=True,
     )
     started = time.time()
 
@@ -121,12 +154,12 @@ def main():
         perturbations = torch.randn(
             (args.population, parameters), device=device, dtype=torch.float32
         )
-        fitness, coverage, episodes, average_life = evaluate(theta, perturbations, args)
+        fitness, mean_damage, worst_damage, best_damage, hits, dodges = evaluate(
+            theta, perturbations, args
+        )
         weights = rank_weights(fitness)
 
-        gradient = (perturbations * weights[:, None]).sum(dim=0) / (
-            args.population * args.sigma
-        )
+        gradient = (perturbations * weights[:, None]).sum(dim=0) / (args.population * args.sigma)
         theta = theta + args.learning_rate * gradient
 
         top = fitness.max().item()
@@ -138,9 +171,11 @@ def main():
             "generation": generation,
             "mean_fitness": fitness.mean().item(),
             "top_fitness": top,
-            "alive_ratio": coverage.item(),
-            "episodes": episodes.item(),
-            "average_life_seconds": average_life.item(),
+            "mean_damage": mean_damage,
+            "worst_damage": worst_damage,
+            "best_damage": best_damage,
+            "hits": hits,
+            "dodges": dodges,
             "elapsed": time.time() - started,
         }
         history.append(entry)
@@ -148,45 +183,56 @@ def main():
         if generation % 5 == 0 or generation == 1:
             print(
                 f"gen {generation:4d} | fit {entry['mean_fitness']:7.4f} top {top:7.4f} "
-                f"| alive {entry['alive_ratio'] * 100:5.1f}% "
-                f"| life {entry['average_life_seconds']:5.2f}s "
-                f"| deaths {entry['episodes']:6.1f} | {entry['elapsed']:6.1f}s",
+                f"| dmg {mean_damage:7.1f} best {best_damage:7.1f} worst {worst_damage:7.1f} "
+                f"| hits {hits:5.1f} dodges {dodges:5.1f} | {entry['elapsed']:7.1f}s",
                 flush=True,
             )
 
-    final = []
-    offset = 0
-    for layer in range(len(sizes) - 1):
-        fan_in = sizes[layer]
-        fan_out = sizes[layer + 1]
-        count = fan_out * fan_in
-        final.append(best_theta[offset : offset + count].view(fan_out, fan_in).cpu())
-        offset += count
-        final.append(best_theta[offset : offset + fan_out].cpu())
-        offset += fan_out
+        if args.checkpoint_every > 0 and generation % args.checkpoint_every == 0:
+            save(
+                best_theta,
+                sizes,
+                args.out,
+                {
+                    "checkpoint": True,
+                    "generation": generation,
+                    "best_fitness": best_fitness,
+                    "generations": args.generations,
+                    "population": args.population,
+                    "envs": args.envs,
+                    "episode_steps": args.episode_steps,
+                    "sigma": args.sigma,
+                    "learning_rate": args.learning_rate,
+                    "worst_weight": args.worst_weight,
+                    "seed": args.seed,
+                    "parameters": parameters,
+                    "history": history,
+                },
+            )
+            print(f"  checkpoint saved at generation {generation}", flush=True)
 
-    os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    payload = export_json(final, args.out, sizes)
+    save(
+        best_theta,
+        sizes,
+        args.out,
+        {
+            "checkpoint": False,
+            "generation": args.generations,
+            "best_fitness": best_fitness,
+            "generations": args.generations,
+            "population": args.population,
+            "envs": args.envs,
+            "episode_steps": args.episode_steps,
+            "sigma": args.sigma,
+            "learning_rate": args.learning_rate,
+            "worst_weight": args.worst_weight,
+            "seed": args.seed,
+            "parameters": parameters,
+            "history": history,
+        },
+    )
 
-    report = {
-        "generations": args.generations,
-        "population": args.population,
-        "envs": args.envs,
-        "episode_steps": args.episode_steps,
-        "sigma": args.sigma,
-        "learning_rate": args.learning_rate,
-        "seed": args.seed,
-        "best_fitness": best_fitness,
-        "parameters": parameters,
-        "weights": len(payload["weights"]),
-        "biases": len(payload["biases"]),
-        "history": history,
-    }
-    report_path = os.path.splitext(args.out)[0] + ".train.json"
-    with open(report_path, "w", encoding="utf-8") as handle:
-        json.dump(report, handle, indent=2)
-
-    print(f"saved {args.out} and {report_path}")
+    print(f"saved {args.out}")
 
 
 if __name__ == "__main__":

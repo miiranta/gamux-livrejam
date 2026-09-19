@@ -1,84 +1,109 @@
 import { describe, expect, it } from 'vitest';
 
-import { FACE_SMASHING } from '../config';
-import { Dodger, Faller } from '../entities';
+import { FACE_SMASHING, ITEMS } from '../config';
+import { DAMAGE_PER_LEVEL, TIER_LAST } from '../damage';
+import { Dodger, Item } from '../entities';
 import { createDungeonLevel } from '../level';
 import { ImpactSystem } from './impact-system';
 
-const FALLER_SIZE = FACE_SMASHING.impact.fallerHalfWidth * 2;
-const CONTACT_GAP = FACE_SMASHING.impact.fallerHalfWidth + FACE_SMASHING.impact.dodgerHalfWidth;
-
 function buildDodger(feetX = 300): Dodger {
     const level = createDungeonLevel();
-    return new Dodger({ feetX, feetY: level.floorTop, maxSpeedX: 200 });
+    return new Dodger({ feetX, feetY: level.floorTop });
 }
 
-function landAtGap(dodger: Dodger, gap: number, side = 1): Faller {
-    const faller = new Faller({
-        x: dodger.feet.x + side * gap - FALLER_SIZE / 2,
-        y: 320,
+function placeItem(dodger: Dodger, gap: number, side = 1, index = 0): Item {
+    const definition = ITEMS[index];
+    const item = new Item({
+        x: dodger.feet.x + side * gap - definition.half.width,
+        y: dodger.feet.y - definition.half.height * 2,
         velocityX: 0,
         velocityY: 0,
-        sprite: 'smallCrate',
-        size: FALLER_SIZE,
+        definition,
+        spin: 0,
+        damageRoll: 0.5,
     });
 
-    faller.applyCollision({ grounded: true, hitWall: null, hitCeiling: false, layer: 2 });
-    return faller;
+    item.applyCollision({ grounded: true, hitWall: null, hitCeiling: false, layer: 2 });
+    return item;
+}
+
+function reach(dodger: Dodger, index = 0): number {
+    return ITEMS[index].half.width + dodger.size.width / 2;
+}
+
+function midDodgeGap(dodger: Dodger, index = 0): number {
+    const { dodgeDistance, nearMissDistance } = FACE_SMASHING.impact;
+    return reach(dodger, index) + (dodgeDistance + nearMissDistance) / 2;
 }
 
 describe('ImpactSystem', () => {
-    it('reports a hit when the faller overlaps the dodger', () => {
+    it('deals damage when an item overlaps the dodger', () => {
         const impacts = new ImpactSystem();
         const dodger = buildDodger();
+        const item = placeItem(dodger, 0);
 
-        expect(impacts.evaluate([landAtGap(dodger, 0)], dodger).hit).toBe(true);
+        const outcome = impacts.evaluate([item], dodger);
+
+        expect(outcome.hits).toBe(1);
+        expect(outcome.damage).toBeCloseTo(item.damage, 6);
+        expect(dodger.damage).toBeCloseTo(item.damage, 6);
     });
 
-    it('does not report a hit for a faller far from the dodger', () => {
+    it('does not damage the dodger for a distant item', () => {
         const impacts = new ImpactSystem();
         const dodger = buildDodger();
 
-        expect(impacts.evaluate([landAtGap(dodger, 300)], dodger).hit).toBe(false);
+        expect(impacts.evaluate([placeItem(dodger, 400)], dodger).damage).toBe(0);
+        expect(dodger.damage).toBe(0);
+    });
+
+    it('reports the tier change when a hit crosses a threshold', () => {
+        const impacts = new ImpactSystem();
+        const dodger = buildDodger();
+        const heavy = ITEMS.length - 1;
+        let outcome = impacts.evaluate([placeItem(dodger, 0, 1, heavy)], dodger);
+
+        for (let hit = 0; hit < 40 && outcome.tierChange === 0; hit++) {
+            dodger.advanceReaction(FACE_SMASHING.reaction.invulnerableSeconds + 0.01);
+            outcome = impacts.evaluate([placeItem(dodger, 0, 1, heavy)], dodger);
+        }
+
+        expect(outcome.tierChange).toBeGreaterThan(0);
+        expect(dodger.level).toBeGreaterThan(0);
+    });
+
+    it('scores a dodge once per item', () => {
+        const impacts = new ImpactSystem();
+        const dodger = buildDodger();
+        const item = placeItem(dodger, midDodgeGap(dodger));
+
+        expect(impacts.evaluate([item], dodger).dodges).toBe(1);
+        expect(impacts.evaluate([item], dodger).dodges).toBe(0);
     });
 
     it('does not score a dodge beyond the dodge radius', () => {
         const impacts = new ImpactSystem();
         const dodger = buildDodger();
-        const far = CONTACT_GAP + FACE_SMASHING.score.dodgeDistance + 40;
+        const gap = reach(dodger) + FACE_SMASHING.impact.dodgeDistance + 40;
 
-        const outcome = impacts.evaluate([landAtGap(dodger, far)], dodger);
-
-        expect(outcome.hit).toBe(false);
-        expect(outcome.dodges).toBe(0);
-    });
-
-    it('scores a dodge once per faller', () => {
-        const impacts = new ImpactSystem();
-        const dodger = buildDodger();
-        const faller = landAtGap(dodger, CONTACT_GAP + 10);
-
-        expect(impacts.evaluate([faller], dodger).dodges).toBe(1);
-        expect(impacts.evaluate([faller], dodger).dodges).toBe(0);
+        expect(impacts.evaluate([placeItem(dodger, gap)], dodger).dodges).toBe(0);
     });
 
     it('flags a near miss when the landing point is close', () => {
         const impacts = new ImpactSystem();
         const dodger = buildDodger();
-        const faller = landAtGap(dodger, CONTACT_GAP + 2);
-
-        const outcome = impacts.evaluate([faller], dodger);
+        const gap = reach(dodger) + FACE_SMASHING.impact.nearMissDistance / 2;
+        const outcome = impacts.evaluate([placeItem(dodger, gap)], dodger);
 
         expect(outcome.dodges).toBe(1);
         expect(outcome.nearMisses).toBe(1);
     });
 
-    it('does not flag a near miss for a wide margin', () => {
+    it('does not flag a near miss with a wide margin', () => {
         const impacts = new ImpactSystem();
         const dodger = buildDodger();
-        const gap = CONTACT_GAP + FACE_SMASHING.impact.nearMissDistance + 6;
-
-        const outcome = impacts.evaluate([landAtGap(dodger, gap)], dodger);
+        const gap = reach(dodger) + FACE_SMASHING.impact.nearMissDistance + 6;
+        const outcome = impacts.evaluate([placeItem(dodger, gap)], dodger);
 
         expect(outcome.dodges).toBe(1);
         expect(outcome.nearMisses).toBe(0);
@@ -87,44 +112,122 @@ describe('ImpactSystem', () => {
     it('counts a dodge on either side of the dodger', () => {
         const impacts = new ImpactSystem();
         const dodger = buildDodger();
-        const gap = CONTACT_GAP + 6;
+        const gap = midDodgeGap(dodger);
 
-        expect(impacts.evaluate([landAtGap(dodger, gap, 1)], dodger).dodges).toBe(1);
-        expect(impacts.evaluate([landAtGap(dodger, gap, -1)], dodger).dodges).toBe(1);
+        expect(impacts.evaluate([placeItem(dodger, gap, 1)], dodger).dodges).toBe(1);
+        expect(impacts.evaluate([placeItem(dodger, gap, -1)], dodger).dodges).toBe(1);
     });
 
-    it('ignores fallers that are still airborne', () => {
+    it('ignores items that are still airborne', () => {
         const impacts = new ImpactSystem();
         const dodger = buildDodger();
-        const airborne = new Faller({
-            x: dodger.feet.x + CONTACT_GAP + 10 - FALLER_SIZE / 2,
-            y: 100,
+        const definition = ITEMS[0];
+        const airborne = new Item({
+            x: dodger.feet.x + midDodgeGap(dodger) - definition.half.width,
+            y: 60,
             velocityX: 0,
             velocityY: 200,
-            sprite: 'smallCrate',
-            size: FALLER_SIZE,
+            definition,
+            spin: 0,
         });
 
         const outcome = impacts.evaluate([airborne], dodger);
 
         expect(outcome.dodges).toBe(0);
-        expect(outcome.hit).toBe(false);
+        expect(outcome.hits).toBe(0);
     });
 
-    it('forgets scored fallers after a reset', () => {
+    it('forgets scored items after a reset', () => {
         const impacts = new ImpactSystem();
         const dodger = buildDodger();
-        const faller = landAtGap(dodger, CONTACT_GAP + 10);
+        const item = placeItem(dodger, midDodgeGap(dodger));
 
-        impacts.evaluate([faller], dodger);
+        impacts.evaluate([item], dodger);
         impacts.reset();
 
-        expect(impacts.evaluate([faller], dodger).dodges).toBe(1);
+        expect(impacts.evaluate([item], dodger).dodges).toBe(1);
+    });
+
+    it('never weakens past the last tier', () => {
+        const impacts = new ImpactSystem();
+        const dodger = buildDodger();
+        const heavy = ITEMS.length - 1;
+
+        for (let hit = 0; hit < 200; hit++) {
+            dodger.advanceReaction(FACE_SMASHING.reaction.invulnerableSeconds + 0.01);
+            impacts.evaluate([placeItem(dodger, 0, 1, heavy)], dodger);
+        }
+
+        expect(dodger.level).toBe(TIER_LAST);
+        expect(dodger.damage).toBeGreaterThan(DAMAGE_PER_LEVEL * TIER_LAST);
     });
 
     it('keeps the dodge radius wider than the near miss radius', () => {
-        expect(FACE_SMASHING.score.dodgeDistance).toBeGreaterThan(
+        expect(FACE_SMASHING.impact.dodgeDistance).toBeGreaterThan(
             FACE_SMASHING.impact.nearMissDistance,
+        );
+    });
+
+    it('grants invulnerability right after a hit', () => {
+        const impacts = new ImpactSystem();
+        const dodger = buildDodger();
+
+        expect(dodger.isInvulnerable).toBe(false);
+        impacts.evaluate([placeItem(dodger, 0)], dodger);
+        expect(dodger.isInvulnerable).toBe(true);
+        expect(dodger.invulnerable).toBeCloseTo(
+            FACE_SMASHING.reaction.invulnerableSeconds,
+            6,
+        );
+    });
+
+    it('ignores further hits while invulnerable', () => {
+        const impacts = new ImpactSystem();
+        const dodger = buildDodger();
+        const heavy = ITEMS.length - 1;
+
+        const first = impacts.evaluate([placeItem(dodger, 0, 1, heavy)], dodger);
+        const second = impacts.evaluate([placeItem(dodger, 0, 1, heavy)], dodger);
+
+        expect(first.hits).toBe(1);
+        expect(second.hits).toBe(0);
+        expect(second.damage).toBe(0);
+        expect(dodger.damage).toBeCloseTo(first.damage, 6);
+    });
+
+    it('accepts damage again once the window expires', () => {
+        const impacts = new ImpactSystem();
+        const dodger = buildDodger();
+
+        impacts.evaluate([placeItem(dodger, 0)], dodger);
+        dodger.advanceReaction(FACE_SMASHING.reaction.invulnerableSeconds + 0.01);
+
+        expect(dodger.isInvulnerable).toBe(false);
+        expect(impacts.evaluate([placeItem(dodger, 0)], dodger).hits).toBe(1);
+    });
+
+    it('applies knockback away from the impact', () => {
+        const impacts = new ImpactSystem();
+        const dodger = buildDodger();
+        const heavy = ITEMS.length - 1;
+
+        impacts.evaluate([placeItem(dodger, 0, 1, heavy)], dodger);
+        dodger.react(1, 200);
+
+        expect(dodger.physics.body.velocity.x).toBeGreaterThan(0);
+        expect(dodger.physics.body.velocity.y).toBeLessThan(0);
+        expect(dodger.stunned).toBe(true);
+    });
+
+    it('caps knockback at the dodger own max speed', () => {
+        const impacts = new ImpactSystem();
+        const dodger = buildDodger();
+        const heavy = ITEMS.length - 1;
+
+        impacts.evaluate([placeItem(dodger, 0, 1, heavy)], dodger);
+
+        expect(Math.abs(dodger.physics.body.velocity.x)).toBeLessThanOrEqual(
+            dodger.maxSpeedX + 1e-6,
         );
     });
 });

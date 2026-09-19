@@ -14,38 +14,38 @@ from sim import FaceSmashingSim
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="livrejam/public/models/dodger-policy.json")
-    parser.add_argument("--episodes", type=int, default=1024)
-    parser.add_argument("--steps", type=int, default=3600)
+    parser.add_argument("--envs", type=int, default=4096)
+    parser.add_argument("--steps", type=int, default=3660)
     parser.add_argument("--seed", type=int, default=1234)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
+    parser.add_argument("--skip-baselines", action="store_true")
     return parser.parse_args()
 
 
 def run(actions_fn, args, seed_offset=0):
-    sim = FaceSmashingSim(args.episodes, device=args.device, seed=args.seed + seed_offset)
+    sim = FaceSmashingSim(args.envs, device=args.device, seed=args.seed + seed_offset)
     dropper = DropperPolicy(seed=args.seed + 500 + seed_offset)
     observation = sim.reset()
-
-    survived = torch.zeros(args.episodes, device=args.device)
-    episodes = torch.zeros(args.episodes, device=args.device)
 
     for _ in range(args.steps):
         with torch.no_grad():
             observation = sim.step(actions_fn(observation), dropper)
-            metrics = sim.metrics()
-            alive = metrics["alive"].to(torch.float32)
-            survived = survived + alive
-            episodes = metrics["episodes"]
 
-    average_life = survived / torch.clamp(episodes, min=1.0) * cfg.DT
+    metrics = sim.metrics()
+    damage = metrics["damage_mean"]
+    worst = metrics["damage_worst"]
+
     return {
-        "average_life_seconds": average_life.mean().item(),
-        "median_life_seconds": average_life.median().item(),
-        "min_life_seconds": average_life.min().item(),
-        "max_life_seconds": average_life.max().item(),
-        "deaths": episodes.mean().item(),
-        "alive_ratio": (survived / args.steps).mean().item(),
-        "score": sim.metrics()["score"].mean().item(),
+        "mean_damage": damage.mean().item(),
+        "damage_p10": damage.quantile(0.1).item(),
+        "damage_p90": damage.quantile(0.9).item(),
+        "worst_episode_damage": worst.mean().item(),
+        "worst_episode_max": worst.max().item(),
+        "final_tier_mean": metrics["final_level"].mean().item(),
+        "rounds": metrics["episodes"].mean().item(),
+        "hits": metrics["hits"].mean().item(),
+        "dodges": metrics["dodges"].mean().item(),
+        "score": metrics["score"].mean().item(),
     }
 
 
@@ -59,35 +59,35 @@ def main():
 
     trained = run(
         lambda observation: torch.argmax(
-            batched_forward(observation, stacked, sizes, 1, args.episodes), dim=1
+            batched_forward(observation, stacked, sizes, 1, args.envs), dim=1
         ),
         args,
     )
 
-    generator = torch.Generator(device="cpu").manual_seed(args.seed)
-    random_actions = run(
-        lambda observation: torch.randint(
-            0, cfg.ACTION_COUNT, (observation.shape[0],), generator=generator
-        ).to(device),
-        args,
-        seed_offset=1,
-    )
-
-    idle = run(
-        lambda observation: torch.zeros(observation.shape[0], dtype=torch.long, device=device),
-        args,
-        seed_offset=2,
-    )
-
     report = {
         "model": args.model,
-        "episodes": args.episodes,
+        "envs": args.envs,
         "steps": args.steps,
         "horizon_seconds": args.steps * cfg.DT,
         "trained": trained,
-        "random": random_actions,
-        "idle": idle,
     }
+
+    if not args.skip_baselines:
+        generator = torch.Generator(device="cpu").manual_seed(args.seed)
+        report["random"] = run(
+            lambda observation: torch.randint(
+                0, cfg.ACTION_COUNT, (observation.shape[0],), generator=generator
+            ).to(device),
+            args,
+            seed_offset=1,
+        )
+        report["idle"] = run(
+            lambda observation: torch.zeros(
+                observation.shape[0], dtype=torch.long, device=device
+            ),
+            args,
+            seed_offset=2,
+        )
 
     print(json.dumps(report, indent=2))
 

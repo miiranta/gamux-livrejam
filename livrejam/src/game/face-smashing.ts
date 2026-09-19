@@ -7,32 +7,30 @@ import { CHARACTER_CLIPS, loadDungeonSprites } from './assets';
 import type { ActionIntent, PolicyLike } from './ai';
 import { IdlePolicy, createObservationBuffer, decodeAction, writeObservation } from './ai';
 import { FACE_SMASHING } from './config';
-import { Dodger, Faller, randomMaxSpeed } from './entities';
+import { Dodger, Item } from './entities';
 import type { DungeonLevel } from './level';
 import { createDungeonLevel } from './level';
 import { SceneRenderer } from './render';
-import { FallerSpawner, ImpactSystem } from './systems';
+import { ItemSpawner, ImpactSystem, EffectSystem } from './systems';
+import type { ImpactOutcome } from './systems';
 
 export type DropAction = 'left' | 'right' | 'fastFall' | 'drop';
 
-export interface DropStats {
+export interface MatchStats {
     score: number;
     best: number;
     survived: number;
     dodges: number;
     nearMisses: number;
+    damage: number;
+    level: number;
     dodgerSpeed: number;
-    fallerSpeed: number;
-    /** Seconds left in the current match (0 once the match is over). */
-    timeLeft: number;
-    /** Length of the current match, in seconds. */
-    matchDuration: number;
+    itemSpeed: number;
+    roundTime: number;
 }
 
 export interface FaceSmashingCallbacks {
-    onStats: (stats: DropStats) => void;
-    /** Fired once when the match timer reaches zero. */
-    onMatchEnd?: (stats: DropStats) => void;
+    onStats: (stats: MatchStats) => void;
 }
 
 export interface FaceSmashingOptions {
@@ -40,8 +38,6 @@ export interface FaceSmashingOptions {
     callbacks: FaceSmashingCallbacks;
     random?: () => number;
     policy?: PolicyLike;
-    /** Match length in seconds; falls back to the configured default. */
-    matchDurationSeconds?: number;
 }
 
 const KEY_BINDINGS: Record<string, DropAction> = {
@@ -57,18 +53,13 @@ const KEY_BINDINGS: Record<string, DropAction> = {
 const DODGER_ANIMATIONS = CHARACTER_CLIPS;
 const DROPPED_ACCELERATION = 400;
 
-function normalizeMatchDuration(seconds: number | undefined): number {
-    const { defaultDurationSeconds, minDurationSeconds, maxDurationSeconds } = FACE_SMASHING.match;
-    const value = Number.isFinite(seconds) ? Number(seconds) : defaultDurationSeconds;
-    return clamp(value, minDurationSeconds, maxDurationSeconds);
-}
-
 export class FaceSmashing {
     private readonly level: DungeonLevel;
     private readonly world = new PhysicsWorld();
     private readonly input: KeyboardActionMap<DropAction>;
-    private readonly spawner: FallerSpawner;
+    private readonly spawner: ItemSpawner;
     private readonly impacts = new ImpactSystem();
+    private readonly effects = new EffectSystem(FACE_SMASHING.effects);
     private readonly loop: GameLoop;
     private readonly observation = createObservationBuffer();
     private readonly random: () => number;
@@ -76,12 +67,12 @@ export class FaceSmashing {
 
     private scene: SceneRenderer | null = null;
     private dodger: Dodger | null = null;
-    private fallers: Faller[] = [];
-    private active: Faller | null = null;
+    private items: Item[] = [];
+    private active: Item | null = null;
     private policy: PolicyLike;
     private action: ActionIntent = { axis: 0, jump: false };
     private dropLatch = false;
-    private deathTimer = 0;
+    private restartTimer = 0;
     private survived = 0;
     private dodges = 0;
     private nearMisses = 0;
@@ -89,21 +80,15 @@ export class FaceSmashing {
     private best = 0;
     private showColliders = false;
     private dropAimX = 0;
-    private paused = false;
-    private matchDuration: number;
-    private timeLeft: number;
-    private matchOver = false;
 
     constructor(private readonly options: FaceSmashingOptions) {
         this.random = options.random ?? Math.random;
         this.callbacks = options.callbacks;
         this.policy = options.policy ?? new IdlePolicy();
-        this.matchDuration = normalizeMatchDuration(options.matchDurationSeconds);
-        this.timeLeft = this.matchDuration;
         this.level = createDungeonLevel();
         this.world.addBlockers(this.level.colliders);
         this.input = new KeyboardActionMap<DropAction>(KEY_BINDINGS);
-        this.spawner = new FallerSpawner({ level: this.level, random: this.random });
+        this.spawner = new ItemSpawner({ level: this.level, random: this.random });
         this.loop = new GameLoop({
             update: (dt) => this.update(dt),
             render: () => this.render(),
@@ -121,6 +106,14 @@ export class FaceSmashing {
 
     get dodgerMaxSpeed(): number {
         return this.dodger?.maxSpeedX ?? 0;
+    }
+
+    get dodgerDamage(): number {
+        return this.dodger?.damage ?? 0;
+    }
+
+    get dodgerLevel(): number {
+        return this.dodger?.level ?? 0;
     }
 
     async start(): Promise<void> {
@@ -144,37 +137,10 @@ export class FaceSmashing {
     stop(): void {
         this.loop.stop();
         this.input.dispose();
-        this.paused = false;
     }
 
     setPolicy(policy: PolicyLike): void {
         this.policy = policy;
-    }
-
-    pause(): void {
-        if (this.paused) {
-            return;
-        }
-
-        this.paused = true;
-        this.loop.stop();
-        // Release every key so the dropper does not "stick" after resuming.
-        this.input.clear();
-    }
-
-    resume(): void {
-        if (!this.paused || this.matchOver) {
-            return;
-        }
-
-        this.paused = false;
-        this.loop.start();
-    }
-
-    /** Sets the match length and starts a fresh match with it. */
-    setMatchDuration(seconds: number): void {
-        this.matchDuration = normalizeMatchDuration(seconds);
-        this.restart();
     }
 
     accelerate(): void {
@@ -185,28 +151,17 @@ export class FaceSmashing {
         this.showColliders = !this.showColliders;
     }
 
-    /** Starts a brand-new match: full timer, cleared score. */
     restart(): void {
-        this.matchOver = false;
-        this.timeLeft = this.matchDuration;
-        this.resetRound();
-    }
-
-    /**
-     * Clears the current round (dodger, fallers, counters) but leaves the
-     * match clock and `best` alone — dying respawns the player without
-     * restarting the match.
-     */
-    private resetRound(): void {
-        this.fallers = [];
+        this.items = [];
         this.active = null;
-        this.deathTimer = 0;
+        this.restartTimer = 0;
         this.survived = 0;
         this.dodges = 0;
         this.nearMisses = 0;
         this.score = 0;
         this.spawner.reset();
         this.impacts.reset();
+        this.effects.clear();
         this.respawn();
         this.publishStats();
     }
@@ -215,15 +170,15 @@ export class FaceSmashing {
         this.dodger = new Dodger({
             feetX: this.level.grid.left + this.level.grid.width / 2,
             feetY: this.level.floorTop,
-            maxSpeedX: randomMaxSpeed(this.random),
         });
     }
 
     private update(dt: number): void {
         this.updateDropper(dt);
         this.updateDodger(dt);
-        this.updateFallers(dt);
+        this.updateItems(dt);
         this.updateRound(dt);
+        this.effects.update(dt);
         this.observe();
     }
 
@@ -241,10 +196,7 @@ export class FaceSmashing {
             body.velocity.x = intent.axis * FACE_SMASHING.drop.horizontalSpeed;
             body.velocity.y = intent.fast
                 ? FACE_SMASHING.drop.fastFallSpeed
-                : Math.min(
-                      body.velocity.y + DROPPED_ACCELERATION * dt,
-                      FACE_SMASHING.drop.maxSpeed,
-                  );
+                : Math.min(body.velocity.y + DROPPED_ACCELERATION * dt, FACE_SMASHING.drop.maxSpeed);
         } else if (intent.axis !== 0) {
             this.dropAimX = clamp(
                 this.dropAimX + intent.axis * FACE_SMASHING.drop.aimSpeed * dt,
@@ -255,12 +207,12 @@ export class FaceSmashing {
 
         const pressed = this.input.isDown('drop');
         if (pressed && !this.dropLatch) {
-            this.dropFaller();
+            this.dropItem();
         }
         this.dropLatch = pressed;
     }
 
-    private dropFaller(): void {
+    private dropItem(): void {
         const active = this.active;
 
         if (active && active.state === 'falling') {
@@ -270,7 +222,7 @@ export class FaceSmashing {
 
         const spawned = this.spawner.spawn(this.dropAimX);
         this.active = spawned;
-        this.fallers.push(spawned);
+        this.items.push(spawned);
     }
 
     private updateDodger(dt: number): void {
@@ -279,16 +231,17 @@ export class FaceSmashing {
             return;
         }
 
-        if (this.deathTimer > 0) {
+        if (this.restartTimer > 0) {
             this.world.step(dodger.physics, dt);
             dodger.advanceAnimation(dt, DODGER_ANIMATIONS);
             return;
         }
 
-        this.action = this.policy.ready
+        this.action = this.policy.ready && !dodger.stunned
             ? decodeAction(this.policy.decide(this.observation))
             : { axis: 0, jump: false };
 
+        dodger.advanceReaction(dt);
         dodger.move(this.action.axis, dt);
 
         if (this.action.jump) {
@@ -296,24 +249,25 @@ export class FaceSmashing {
         }
 
         this.world.step(dodger.physics, dt);
+        dodger.consumeJump();
         dodger.resolveAnimation();
         dodger.advanceAnimation(dt, DODGER_ANIMATIONS);
     }
 
-    private updateFallers(dt: number): void {
+    private updateItems(dt: number): void {
         const spawned = this.spawner.update(dt, this.aimPoint());
         if (spawned) {
-            this.fallers.push(spawned);
+            this.items.push(spawned);
         }
 
-        for (const faller of this.fallers) {
-            const result = this.world.step(faller.physics, dt);
-            faller.applyCollision(result);
-            faller.update(dt);
+        for (const item of this.items) {
+            const result = this.world.step(item.physics, dt);
+            item.applyCollision(result);
+            item.update(dt);
         }
 
-        this.fallers = this.fallers.filter(
-            (faller) => !faller.expired && faller.position.y < this.level.despawnY,
+        this.items = this.items.filter(
+            (item) => !item.expired && item.position.y < this.level.despawnY,
         );
 
         if (this.active && this.active.expired) {
@@ -327,32 +281,31 @@ export class FaceSmashing {
             return this.level.grid.left + this.level.grid.width / 2;
         }
 
-        const { velocity, position } = dodger.physics.body;
-        const travel = this.level.floorTop - position.y;
-        const leadSeconds = Math.min(travel / FACE_SMASHING.faller.maxFallSpeed, 0.6);
-        return dodger.feet.x + velocity.x * leadSeconds;
+        const { velocity, grounded } = dodger.physics.body;
+        const size = FACE_SMASHING.tile.size * FACE_SMASHING.tile.scale;
+        const dropHeight = this.level.floorTop - (this.level.spawnY - size / 2);
+        const speed = Math.max(this.spawner.speed, 1);
+        const lead = Math.min(dropHeight / speed, FACE_SMASHING.drop.maxLead);
+        const lateral = grounded ? velocity.x : velocity.x * 0.5;
+
+        return clamp(
+            dodger.feet.x + lateral * lead,
+            this.level.playLeft,
+            this.level.playRight - size,
+        );
     }
 
     private updateRound(dt: number): void {
         const dodger = this.dodger;
-        if (!dodger || this.matchOver) {
+        if (!dodger) {
             return;
         }
 
-        this.timeLeft = Math.max(0, this.timeLeft - dt);
+        if (this.restartTimer > 0) {
+            this.restartTimer -= dt;
 
-        if (this.timeLeft <= 0) {
-            this.endMatch();
-            return;
-        }
-
-        if (this.deathTimer > 0) {
-            this.deathTimer -= dt;
-
-            if (this.deathTimer <= 0) {
-                // Dying respawns the player; the match clock keeps running.
-                this.best = Math.max(this.best, Math.round(this.score));
-                this.resetRound();
+            if (this.restartTimer <= 0) {
+                this.restart();
             }
             return;
         }
@@ -360,15 +313,7 @@ export class FaceSmashing {
         this.survived += dt;
         this.score += FACE_SMASHING.score.survivedPerSecond * dt;
 
-        const outcome = this.impacts.evaluate(this.fallers, dodger);
-
-        if (outcome.hit) {
-            this.deathTimer = FACE_SMASHING.dodger.deathDelay;
-            dodger.setAnimation('hurt');
-            dodger.physics.body.velocity.y = -240;
-            this.publishStats();
-            return;
-        }
+        const outcome = this.impacts.evaluate(this.items, dodger);
 
         this.dodges += outcome.dodges;
         this.nearMisses += outcome.nearMisses;
@@ -376,6 +321,60 @@ export class FaceSmashing {
             outcome.dodges * FACE_SMASHING.score.dodge +
             outcome.nearMisses * FACE_SMASHING.score.nearMiss;
 
+        if (outcome.hits > 0) {
+            this.onImpact(outcome);
+        }
+
+        if (this.survived >= FACE_SMASHING.round.seconds) {
+            this.finishRound();
+            return;
+        }
+
+        this.publishStats();
+    }
+
+    private onImpact(outcome: ImpactOutcome): void {
+        const dodger = this.dodger;
+        if (!dodger) {
+            return;
+        }
+
+        const strongest = outcome.contacts.reduce(
+            (worst, contact) => (contact.damage > worst.damage ? contact : worst),
+            outcome.contacts[0],
+        );
+
+        dodger.react(strongest.direction, outcome.damage);
+
+        if (outcome.tierChange > 0) {
+            dodger.setAnimation('hurt');
+        }
+
+        const scale = dodger.size.width;
+        this.effects.spawn({
+            kind: 'impact',
+            x: dodger.feet.x,
+            y: dodger.feet.y - dodger.size.height / 2,
+            size: scale * 1.8,
+        });
+        this.effects.spawn({
+            kind: 'slash',
+            x: dodger.feet.x,
+            y: dodger.feet.y - dodger.size.height / 2,
+            size: scale * 2.2,
+            angle: strongest.direction > 0 ? 0 : Math.PI,
+        });
+        this.effects.spawn({
+            kind: 'dust',
+            x: dodger.feet.x,
+            y: dodger.feet.y - 4,
+            size: scale * 1.6,
+        });
+    }
+
+    private finishRound(): void {
+        this.best = Math.max(this.best, Math.round(this.score));
+        this.restartTimer = FACE_SMASHING.round.restartDelay;
         this.publishStats();
     }
 
@@ -388,40 +387,23 @@ export class FaceSmashing {
         writeObservation(this.observation, {
             level: this.level,
             dodger,
-            fallers: this.fallers,
+            items: this.items,
         });
     }
 
     private publishStats(): void {
+        const dodger = this.dodger;
         this.callbacks.onStats({
             score: Math.round(this.score),
             best: this.best,
             survived: this.survived,
             dodges: this.dodges,
             nearMisses: this.nearMisses,
+            damage: dodger ? dodger.damage : 0,
+            level: dodger ? dodger.level : 0,
             dodgerSpeed: Math.round(this.dodgerMaxSpeed),
-            fallerSpeed: Math.round(this.spawner.speed),
-            timeLeft: this.timeLeft,
-            matchDuration: this.matchDuration,
-        });
-    }
-
-    private endMatch(): void {
-        this.matchOver = true;
-        this.timeLeft = 0;
-        this.best = Math.max(this.best, Math.round(this.score));
-        this.input.clear();
-        this.publishStats();
-        this.callbacks.onMatchEnd?.({
-            score: Math.round(this.score),
-            best: this.best,
-            survived: this.survived,
-            dodges: this.dodges,
-            nearMisses: this.nearMisses,
-            dodgerSpeed: Math.round(this.dodgerMaxSpeed),
-            fallerSpeed: Math.round(this.spawner.speed),
-            timeLeft: 0,
-            matchDuration: this.matchDuration,
+            itemSpeed: Math.round(this.spawner.speed),
+            roundTime: FACE_SMASHING.round.seconds,
         });
     }
 
@@ -432,8 +414,9 @@ export class FaceSmashing {
             return;
         }
 
-        scene.render(this.level, this.fallers, dodger, this.dropAimX, {
+        scene.render(this.level, this.items, dodger, this.dropAimX, {
             colliders: this.showColliders,
+            effects: this.effects.active,
         });
     }
 }

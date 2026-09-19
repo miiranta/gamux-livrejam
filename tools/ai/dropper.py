@@ -1,4 +1,11 @@
-"""Politica do jogador que solta os objetos. Usada so no treino."""
+"""Politica do oponente que solta os objetos durante o treino.
+
+Imita um jogador humano: mira onde o desviador *vai estar* quando o objeto
+chegar ao chao, com erro de mira. Tambem joga objetos aleatorios para que a
+politica aprenda a lidar com objetos que ela nao previu.
+
+Deve espelhar `face-smashing.ts:aimPoint()` e `FallerSpawner.spawn()`.
+"""
 
 import torch
 
@@ -6,50 +13,50 @@ import config as cfg
 
 
 class DropperPolicy:
-    def __init__(self, jitter=60.0, lead_scale=1.0, seed=0):
+    def __init__(self, jitter=cfg.DROP_AIM_JITTER, scatter=cfg.DROP_SCATTER, seed=0):
         self.jitter = jitter
-        self.lead_scale = lead_scale
-        self.generator = torch.Generator(device="cpu").manual_seed(seed)
+        self.scatter = scatter
+        self.seed = seed
+        self.device = None
+        self.generator = None
 
-    def sample(self, count, device):
-        return torch.rand(count, generator=self.generator).to(device)
+    def _ensure(self, device):
+        if self.device == device:
+            return
+        self.device = device
+        self.generator = torch.Generator(device=device)
+        self.generator.manual_seed(self.seed)
+
+    def sample(self, shape, device):
+        self._ensure(device)
+        return torch.rand(shape, generator=self.generator, device=device)
 
     def __call__(self, state):
         pos_x = state["pos_x"]
         vel_x = state["vel_x"]
-        obstacle_x = state["obstacle_x"]
-        obstacle_y = state["obstacle_y"]
-        obstacle_active = state["obstacle_active"]
+        fall_speed = state["fall_speed"]
+        grounded = state["grounded"]
 
         device = pos_x.device
         count = pos_x.shape[0]
-        size = cfg.FALLER_SIZE
+        size = cfg.MAX_ITEM_EXTENT
 
         dodger_x = pos_x + cfg.DODGER_BOX[0] / 2
-        faller_center_x = obstacle_x + size / 2
-        faller_center_y = obstacle_y + size / 2
+        dodger_vx = torch.where(grounded, vel_x, vel_x * 0.5)
 
-        falling = obstacle_active & (faller_center_y < cfg.FLOOR_TOP)
-        lead = torch.clamp(
-            (cfg.FLOOR_TOP - faller_center_y) / cfg.FALLER_MAX_FALL * self.lead_scale, 0.0, 0.9
+        drop_height = cfg.FLOOR_TOP - (cfg.SPAWN_Y - size / 2)
+        lead = torch.clamp(drop_height / torch.clamp(fall_speed, min=1.0), max=cfg.DROP_MAX_LEAD)
+
+        predicted = torch.clamp(
+            dodger_x + dodger_vx * lead, cfg.PLAY_LEFT, cfg.PLAY_RIGHT - size
         )
 
-        dodger_ahead = dodger_x[:, None] + vel_x[:, None] * lead
-        gap = torch.where(
-            falling,
-            (faller_center_x - dodger_ahead).abs(),
-            torch.full_like(faller_center_x, float("inf")),
+        jitter = (self.sample((count,), device) * 2 - 1) * self.jitter
+        scatter = cfg.ITEM_SPAWN_MARGIN + self.sample((count,), device) * (
+            cfg.WIDTH - cfg.ITEM_SPAWN_MARGIN * 2 - size
         )
 
-        best = torch.argmin(gap, dim=1)
-        rows = torch.arange(count, device=device)
-        target = faller_center_x[rows, best]
-        covered = torch.isfinite(gap[rows, best])
+        roll = self.sample((count,), device)
+        aim = predicted + jitter
 
-        noise = (self.sample(count, device) * 2 - 1) * self.jitter
-        aim = target + noise
-        fallback = cfg.FALLER_SPAWN_MARGIN + self.sample(count, device) * (
-            cfg.WIDTH - cfg.FALLER_SPAWN_MARGIN * 2 - size
-        )
-
-        return torch.where(covered, aim, fallback)
+        return torch.where(roll < self.scatter, scatter, aim)

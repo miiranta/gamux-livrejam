@@ -1,67 +1,79 @@
 import { describe, expect, it } from 'vitest';
-
-import { FACE_SMASHING } from '../config';
-import { Dodger, Faller } from '../entities';
+import { FACE_SMASHING, ITEMS } from '../config';
 import { createDungeonLevel } from '../level';
+import { Dodger, Item } from '../entities';
 import { createObservationBuffer, writeObservation } from './observation';
+import fixture from '../../../../tools/ai/fixtures/observation_fixture.json';
 
-const PYTHON_FIXTURE = {
-    dodger: { feetX: 320, velocityX: 120, maxSpeedX: 200 },
-    fallers: [
-        { x: 420, y: 100, velocityX: 0, velocityY: 200, grounded: false },
-        { x: 120, y: 40, velocityX: 0, velocityY: 300, grounded: false },
-        { x: 560, y: 300, velocityX: 0, velocityY: 0, grounded: true },
-    ],
-    observation: [
-        0, 0.6, 0.666667, 1, 0.446154, -0.807692, 0, 0.384615, 0, 1, 1, -0.707692, -1.038462, 0,
-        0.576923, 0, 1, 1, 0.984615, -0.038462, 0, 0, 1, 1,
-    ],
-};
+interface FixtureItem {
+    index: number;
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    spin: number;
+    roll: number;
+}
 
-const FALLER_SIZE = 32;
+interface Fixture {
+    dodger: {
+        feetX: number;
+        velocityX: number;
+        maxSpeedX: number;
+        damage: number;
+        grounded: boolean;
+    };
+    items: FixtureItem[];
+    observation: number[];
+}
 
-describe('observation contract with the Python simulator', () => {
-    it('keeps the fixture the same size as the configured observation', () => {
-        expect(FACE_SMASHING.ai.observationSize).toBe(24);
-        expect(PYTHON_FIXTURE.observation.length).toBe(FACE_SMASHING.ai.observationSize);
-    });
-
-    it('produces exactly the vector the Python simulator reproduces', () => {
+describe('observation contract', () => {
+    it('matches the shared fixture', () => {
+        const data = fixture as Fixture;
         const level = createDungeonLevel();
-        const { dodger: dodgerSpec } = PYTHON_FIXTURE;
         const dodger = new Dodger({
-            feetX: dodgerSpec.feetX,
+            feetX: data.dodger.feetX,
             feetY: level.floorTop,
-            maxSpeedX: dodgerSpec.maxSpeedX,
+            facing: 'right',
         });
-        dodger.physics.body.velocity.x = dodgerSpec.velocityX;
 
-        const fallers = PYTHON_FIXTURE.fallers.map((spec) => {
-            const faller = new Faller({
-                x: spec.x,
-                y: spec.y,
-                velocityX: spec.velocityX,
-                velocityY: spec.velocityY,
-                sprite: 'smallCrate',
-                size: FALLER_SIZE,
+        dodger.maxSpeedX = data.dodger.maxSpeedX;
+        dodger.damage = data.dodger.damage;
+        dodger.applyTier();
+        dodger.physics.body.velocity.x = data.dodger.velocityX;
+        dodger.physics.body.velocity.y = 0;
+        dodger.physics.body.grounded = data.dodger.grounded;
+
+        const items = data.items.map((entry) => {
+            const definition = ITEMS[entry.index];
+            return new Item({
+                x: entry.x,
+                y: entry.y,
+                velocityX: entry.vx,
+                velocityY: entry.vy,
+                definition,
+                spin: entry.spin,
+                damageRoll: entry.roll,
             });
-
-            if (spec.grounded) {
-                faller.applyCollision({
-                    grounded: true,
-                    hitWall: null,
-                    hitCeiling: false,
-                    layer: 2,
-                });
-            }
-
-            return faller;
         });
 
         const buffer = createObservationBuffer();
-        writeObservation(buffer, { level, dodger, fallers });
+        writeObservation(buffer, { level, dodger, items });
 
-        const actual = Array.from(buffer).map((value) => Number(value.toFixed(6)));
-        expect(actual).toEqual(PYTHON_FIXTURE.observation);
+        expect(buffer).toHaveLength(data.observation.length);
+        expect(buffer).toHaveLength(FACE_SMASHING.ai.observationSize);
+
+        for (let index = 0; index < buffer.length; index++) {
+            expect(buffer[index], `indice ${index}`).toBeCloseTo(data.observation[index], 5);
+        }
+    });
+
+    it('covers every observation slot with items in the fixture', () => {
+        const data = fixture as Fixture;
+        const slots = (FACE_SMASHING.ai.observationSize - 7) / 8;
+        const present = Array.from({ length: slots }, (_, index) => data.observation[7 + index * 8]);
+
+        expect(data.items.length).toBeGreaterThanOrEqual(4);
+        expect(present.filter((value) => value === 1).length).toBe(data.items.length);
     });
 });

@@ -18,6 +18,21 @@ async function handleInit(request: Extract<InferenceRequest, { type: 'init' }>):
     }
 
     network = parseNetwork(await response.json());
+
+    if (network.inputSize !== request.expectedInputSize) {
+        throw new Error(
+            `Modelo incompativel: espera ${request.expectedInputSize} entradas, ` +
+                `o arquivo tem ${network.inputSize}. Retreine com tools/ai/train.py.`,
+        );
+    }
+
+    if (network.outputSize !== request.expectedOutputSize) {
+        throw new Error(
+            `Modelo incompativel: espera ${request.expectedOutputSize} saidas, ` +
+                `o arquivo tem ${network.outputSize}.`,
+        );
+    }
+
     output = new Float32Array(network.outputSize);
     respond({
         type: 'ready',

@@ -2,6 +2,8 @@ import type { InferenceRequest, InferenceResponse } from './protocol';
 
 export interface InferenceWorkerClientOptions {
     url: string;
+    expectedInputSize: number;
+    expectedOutputSize: number;
     onReady?: (inputSize: number, outputSize: number) => void;
     onError?: (message: string) => void;
 }
@@ -106,7 +108,12 @@ export class InferenceWorkerClient {
                 once: true,
             });
 
-            const request: InferenceRequest = { type: 'init', url: this.options.url };
+            const request: InferenceRequest = {
+                type: 'init',
+                url: this.options.url,
+                expectedInputSize: this.options.expectedInputSize,
+                expectedOutputSize: this.options.expectedOutputSize,
+            };
             worker.postMessage(request);
         });
     }

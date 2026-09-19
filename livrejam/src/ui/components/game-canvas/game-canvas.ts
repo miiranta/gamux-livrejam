@@ -4,43 +4,34 @@ import {
     DestroyRef,
     ElementRef,
     afterNextRender,
-    computed,
-    effect,
     inject,
     signal,
     viewChild,
 } from '@angular/core';
-import { TranslatePipe } from '@ngx-translate/core';
 
 import { InferenceWorkerClient } from '../../../engine/ai';
 import { IdlePolicy, RemoteDodgerPolicy, type PolicyLike } from '../../../game/ai';
 import { FACE_SMASHING } from '../../../game/config';
-import { FaceSmashing, type DropStats } from '../../../game/face-smashing';
-import {
-    formatDuration,
-    GameFlowService,
-    GameSettingsService,
-    type GameScreen,
-} from '../../services';
+import { FaceSmashing, type MatchStats } from '../../../game/face-smashing';
 
 type CanvasStatus = 'loading' | 'ready' | 'error';
 type ModelStatus = 'idle' | 'loading' | 'ready' | 'error';
 
-const INITIAL_STATS: DropStats = {
+const INITIAL_STATS: MatchStats = {
     score: 0,
     best: 0,
     survived: 0,
     dodges: 0,
     nearMisses: 0,
+    damage: 0,
+    level: 0,
     dodgerSpeed: 0,
-    fallerSpeed: 0,
-    timeLeft: 0,
-    matchDuration: FACE_SMASHING.match.defaultDurationSeconds,
+    itemSpeed: 0,
+    roundTime: 0,
 };
 
 @Component({
     selector: 'app-game-canvas',
-    imports: [TranslatePipe],
     templateUrl: './game-canvas.html',
     styleUrl: './game-canvas.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -48,46 +39,24 @@ const INITIAL_STATS: DropStats = {
 export class GameCanvas {
     private readonly canvasRef = viewChild<ElementRef<HTMLCanvasElement>>('canvas');
     private readonly destroyRef = inject(DestroyRef);
-    private readonly flow = inject(GameFlowService);
-    private readonly settings = inject(GameSettingsService);
     private readonly inference = new InferenceWorkerClient({
         url: FACE_SMASHING.ai.modelUrl,
+        expectedInputSize: FACE_SMASHING.ai.observationSize,
+        expectedOutputSize: FACE_SMASHING.ai.actionCount,
         onError: (message) => this.failModel(message),
     });
 
     private game: FaceSmashing | null = null;
     private policy: PolicyLike = new IdlePolicy();
-    private lastScreen: GameScreen = 'menu';
-    private lastRestartToken = 0;
 
     protected readonly status = signal<CanvasStatus>('loading');
     protected readonly errorMessage = signal('');
     protected readonly modelStatus = signal<ModelStatus>('idle');
     protected readonly modelMessage = signal('');
-    protected readonly stats = signal<DropStats>(INITIAL_STATS);
-    /** Flips once `FaceSmashing` exists, so the sync effect can react to it. */
-    private readonly matchReady = signal(false);
-
-    /** The HUD is only useful while a match is on screen. */
-    protected readonly showHud = computed(
-        () => this.status() === 'ready' && this.flow.isMatchVisible(),
-    );
-
-    protected readonly timeLeft = computed(() => formatDuration(this.stats().timeLeft));
+    protected readonly stats = signal<MatchStats>(INITIAL_STATS);
 
     constructor() {
         afterNextRender(() => void this.start());
-
-        // Mirror the flow state machine onto the match instance.
-        effect(() => {
-            const screen = this.flow.screen();
-            const token = this.flow.restartToken();
-            if (!this.matchReady()) {
-                return;
-            }
-            this.syncMatch(screen, token);
-        });
-
         this.destroyRef.onDestroy(() => this.stop());
     }
 
@@ -100,27 +69,12 @@ export class GameCanvas {
         try {
             const game = new FaceSmashing({
                 canvas,
-                matchDurationSeconds: this.settings.matchTimeSeconds(),
-                callbacks: {
-                    onStats: (next) => this.stats.set(next),
-                    onMatchEnd: (result) =>
-                        this.flow.endMatch({
-                            score: result.score,
-                            best: result.best,
-                            survived: result.survived,
-                            dodges: result.dodges,
-                            nearMisses: result.nearMisses,
-                        }),
-                },
+                callbacks: { onStats: (next) => this.stats.set(next) },
             });
 
             this.game = game;
             await game.start();
             this.status.set('ready');
-            this.lastRestartToken = this.flow.restartToken();
-            this.lastScreen = this.flow.screen();
-            this.matchReady.set(true);
-            this.syncMatch(this.lastScreen, this.lastRestartToken);
             await this.loadModel(game);
         } catch (error) {
             this.status.set('error');
@@ -131,12 +85,19 @@ export class GameCanvas {
     protected stop(): void {
         this.game?.stop();
         this.game = null;
-        this.matchReady.set(false);
         this.inference.stop();
     }
 
-    protected pause = (): void => {
-        this.flow.pause();
+    protected restart = (): void => {
+        this.game?.restart();
+    };
+
+    protected accelerate = (): void => {
+        this.game?.accelerate();
+    };
+
+    protected toggleColliders = (): void => {
+        this.game?.toggleColliders();
     };
 
     protected reloadModel = (): void => {
@@ -153,32 +114,12 @@ export class GameCanvas {
         return seconds.toFixed(1);
     }
 
-    /**
-     * Brings the match in line with the requested screen: pause/resume, and
-     * reset (picking up the latest settings) when a new match starts.
-     */
-    private syncMatch(screen: GameScreen, token: number): void {
-        const game = this.game;
-        if (!game) {
-            return;
-        }
+    protected formatDamage(damage: number): string {
+        return Math.round(damage).toString();
+    }
 
-        const restarting = token !== this.lastRestartToken;
-        const startingMatch = screen === 'playing' && this.lastScreen !== 'playing';
-        this.lastRestartToken = token;
-        this.lastScreen = screen;
-
-        if (screen !== 'playing') {
-            game.pause();
-            return;
-        }
-
-        if (restarting || startingMatch) {
-            // A fresh match: apply the configured length (which resets the round).
-            game.setMatchDuration(this.settings.matchTimeSeconds());
-        }
-
-        game.resume();
+    protected formatRound(survived: number, total: number): string {
+        return `${Math.max(total - survived, 0).toFixed(1)}s`;
     }
 
     private async loadModel(game: FaceSmashing): Promise<void> {
