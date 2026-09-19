@@ -1,0 +1,16 @@
+<section class="pixel-panel" [class.pixel-panel--bare]="bare()">
+    <span class="pixel-panel__trim pixel-panel__trim--top" aria-hidden="true"></span>
+    <span class="pixel-panel__trim pixel-panel__trim--bottom" aria-hidden="true"></span>
+
+    @if (titleKey(); as key) {
+        <h2 class="pixel-panel__title">
+            <span class="pixel-panel__flourish" aria-hidden="true"></span>
+            {{ key | translate }}
+            <span class="pixel-panel__flourish" aria-hidden="true"></span>
+        </h2>
+    }
+
+    <div class="pixel-panel__body">
+        <ng-content />
+    </div>
+</section>

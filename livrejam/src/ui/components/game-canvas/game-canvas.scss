@@ -1,3 +1,5 @@
+@use '../../styles/ornaments' as ornaments;
+
 :host {
     display: block;
 }
@@ -10,7 +12,12 @@
 
 .game-canvas__surface {
     display: block;
+    width: auto;
+    height: auto;
     max-width: 100%;
+    /* Cap by viewport height too, so the whole dungeon stays visible and the
+       page never grows a scrollbar. */
+    max-height: calc(100dvh - 2rem);
     background: #0b0d12;
     border-radius: 0.5rem;
     box-shadow: 0 0 0 1px rgb(255 255 255 / 8%);
@@ -63,30 +70,85 @@
     &--danger {
         background: #ff8a8a;
     }
+
+    &--clock {
+        background: var(--lj-accent-hi);
+    }
+}
+
+.game-canvas__chip--clock {
+    color: var(--lj-accent-hi);
+
+    b {
+        color: var(--lj-accent-hi);
+        font-variant-numeric: tabular-nums;
+    }
 }
 
 .game-canvas__controls {
     position: absolute;
     top: 0.5rem;
     right: 0.5rem;
+    z-index: 2;
     display: flex;
-    gap: 0.35rem;
+    gap: 0.4rem;
 }
 
-.game-canvas__button {
-    padding: 0.25rem 0.6rem;
-    color: #cdd6e6;
+.game-canvas__control {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 2.25rem;
+    padding: 0 0.75rem;
+    color: var(--lj-ink);
     font: inherit;
-    font-size: 0.7rem;
-    background: rgb(10 13 20 / 85%);
-    border: 1px solid rgb(255 255 255 / 14%);
-    border-radius: 999px;
+    font-size: 0.8rem;
+    letter-spacing: 0.03em;
+    background: linear-gradient(180deg, var(--lj-line-hi), var(--lj-line));
+    border: 0;
     cursor: pointer;
 
+    @include ornaments.octagon(7px);
+
     &:hover {
-        color: #fff;
-        border-color: rgb(125 200 255 / 55%);
+        filter: brightness(1.18);
     }
+
+    &:active {
+        transform: translateY(2px);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--lj-accent-hi);
+        outline-offset: 2px;
+    }
+
+    &--pause {
+        width: 2.25rem;
+        padding: 0;
+    }
+}
+
+.game-canvas__pause-rim {
+    position: absolute;
+    inset: 3px;
+    background: linear-gradient(180deg, var(--lj-panel-hi), var(--lj-panel));
+    pointer-events: none;
+
+    @include ornaments.octagon(5px);
+}
+
+.game-canvas__pause-glyph {
+    position: relative;
+    width: 0.7rem;
+    height: 0.75rem;
+    background: linear-gradient(
+        90deg,
+        var(--lj-accent-hi) 0 30%,
+        transparent 30% 70%,
+        var(--lj-accent-hi) 70% 100%
+    );
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 45%);
 }
 
 .game-canvas__hint {

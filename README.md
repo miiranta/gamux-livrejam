@@ -27,8 +27,37 @@ dependency opcional do `jsdom`.
 | D / → | mover o objeto que cai para a direita |
 | S / ↓ | acelerar a queda |
 | Espaco | soltar o objeto |
+| Esc | pausar / retomar a partida |
 
 O personagem no chao e pilotado pela IA — nao ha controle manual dele.
+
+## Telas
+
+- **Menu inicial** — Jogar, Configuracao, Creditos, Idioma e o botao de tela
+  cheia no canto superior direito.
+- **Menu de pausa** — aberto pelo botao no canto superior direito do canvas ou
+  pelo `Esc`. Traz Continuar, Reiniciar e Abandonar, e nao permite mexer no
+  tempo de partida (so no menu inicial).
+- **Tela de fim de jogo** — aparece quando o tempo da partida acaba, com
+  pontuacao e os botoes de tentar de novo / sair.
+
+## Idioma (i18n)
+
+Textos ficam em `public/i18n/en-us.json` e `public/i18n/pt-br.json` e sao
+servidos pela `@ngx-translate/core`. **Toda string de UI deve vir de la** — nao
+escreva texto direto no template. O idioma escolhido fica salvo no
+`localStorage`.
+
+Para adicionar um idioma: crie o JSON, registre o codigo em
+`SUPPORTED_LANGS` e adicione a entrada em `LANGUAGE_OPTIONS`
+(`src/ui/i18n/i18n.config.ts` e `src/ui/services/language.service.ts`).
+
+## Configuracoes
+
+`GameSettingsService` (`src/ui/services/game-settings.service.ts`) guarda
+volume de musica, volume de efeitos e tempo de partida, persistidos no
+`localStorage`. Os volumes ainda nao alimentam nenhum audio; o tempo de partida
+ja e aplicado ao `DungeonDrop` no inicio de cada partida.
 
 ## Testes
 
@@ -60,8 +89,15 @@ livrejam/src/
     level/           layout da sala + colisores
     render/          desenho da cena
     systems/         spawner e deteccao de impacto/pontuacao
-    dungeon-drop.ts  orquestrador
-  ui/components/     componentes Angular (canvas, camera)
+    dungeon-drop.ts  orquestrador (pausa, cronometro da partida)
+  ui/
+    i18n/            configuracao do ngx-translate
+    styles/          mixins de ornamentos pixel art (_ornaments.scss)
+    services/        estado da UI (fluxo de telas, settings, idioma, fullscreen)
+    components/      botoes/paineis/controles + canvas e camera
+      menu-view/     layout compartilhado pelo menu inicial e de pausa
+      pixel-*/       button, panel, slider, stepper, language-select
+    pages/           main-menu, pause-menu, end-game
 tools/
   assets/            download/geracao dos assets
   ai/                treino da politica neural

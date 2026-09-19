@@ -1,0 +1,36 @@
+<div class="pixel-stepper">
+    <span class="pixel-stepper__head">
+        <span class="pixel-stepper__label">{{ labelKey() | translate }}</span>
+        <span class="pixel-stepper__value">{{ display() }}</span>
+    </span>
+
+    <div class="pixel-stepper__row">
+        <button
+            type="button"
+            class="pixel-stepper__step"
+            [disabled]="!canDecrease()"
+            [attr.aria-label]="labelKey() | translate"
+            (click)="adjust(-1)"
+        >
+            <span class="pixel-stepper__rim" aria-hidden="true"></span>
+            <span class="pixel-stepper__glyph">-</span>
+        </button>
+
+        <span class="pixel-stepper__readout">{{ display() }}</span>
+
+        <button
+            type="button"
+            class="pixel-stepper__step"
+            [disabled]="!canIncrease()"
+            [attr.aria-label]="labelKey() | translate"
+            (click)="adjust(1)"
+        >
+            <span class="pixel-stepper__rim" aria-hidden="true"></span>
+            <span class="pixel-stepper__glyph">+</span>
+        </button>
+    </div>
+
+    @if (hintKey(); as hint) {
+        <p class="pixel-stepper__hint">{{ hint | translate }}</p>
+    }
+</div>

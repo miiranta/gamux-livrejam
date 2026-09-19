@@ -1,0 +1,88 @@
+// ---------------------------------------------------------------------------
+// Shared pixel-art ornaments.
+//
+// Panels and buttons are never plain rectangles: every frame gets octagonal
+// cut corners, dashed inner trim and small corner studs. Import with
+// `@use '../../styles/ornaments' as *;`
+// ---------------------------------------------------------------------------
+
+/// Octagon silhouette: each corner is "bitten" by $notch pixels, which is what
+/// gives the frames their hand-made pixel look instead of a straight border.
+@mixin octagon($notch: var(--lj-notch)) {
+    clip-path: polygon(
+        #{$notch} 0,
+        calc(100% - #{$notch}) 0,
+        100% #{$notch},
+        100% calc(100% - #{$notch}),
+        calc(100% - #{$notch}) 100%,
+        #{$notch} 100%,
+        0 calc(100% - #{$notch}),
+        0 #{$notch}
+    );
+}
+
+/// Four little square studs, one per corner, drawn as an `::after` overlay so
+/// they never clash with the element's own `background-image` (setting the
+/// studs directly would replace the frame gradient).
+@mixin studs($color: var(--lj-accent), $inset: 6px, $size: 4px) {
+    &::after {
+        position: absolute;
+        inset: 0;
+        background-image:
+            linear-gradient(#{$color}, #{$color}), linear-gradient(#{$color}, #{$color}),
+            linear-gradient(#{$color}, #{$color}), linear-gradient(#{$color}, #{$color});
+        background-repeat: no-repeat;
+        background-size: #{$size} #{$size};
+        background-position:
+            #{$inset} #{$inset},
+            calc(100% - #{$inset}) #{$inset},
+            #{$inset} calc(100% - #{$inset}),
+            calc(100% - #{$inset}) calc(100% - #{$inset});
+        content: '';
+        pointer-events: none;
+    }
+}
+
+/// Hard offset shadow, applied to the host so `clip-path` on the child does
+/// not swallow it.
+@mixin pixel-drop($offset: 4px, $color: var(--lj-shadow)) {
+    filter: drop-shadow(0 #{$offset} 0 #{$color});
+}
+
+/// "Punches" the element into view: it snaps in from a larger, rotated state
+/// with a springy overshoot. A tilt can be kept once it settles through the
+/// `--lj-tilt` custom property (e.g. `--lj-tilt: -1.2deg`).
+@mixin punch-in($delay: 0s) {
+    animation: lj-punch-in 0.42s var(--lj-punch) #{$delay} both;
+}
+
+/// Quick, plain fade used for follow-up elements (buttons, hints).
+@mixin fade-in($delay: 0s, $duration: 0.22s) {
+    animation: lj-fade-in #{$duration} ease-out #{$delay} both;
+}
+
+@keyframes lj-punch-in {
+    0% {
+        opacity: 0;
+        transform: scale(1.7) rotate(calc(var(--lj-tilt, 0deg) + 7deg));
+    }
+
+    60% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1) rotate(var(--lj-tilt, 0deg));
+    }
+}
+
+@keyframes lj-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}

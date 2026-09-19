@@ -1,3 +1,29 @@
 :host {
     display: block;
 }
+
+.app-shell {
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+}
+
+/* The canvas keeps its place in the layout while the menu is up, so
+   `resize()` never sees a zero-sized surface. */
+.app-shell__stage {
+    display: grid;
+    place-items: center;
+    transition: opacity 0.2s ease-out;
+
+    &--hidden {
+        /* Hidden rather than removed: the canvas must stay measurable. */
+        position: fixed;
+        inset: 0;
+        opacity: 0;
+        pointer-events: none;
+    }
+}
+
+.app-shell__camera {
+    display: none;
+}

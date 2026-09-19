@@ -1,3 +1,21 @@
-<app-camera />
-<app-game-canvas />
-<router-outlet></router-outlet>
+<div class="app-shell">
+    <!-- The canvas stays in the DOM so it keeps its dimensions while paused. -->
+    <div class="app-shell__stage" [class.app-shell__stage--hidden]="flow.isMenu()">
+        <app-game-canvas />
+    </div>
+
+    <app-camera class="app-shell__camera" />
+    <router-outlet />
+
+    @if (flow.isMenu()) {
+        <app-main-menu />
+    }
+
+    @if (flow.isPaused()) {
+        <app-pause-menu />
+    }
+
+    @if (flow.isGameOver()) {
+        <app-end-game />
+    }
+</div>

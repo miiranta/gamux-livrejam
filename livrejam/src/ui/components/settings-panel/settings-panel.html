@@ -1,0 +1,34 @@
+<div class="settings">
+    <fieldset class="settings__group">
+        <legend class="settings__legend">{{ 'settings.audio' | translate }}</legend>
+
+        <app-pixel-slider
+            labelKey="settings.music"
+            [value]="settings.musicVolume()"
+            (valueChange)="settings.setMusicVolume($event)"
+        />
+
+        <app-pixel-slider
+            labelKey="settings.sfx"
+            [value]="settings.sfxVolume()"
+            (valueChange)="settings.setSfxVolume($event)"
+        />
+    </fieldset>
+
+    @if (showMatchTime()) {
+        <fieldset class="settings__group">
+            <legend class="settings__legend">{{ 'settings.match' | translate }}</legend>
+
+            <app-pixel-stepper
+                labelKey="settings.matchTime"
+                hintKey="settings.matchTimeHint"
+                [value]="settings.matchTimeSeconds()"
+                [min]="settings.limits().minMatchTimeSeconds"
+                [max]="settings.limits().maxMatchTimeSeconds"
+                [step]="settings.limits().matchTimeStepSeconds"
+                [formatter]="formatDuration"
+                (valueChange)="settings.setMatchTimeSeconds($event)"
+            />
+        </fieldset>
+    }
+</div>

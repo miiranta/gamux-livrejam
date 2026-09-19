@@ -23,10 +23,16 @@ export interface DropStats {
     nearMisses: number;
     dodgerSpeed: number;
     fallerSpeed: number;
+    /** Seconds left in the current match (0 once the match is over). */
+    timeLeft: number;
+    /** Length of the current match, in seconds. */
+    matchDuration: number;
 }
 
 export interface DungeonDropCallbacks {
     onStats: (stats: DropStats) => void;
+    /** Fired once when the match timer reaches zero. */
+    onMatchEnd?: (stats: DropStats) => void;
 }
 
 export interface DungeonDropOptions {
@@ -34,6 +40,8 @@ export interface DungeonDropOptions {
     callbacks: DungeonDropCallbacks;
     random?: () => number;
     policy?: PolicyLike;
+    /** Match length in seconds; falls back to the configured default. */
+    matchDurationSeconds?: number;
 }
 
 const KEY_BINDINGS: Record<string, DropAction> = {
@@ -48,6 +56,12 @@ const KEY_BINDINGS: Record<string, DropAction> = {
 
 const DODGER_ANIMATIONS = CHARACTER_CLIPS;
 const DROPPED_ACCELERATION = 400;
+
+function normalizeMatchDuration(seconds: number | undefined): number {
+    const { defaultDurationSeconds, minDurationSeconds, maxDurationSeconds } = DUNGEON_DROP.match;
+    const value = Number.isFinite(seconds) ? Number(seconds) : defaultDurationSeconds;
+    return clamp(value, minDurationSeconds, maxDurationSeconds);
+}
 
 export class DungeonDrop {
     private readonly level: DungeonLevel;
@@ -75,11 +89,17 @@ export class DungeonDrop {
     private best = 0;
     private showColliders = false;
     private dropAimX = 0;
+    private paused = false;
+    private matchDuration: number;
+    private timeLeft: number;
+    private matchOver = false;
 
     constructor(private readonly options: DungeonDropOptions) {
         this.random = options.random ?? Math.random;
         this.callbacks = options.callbacks;
         this.policy = options.policy ?? new IdlePolicy();
+        this.matchDuration = normalizeMatchDuration(options.matchDurationSeconds);
+        this.timeLeft = this.matchDuration;
         this.level = createDungeonLevel();
         this.world.addBlockers(this.level.colliders);
         this.input = new KeyboardActionMap<DropAction>(KEY_BINDINGS);
@@ -124,10 +144,37 @@ export class DungeonDrop {
     stop(): void {
         this.loop.stop();
         this.input.dispose();
+        this.paused = false;
     }
 
     setPolicy(policy: PolicyLike): void {
         this.policy = policy;
+    }
+
+    pause(): void {
+        if (this.paused) {
+            return;
+        }
+
+        this.paused = true;
+        this.loop.stop();
+        // Release every key so the dropper does not "stick" after resuming.
+        this.input.clear();
+    }
+
+    resume(): void {
+        if (!this.paused || this.matchOver) {
+            return;
+        }
+
+        this.paused = false;
+        this.loop.start();
+    }
+
+    /** Sets the match length and starts a fresh match with it. */
+    setMatchDuration(seconds: number): void {
+        this.matchDuration = normalizeMatchDuration(seconds);
+        this.restart();
     }
 
     accelerate(): void {
@@ -138,7 +185,19 @@ export class DungeonDrop {
         this.showColliders = !this.showColliders;
     }
 
+    /** Starts a brand-new match: full timer, cleared score. */
     restart(): void {
+        this.matchOver = false;
+        this.timeLeft = this.matchDuration;
+        this.resetRound();
+    }
+
+    /**
+     * Clears the current round (dodger, fallers, counters) but leaves the
+     * match clock and `best` alone — dying respawns the player without
+     * restarting the match.
+     */
+    private resetRound(): void {
         this.fallers = [];
         this.active = null;
         this.deathTimer = 0;
@@ -273,7 +332,14 @@ export class DungeonDrop {
 
     private updateRound(dt: number): void {
         const dodger = this.dodger;
-        if (!dodger) {
+        if (!dodger || this.matchOver) {
+            return;
+        }
+
+        this.timeLeft = Math.max(0, this.timeLeft - dt);
+
+        if (this.timeLeft <= 0) {
+            this.endMatch();
             return;
         }
 
@@ -281,8 +347,9 @@ export class DungeonDrop {
             this.deathTimer -= dt;
 
             if (this.deathTimer <= 0) {
+                // Dying respawns the player; the match clock keeps running.
                 this.best = Math.max(this.best, Math.round(this.score));
-                this.restart();
+                this.resetRound();
             }
             return;
         }
@@ -331,6 +398,27 @@ export class DungeonDrop {
             nearMisses: this.nearMisses,
             dodgerSpeed: Math.round(this.dodgerMaxSpeed),
             fallerSpeed: Math.round(this.spawner.speed),
+            timeLeft: this.timeLeft,
+            matchDuration: this.matchDuration,
+        });
+    }
+
+    private endMatch(): void {
+        this.matchOver = true;
+        this.timeLeft = 0;
+        this.best = Math.max(this.best, Math.round(this.score));
+        this.input.clear();
+        this.publishStats();
+        this.callbacks.onMatchEnd?.({
+            score: Math.round(this.score),
+            best: this.best,
+            survived: this.survived,
+            dodges: this.dodges,
+            nearMisses: this.nearMisses,
+            dodgerSpeed: Math.round(this.dodgerMaxSpeed),
+            fallerSpeed: Math.round(this.spawner.speed),
+            timeLeft: 0,
+            matchDuration: this.matchDuration,
         });
     }
 

@@ -1,0 +1,63 @@
+@use '../../styles/ornaments' as ornaments;
+
+:host {
+    display: inline-flex;
+    --lj-notch: 6px;
+
+    @include ornaments.pixel-drop(3px);
+}
+
+.fullscreen-toggle {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    color: var(--lj-accent-hi);
+    background: linear-gradient(180deg, var(--lj-line-hi), var(--lj-line));
+    border: 0;
+    cursor: pointer;
+
+    @include ornaments.octagon(6px);
+    @include ornaments.studs(var(--lj-accent), 4px, 3px);
+
+    &:hover {
+        filter: brightness(1.2);
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        filter: saturate(0.3) brightness(0.7);
+    }
+
+    &:active {
+        transform: translateY(2px);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--lj-accent-hi);
+        outline-offset: 2px;
+    }
+}
+
+.fullscreen-toggle__rim {
+    position: absolute;
+    inset: 3px;
+    background: linear-gradient(180deg, var(--lj-panel-hi), var(--lj-panel));
+    pointer-events: none;
+
+    @include ornaments.octagon(4px);
+}
+
+.fullscreen-toggle__glyph {
+    position: relative;
+    display: grid;
+    place-items: center;
+}
+
+.fullscreen-toggle__icon {
+    width: 1.15rem;
+    height: 1.15rem;
+    shape-rendering: crispEdges;
+}

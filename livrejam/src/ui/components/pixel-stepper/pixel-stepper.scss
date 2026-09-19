@@ -1,0 +1,98 @@
+@use '../../styles/ornaments' as ornaments;
+
+:host {
+    display: block;
+}
+
+.pixel-stepper__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.35rem;
+}
+
+.pixel-stepper__label {
+    color: var(--lj-ink);
+    font-size: 1.05rem;
+}
+
+.pixel-stepper__value {
+    color: var(--lj-accent-hi);
+    font-size: 1rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.pixel-stepper__row {
+    display: grid;
+    grid-template-columns: 2.6rem 1fr 2.6rem;
+    align-items: stretch;
+    gap: 0.5rem;
+}
+
+.pixel-stepper__step {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 2.4rem;
+    color: var(--lj-ink);
+    font: inherit;
+    font-size: 1.3rem;
+    background: linear-gradient(180deg, var(--lj-line-hi), var(--lj-line));
+    border: 0;
+    cursor: pointer;
+
+    @include ornaments.octagon(7px);
+    @include ornaments.studs(var(--lj-accent), 4px, 3px);
+
+    &:disabled {
+        cursor: not-allowed;
+        filter: saturate(0.3) brightness(0.7);
+    }
+
+    &:not(:disabled):hover {
+        filter: brightness(1.2);
+    }
+
+    &:not(:disabled):active {
+        transform: translateY(2px);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--lj-accent-hi);
+        outline-offset: 2px;
+    }
+}
+
+.pixel-stepper__rim {
+    position: absolute;
+    inset: 3px;
+    background: linear-gradient(180deg, var(--lj-panel-hi), var(--lj-panel));
+    pointer-events: none;
+
+    @include ornaments.octagon(5px);
+}
+
+.pixel-stepper__glyph {
+    position: relative;
+    line-height: 1;
+}
+
+.pixel-stepper__readout {
+    display: grid;
+    place-items: center;
+    min-height: 2.4rem;
+    color: var(--lj-ink);
+    font-size: 1.15rem;
+    font-variant-numeric: tabular-nums;
+    background: #14100d;
+    box-shadow:
+        inset 0 0 0 2px var(--lj-shadow),
+        inset 0 0 0 3px var(--lj-line);
+}
+
+.pixel-stepper__hint {
+    margin: 0.5rem 0 0;
+    color: var(--lj-ink-dim);
+    font-size: 0.9rem;
+}

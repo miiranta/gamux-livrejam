@@ -1,0 +1,31 @@
+<div class="end-game">
+    <span class="end-game__backdrop" aria-hidden="true"></span>
+    <span class="end-game__corner end-game__corner--tl" aria-hidden="true"></span>
+    <span class="end-game__corner end-game__corner--tr" aria-hidden="true"></span>
+    <span class="end-game__corner end-game__corner--bl" aria-hidden="true"></span>
+    <span class="end-game__corner end-game__corner--br" aria-hidden="true"></span>
+
+    <div class="end-game__stack">
+        <!-- 1) Title + subtitle, punched in with a small tilt. -->
+        <header class="end-game__header">
+            <h1 class="end-game__title">{{ 'end.title' | translate }}</h1>
+            <p class="end-game__subtitle">{{ 'end.subtitle' | translate }}</p>
+        </header>
+
+        <!-- 2) Score card, also punched in with a small opposite tilt. -->
+        <app-pixel-panel bare class="end-game__score-panel">
+            <div class="end-game__score">
+                <span class="end-game__score-label">{{ 'end.score' | translate }}</span>
+                <span class="end-game__score-value">{{ score() }}</span>
+            </div>
+        </app-pixel-panel>
+
+        <!-- 3) Actions: no tilt, quick fade-in. -->
+        <div class="end-game__actions">
+            <app-pixel-button (pressed)="retry()">{{ 'end.retry' | translate }}</app-pixel-button>
+            <app-pixel-button variant="ghost" (pressed)="exit()">
+                {{ 'end.exit' | translate }}
+            </app-pixel-button>
+        </div>
+    </div>
+</div>

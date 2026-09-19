@@ -1,0 +1,171 @@
+@use '../../styles/ornaments' as ornaments;
+
+:host {
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    display: grid;
+    place-items: center;
+    overflow: auto;
+    padding: 1.5rem;
+}
+
+.end-game__backdrop {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 50% 45%, rgb(120 48 32 / 30%) 0%, transparent 62%),
+        rgb(4 3 3 / 92%);
+    animation: end-fade 0.35s ease-out both;
+}
+
+.end-game__corner {
+    position: absolute;
+    width: 3.5rem;
+    height: 3.5rem;
+    border: 6px solid var(--lj-danger);
+    opacity: 0.3;
+    pointer-events: none;
+
+    &--tl {
+        top: 0.75rem;
+        left: 0.75rem;
+        border-right: 0;
+        border-bottom: 0;
+    }
+
+    &--tr {
+        top: 0.75rem;
+        right: 0.75rem;
+        border-bottom: 0;
+        border-left: 0;
+    }
+
+    &--bl {
+        bottom: 0.75rem;
+        left: 0.75rem;
+        border-top: 0;
+        border-right: 0;
+    }
+
+    &--br {
+        right: 0.75rem;
+        bottom: 0.75rem;
+        border-top: 0;
+        border-left: 0;
+    }
+}
+
+.end-game__stack {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    gap: 2rem;
+    width: min(90vw, 30rem);
+    text-align: center;
+}
+
+/* --- 1) Title ----------------------------------------------------------- */
+
+.end-game__header {
+    --lj-tilt: -1.4deg;
+
+    @include ornaments.punch-in(0.05s);
+}
+
+.end-game__title {
+    margin: 0;
+    color: var(--lj-ink);
+    font-size: clamp(2.2rem, 8vw, 3.2rem);
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-shadow:
+        3px 3px 0 var(--lj-shadow),
+        -1px -1px 0 rgb(255 255 255 / 5%);
+}
+
+.end-game__subtitle {
+    margin: 0.35rem 0 0;
+    color: var(--lj-danger);
+    font-size: 1.35rem;
+    letter-spacing: 0.12em;
+}
+
+/* --- 2) Score ----------------------------------------------------------- */
+
+.end-game__score-panel {
+    --lj-tilt: 1deg;
+    width: min(100%, 22rem);
+
+    @include ornaments.punch-in(0.3s);
+}
+
+/* Keep the ornamented frame: `bare` only removes the panel's own chrome. */
+.end-game__score {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    gap: 0.2rem;
+    padding: 1.35rem 2rem 1.5rem;
+    background: linear-gradient(180deg, var(--lj-line-hi), var(--lj-line));
+
+    @include ornaments.octagon();
+
+    &::before {
+        position: absolute;
+        inset: 4px;
+        background: linear-gradient(180deg, var(--lj-panel-hi), var(--lj-panel));
+        content: '';
+
+        @include ornaments.octagon(13px);
+    }
+
+    &::after {
+        position: absolute;
+        inset: 0;
+        content: '';
+
+        @include ornaments.studs(var(--lj-accent), 10px, 6px);
+    }
+}
+
+.end-game__score-label,
+.end-game__score-value {
+    position: relative;
+    z-index: 1;
+}
+
+.end-game__score-label {
+    color: var(--lj-accent);
+    font-size: 1rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+}
+
+.end-game__score-value {
+    color: var(--lj-accent-hi);
+    font-size: clamp(2.4rem, 9vw, 3.4rem);
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 3px 0 var(--lj-shadow);
+}
+
+/* --- 3) Actions --------------------------------------------------------- */
+
+.end-game__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.8rem;
+
+    @include ornaments.fade-in(0.72s, 0.2s);
+}
+
+@keyframes end-fade {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}

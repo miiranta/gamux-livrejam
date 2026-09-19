@@ -1,0 +1,66 @@
+{
+    "app": {
+        "title": "LivreJam",
+        "subtitle": "Dungeon Drop"
+    },
+    "menu": {
+        "play": "Play",
+        "resume": "Resume",
+        "restart": "Restart",
+        "abandon": "Abandon",
+        "configuration": "Configuration",
+        "credits": "Credits",
+        "language": "Language",
+        "back": "Back"
+    },
+    "settings": {
+        "audio": "Audio",
+        "music": "Music",
+        "sfx": "Sound effects",
+        "match": "Match",
+        "matchTime": "Match time",
+        "matchTimeHint": "How long each match lasts."
+    },
+    "credits": {
+        "title": "Credits",
+        "empty": "Nothing here yet."
+    },
+    "language": {
+        "title": "Language",
+        "en-us": "English (US)",
+        "pt-br": "Português (BR)"
+    },
+    "fullscreen": {
+        "enter": "Enter fullscreen",
+        "exit": "Exit fullscreen"
+    },
+    "hud": {
+        "score": "Score",
+        "best": "Best",
+        "survived": "Survived",
+        "dodges": "Dodges",
+        "nearMisses": "Near",
+        "maxSpeed": "Max speed",
+        "dropSpeed": "Drop",
+        "ai": "AI",
+        "policy": "policy",
+        "pause": "Pause",
+        "loading": "Loading the dungeon…",
+        "hint": "A / D move · S fast fall · Space drop · the AI drives the character",
+        "state": {
+            "idle": "idle",
+            "loading": "loading",
+            "error": "error"
+        },
+        "dev": {
+            "reloadAi": "Reload AI"
+        }
+    },
+    "end": {
+        "title": "It's over...",
+        "subtitle": "Não sobra nada",
+        "score": "Score",
+        "retry": "Retry",
+        "exit": "Exit"
+    }
+}

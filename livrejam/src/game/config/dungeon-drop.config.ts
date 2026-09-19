@@ -63,6 +63,13 @@ export const DUNGEON_DROP = {
         dodgeDistance: 24,
         nearMiss: 1,
     },
+    match: {
+        /** Fallback duration when the player never configured one. */
+        defaultDurationSeconds: 90,
+        minDurationSeconds: 30,
+        maxDurationSeconds: 300,
+        durationStepSeconds: 15,
+    },
 };
 
 export type DungeonDropConfig = typeof DUNGEON_DROP;

@@ -1,0 +1,70 @@
+<div class="menu-view">
+    <span class="menu-view__backdrop" aria-hidden="true"></span>
+    <span class="menu-view__corner menu-view__corner--tl" aria-hidden="true"></span>
+    <span class="menu-view__corner menu-view__corner--tr" aria-hidden="true"></span>
+    <span class="menu-view__corner menu-view__corner--bl" aria-hidden="true"></span>
+    <span class="menu-view__corner menu-view__corner--br" aria-hidden="true"></span>
+
+    <app-fullscreen-toggle class="menu-view__fullscreen" />
+
+    <div class="menu-view__stack">
+        @if (panel() === 'none') {
+            <header class="menu-view__brand">
+                <h1 class="menu-view__title">{{ 'app.title' | translate }}</h1>
+                <p class="menu-view__subtitle">{{ 'app.subtitle' | translate }}</p>
+            </header>
+
+            <nav class="menu-view__actions">
+                <app-pixel-button block (pressed)="primary.emit()">
+                    {{ primaryKey() | translate }}
+                </app-pixel-button>
+
+                @if (isPause()) {
+                    <app-pixel-button block variant="ghost" (pressed)="restart.emit()">
+                        {{ 'menu.restart' | translate }}
+                    </app-pixel-button>
+                }
+
+                <app-pixel-button block variant="ghost" (pressed)="open('configuration')">
+                    {{ 'menu.configuration' | translate }}
+                </app-pixel-button>
+
+                <app-pixel-button block variant="ghost" (pressed)="open('credits')">
+                    {{ 'menu.credits' | translate }}
+                </app-pixel-button>
+
+                <app-pixel-button block variant="ghost" (pressed)="open('language')">
+                    {{ 'menu.language' | translate }}
+                </app-pixel-button>
+
+                @if (isPause()) {
+                    <app-pixel-button block variant="danger" (pressed)="abandon.emit()">
+                        {{ 'menu.abandon' | translate }}
+                    </app-pixel-button>
+                }
+            </nav>
+        } @else {
+            <div class="menu-view__panel">
+                <app-pixel-panel [titleKey]="panelTitleKey()">
+                    @switch (panel()) {
+                        @case ('configuration') {
+                            <app-settings-panel [showMatchTime]="!isPause()" />
+                        }
+                        @case ('language') {
+                            <app-language-select />
+                        }
+                        @case ('credits') {
+                            <p class="menu-view__empty">{{ 'credits.empty' | translate }}</p>
+                        }
+                    }
+
+                    <div class="menu-view__panel-footer">
+                        <app-pixel-button block variant="ghost" (pressed)="close()">
+                            {{ 'menu.back' | translate }}
+                        </app-pixel-button>
+                    </div>
+                </app-pixel-panel>
+            </div>
+        }
+    </div>
+</div>

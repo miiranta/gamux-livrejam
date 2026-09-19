@@ -1,0 +1,171 @@
+@use '../../styles/ornaments' as ornaments;
+
+:host {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: grid;
+    place-items: center;
+    overflow: auto;
+    padding: 1.5rem;
+}
+
+.menu-view__backdrop {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 50% 40%, rgb(60 44 28 / 35%) 0%, transparent 60%),
+        rgb(5 4 4 / 88%);
+}
+
+/* Decorative pixel vignette in each corner of the screen. */
+.menu-view__corner {
+    position: absolute;
+    width: 3.5rem;
+    height: 3.5rem;
+    border: 6px solid var(--lj-line);
+    opacity: 0.35;
+    pointer-events: none;
+
+    &--tl {
+        top: 0.75rem;
+        left: 0.75rem;
+        border-right: 0;
+        border-bottom: 0;
+    }
+
+    &--tr {
+        top: 0.75rem;
+        right: 0.75rem;
+        border-bottom: 0;
+        border-left: 0;
+    }
+
+    &--bl {
+        bottom: 0.75rem;
+        left: 0.75rem;
+        border-top: 0;
+        border-right: 0;
+    }
+
+    &--br {
+        right: 0.75rem;
+        bottom: 0.75rem;
+        border-top: 0;
+        border-left: 0;
+    }
+}
+
+.menu-view__fullscreen {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    z-index: 2;
+    animation: menu-fullscreen-in 0.3s ease-out 0.15s both;
+}
+
+.menu-view__stack {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    gap: 1.75rem;
+    width: min(90vw, 27rem);
+}
+
+/* --- Brand -------------------------------------------------------------- */
+
+.menu-view__brand {
+    text-align: center;
+    --lj-tilt: -0.6deg;
+
+    @include ornaments.punch-in();
+}
+
+.menu-view__title {
+    margin: 0;
+    color: var(--lj-ink);
+    font-size: clamp(2.5rem, 9vw, 3.6rem);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-shadow:
+        3px 3px 0 var(--lj-shadow),
+        -1px -1px 0 rgb(255 255 255 / 6%);
+}
+
+.menu-view__subtitle {
+    margin: 0.15rem 0 0;
+    color: var(--lj-accent);
+    font-size: 1.15rem;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+}
+
+/* --- Actions ------------------------------------------------------------ */
+
+.menu-view__actions {
+    display: grid;
+    gap: 0.7rem;
+    width: 100%;
+}
+
+.menu-view__actions > * {
+    animation: menu-item-in 0.24s ease-out both;
+}
+
+@for $i from 1 through 6 {
+    .menu-view__actions > *:nth-child(#{$i}) {
+        animation-delay: #{0.05 + $i * 0.05}s;
+    }
+}
+
+/* --- Panels ------------------------------------------------------------- */
+
+.menu-view__panel {
+    width: 100%;
+    animation: menu-panel-in 0.26s var(--lj-punch) both;
+}
+
+.menu-view__panel-footer {
+    margin-top: 1.35rem;
+}
+
+.menu-view__empty {
+    margin: 0;
+    padding: 1.5rem 0;
+    color: var(--lj-ink-dim);
+    text-align: center;
+}
+
+@keyframes menu-item-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes menu-panel-in {
+    from {
+        opacity: 0;
+        transform: scale(0.94);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes menu-fullscreen-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}

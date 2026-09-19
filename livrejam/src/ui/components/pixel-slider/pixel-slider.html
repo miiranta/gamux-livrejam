@@ -1,0 +1,23 @@
+<label class="pixel-slider">
+    <span class="pixel-slider__head">
+        <span class="pixel-slider__label">{{ labelKey() | translate }}</span>
+        <span class="pixel-slider__value">{{ percent() }}%</span>
+    </span>
+
+    <span class="pixel-slider__track" [style.--lj-fill]="percent() + '%'">
+        <span class="pixel-slider__fill"></span>
+        <span class="pixel-slider__thumb"></span>
+    </span>
+
+    <input
+        class="pixel-slider__input"
+        type="range"
+        [min]="0"
+        [max]="1"
+        step="0.05"
+        [value]="value()"
+        [attr.aria-label]="labelKey() | translate"
+        [attr.aria-valuetext]="percent() + '%'"
+        (input)="handleInput($event)"
+    />
+</label>

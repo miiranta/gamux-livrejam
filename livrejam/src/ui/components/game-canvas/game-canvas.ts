@@ -4,15 +4,24 @@ import {
     DestroyRef,
     ElementRef,
     afterNextRender,
+    computed,
+    effect,
     inject,
     signal,
     viewChild,
 } from '@angular/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import { InferenceWorkerClient } from '../../../engine/ai';
 import { IdlePolicy, RemoteDodgerPolicy, type PolicyLike } from '../../../game/ai';
 import { DUNGEON_DROP } from '../../../game/config';
 import { DungeonDrop, type DropStats } from '../../../game/dungeon-drop';
+import {
+    formatDuration,
+    GameFlowService,
+    GameSettingsService,
+    type GameScreen,
+} from '../../services';
 
 type CanvasStatus = 'loading' | 'ready' | 'error';
 type ModelStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -25,10 +34,13 @@ const INITIAL_STATS: DropStats = {
     nearMisses: 0,
     dodgerSpeed: 0,
     fallerSpeed: 0,
+    timeLeft: 0,
+    matchDuration: DUNGEON_DROP.match.defaultDurationSeconds,
 };
 
 @Component({
     selector: 'app-game-canvas',
+    imports: [TranslatePipe],
     templateUrl: './game-canvas.html',
     styleUrl: './game-canvas.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,6 +48,8 @@ const INITIAL_STATS: DropStats = {
 export class GameCanvas {
     private readonly canvasRef = viewChild<ElementRef<HTMLCanvasElement>>('canvas');
     private readonly destroyRef = inject(DestroyRef);
+    private readonly flow = inject(GameFlowService);
+    private readonly settings = inject(GameSettingsService);
     private readonly inference = new InferenceWorkerClient({
         url: DUNGEON_DROP.ai.modelUrl,
         onError: (message) => this.failModel(message),
@@ -43,15 +57,37 @@ export class GameCanvas {
 
     private game: DungeonDrop | null = null;
     private policy: PolicyLike = new IdlePolicy();
+    private lastScreen: GameScreen = 'menu';
+    private lastRestartToken = 0;
 
     protected readonly status = signal<CanvasStatus>('loading');
     protected readonly errorMessage = signal('');
     protected readonly modelStatus = signal<ModelStatus>('idle');
     protected readonly modelMessage = signal('');
     protected readonly stats = signal<DropStats>(INITIAL_STATS);
+    /** Flips once `DungeonDrop` exists, so the sync effect can react to it. */
+    private readonly matchReady = signal(false);
+
+    /** The HUD is only useful while a match is on screen. */
+    protected readonly showHud = computed(
+        () => this.status() === 'ready' && this.flow.isMatchVisible(),
+    );
+
+    protected readonly timeLeft = computed(() => formatDuration(this.stats().timeLeft));
 
     constructor() {
         afterNextRender(() => void this.start());
+
+        // Mirror the flow state machine onto the match instance.
+        effect(() => {
+            const screen = this.flow.screen();
+            const token = this.flow.restartToken();
+            if (!this.matchReady()) {
+                return;
+            }
+            this.syncMatch(screen, token);
+        });
+
         this.destroyRef.onDestroy(() => this.stop());
     }
 
@@ -64,12 +100,27 @@ export class GameCanvas {
         try {
             const game = new DungeonDrop({
                 canvas,
-                callbacks: { onStats: (next) => this.stats.set(next) },
+                matchDurationSeconds: this.settings.matchTimeSeconds(),
+                callbacks: {
+                    onStats: (next) => this.stats.set(next),
+                    onMatchEnd: (result) =>
+                        this.flow.endMatch({
+                            score: result.score,
+                            best: result.best,
+                            survived: result.survived,
+                            dodges: result.dodges,
+                            nearMisses: result.nearMisses,
+                        }),
+                },
             });
 
             this.game = game;
             await game.start();
             this.status.set('ready');
+            this.lastRestartToken = this.flow.restartToken();
+            this.lastScreen = this.flow.screen();
+            this.matchReady.set(true);
+            this.syncMatch(this.lastScreen, this.lastRestartToken);
             await this.loadModel(game);
         } catch (error) {
             this.status.set('error');
@@ -80,19 +131,12 @@ export class GameCanvas {
     protected stop(): void {
         this.game?.stop();
         this.game = null;
+        this.matchReady.set(false);
         this.inference.stop();
     }
 
-    protected restart = (): void => {
-        this.game?.restart();
-    };
-
-    protected accelerate = (): void => {
-        this.game?.accelerate();
-    };
-
-    protected toggleColliders = (): void => {
-        this.game?.toggleColliders();
+    protected pause = (): void => {
+        this.flow.pause();
     };
 
     protected reloadModel = (): void => {
@@ -107,6 +151,34 @@ export class GameCanvas {
 
     protected formatSeconds(seconds: number): string {
         return seconds.toFixed(1);
+    }
+
+    /**
+     * Brings the match in line with the requested screen: pause/resume, and
+     * reset (picking up the latest settings) when a new match starts.
+     */
+    private syncMatch(screen: GameScreen, token: number): void {
+        const game = this.game;
+        if (!game) {
+            return;
+        }
+
+        const restarting = token !== this.lastRestartToken;
+        const startingMatch = screen === 'playing' && this.lastScreen !== 'playing';
+        this.lastRestartToken = token;
+        this.lastScreen = screen;
+
+        if (screen !== 'playing') {
+            game.pause();
+            return;
+        }
+
+        if (restarting || startingMatch) {
+            // A fresh match: apply the configured length (which resets the round).
+            game.setMatchDuration(this.settings.matchTimeSeconds());
+        }
+
+        game.resume();
     }
 
     private async loadModel(game: DungeonDrop): Promise<void> {
