@@ -1,10 +1,13 @@
 import type { Point2D, Point3D } from '../math';
+import type {
+    EyeObservation,
+    EyeState,
+    GestureObservations,
+    MouthObservation,
+    MouthState,
+} from './streams/types';
 
-export type { Point2D, Point3D };
-
-export type EyeState = 'open' | 'closed';
-
-export type MouthState = 'open' | 'closed';
+export type { EyeObservation, EyeState, GestureObservations, MouthState, Point2D, Point3D };
 
 export type Handedness = 'Left' | 'Right' | 'Unknown';
 
@@ -12,17 +15,21 @@ export interface FaceScores {
     leftEyeBlink: number;
     rightEyeBlink: number;
     jawOpen: number;
-}
-
-export interface EyeObservation {
-    state: EyeState;
-    center: Point2D;
+    browInnerUp: number;
+    browOuterUpLeft: number;
+    browOuterUpRight: number;
+    eyeSquintLeft: number;
+    eyeSquintRight: number;
+    mouthSmileLeft: number;
+    mouthSmileRight: number;
+    mouthPressLeft: number;
+    mouthPressRight: number;
 }
 
 export interface FaceState {
     leftEye: EyeObservation;
     rightEye: EyeObservation;
-    mouth: MouthState;
+    mouth: MouthObservation;
     scores: FaceScores;
     landmarks: Point3D[];
 }
@@ -39,6 +46,7 @@ export interface TrackingFrame {
     timestamp: number;
     face: FaceState | null;
     hands: HandState[];
+    gestures: GestureObservations;
 }
 
 export interface TrackingThresholds {

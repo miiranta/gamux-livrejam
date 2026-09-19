@@ -46,6 +46,16 @@
                     Mouth
                     <b>{{ mouthOpen() ? 'open' : 'closed' }}</b>
                 </span>
+                <span class="camera__pill" [class.camera__pill--gesture]="sigmaActive()">
+                    <i class="camera__dot"></i>
+                    Sigma
+                    <b>{{ sigmaActive() ? 'yes' : 'no' }}</b>
+                </span>
+                <span class="camera__pill" [class.camera__pill--gesture]="sixtySevenActive()">
+                    <i class="camera__dot"></i>
+                    67
+                    <b>{{ sixtySevenLevel() }}%</b>
+                </span>
                 <span class="camera__pill camera__pill--delegate">
                     {{ usingGpu() ? 'GPU' : 'CPU' }}
                 </span>

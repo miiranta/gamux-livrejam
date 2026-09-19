@@ -5,6 +5,22 @@ import type { Point3D } from '../math';
 export const FACE_LANDMARK = {
     leftIrisCenter: 473,
     rightIrisCenter: 468,
+    upperLipInner: 13,
+    lowerLipInner: 14,
+} as const;
+
+export const HAND_LANDMARK = {
+    wrist: 0,
+    indexMcp: 5,
+    indexPip: 6,
+    indexTip: 8,
+    middleMcp: 9,
+    middlePip: 10,
+    middleTip: 12,
+    ringPip: 14,
+    ringTip: 16,
+    pinkyPip: 18,
+    pinkyTip: 20,
 } as const;
 
 export const FACE_OVAL = [

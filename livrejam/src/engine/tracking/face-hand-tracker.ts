@@ -5,24 +5,24 @@ import { readBlendshape } from './blendshape-reader';
 import { DEFAULT_CONFIG } from './config';
 import { toPoint3DList, FACE_LANDMARK } from './landmarks';
 import { MediaPipeModels, type HandDetection } from './mediapipe-models';
-import { SmoothedStateFilter } from './state-filter';
+import { EyeStream, GestureStreams, MouthStream } from './streams';
 import type {
-    EyeState,
     FaceHandTrackerConfig,
     FaceHandTrackerOptions,
+    FaceScores,
     FaceState,
     Handedness,
     HandState,
-    MouthState,
     TrackingFrame,
 } from './types';
 
 export class FaceHandTracker {
     private readonly config: FaceHandTrackerConfig;
     private readonly models = new MediaPipeModels();
-    private readonly leftEye: SmoothedStateFilter<EyeState>;
-    private readonly rightEye: SmoothedStateFilter<EyeState>;
-    private readonly mouth: SmoothedStateFilter<MouthState>;
+
+    private readonly eyes: EyeStream;
+    private readonly mouth: MouthStream;
+    private readonly gestures = new GestureStreams();
 
     private usingGpu: boolean;
     private lastTimestamp = -1;
@@ -32,9 +32,8 @@ export class FaceHandTracker {
         this.usingGpu = this.config.useGpu;
 
         const { eyeClosed, mouthOpen } = this.config.thresholds;
-        this.leftEye = new SmoothedStateFilter<EyeState>('closed', 'open', eyeClosed);
-        this.rightEye = new SmoothedStateFilter<EyeState>('closed', 'open', eyeClosed);
-        this.mouth = new SmoothedStateFilter<MouthState>('open', 'closed', mouthOpen);
+        this.eyes = new EyeStream(eyeClosed);
+        this.mouth = new MouthStream(mouthOpen);
     }
 
     get isReady(): boolean {
@@ -58,16 +57,26 @@ export class FaceHandTracker {
         const face = this.models.detectFace(image, safeTimestamp);
         const hands = this.models.detectHands(image, safeTimestamp);
 
+        const faceState = this.toFaceState(face.landmarks[0], face.blendshapes[0]);
+        const handStates = toHandStates(hands);
+
         return {
             timestamp: safeTimestamp,
-            face: this.toFaceState(face.landmarks[0], face.blendshapes[0]),
-            hands: toHandStates(hands),
+            face: faceState,
+            hands: handStates,
+            gestures: this.gestures.update({
+                face: faceState,
+                hands: handStates,
+                timestamp: safeTimestamp,
+            }),
         };
     }
 
     close(): void {
         this.models.close();
-        this.resetExpressionState();
+        this.eyes.reset();
+        this.mouth.reset();
+        this.gestures.reset();
         this.lastTimestamp = -1;
     }
 
@@ -76,27 +85,23 @@ export class FaceHandTracker {
         blendshapes: Classifications | undefined,
     ): FaceState | null {
         if (!landmarks?.length) {
-            this.resetExpressionState();
+            this.eyes.reset();
+            this.mouth.reset();
             return null;
         }
 
-        const scores = {
-            leftEyeBlink: readBlendshape(blendshapes, 'eyeBlinkLeft'),
-            rightEyeBlink: readBlendshape(blendshapes, 'eyeBlinkRight'),
-            jawOpen: readBlendshape(blendshapes, 'jawOpen'),
-        };
-
+        const scores = readScores(blendshapes);
         const points = toPoint3DList(landmarks);
+        const eyes = this.eyes.update({
+            leftBlink: scores.leftEyeBlink,
+            rightBlink: scores.rightEyeBlink,
+            leftIris: points[FACE_LANDMARK.leftIrisCenter],
+            rightIris: points[FACE_LANDMARK.rightIrisCenter],
+        });
 
         return {
-            leftEye: {
-                state: this.leftEye.update(scores.leftEyeBlink),
-                center: points[FACE_LANDMARK.leftIrisCenter],
-            },
-            rightEye: {
-                state: this.rightEye.update(scores.rightEyeBlink),
-                center: points[FACE_LANDMARK.rightIrisCenter],
-            },
+            leftEye: eyes.left,
+            rightEye: eyes.right,
             mouth: this.mouth.update(scores.jawOpen),
             scores,
             landmarks: points,
@@ -106,12 +111,6 @@ export class FaceHandTracker {
     private nextTimestamp(timestamp: number): number {
         this.lastTimestamp = timestamp > this.lastTimestamp ? timestamp : this.lastTimestamp + 1;
         return this.lastTimestamp;
-    }
-
-    private resetExpressionState(): void {
-        this.leftEye.reset();
-        this.rightEye.reset();
-        this.mouth.reset();
     }
 }
 
@@ -141,4 +140,21 @@ function toHandStates(detection: HandDetection): HandState[] {
 
 function toHandedness(name: string | undefined): Handedness {
     return name === 'Left' || name === 'Right' ? name : 'Unknown';
+}
+
+function readScores(blendshapes: Classifications | undefined): FaceScores {
+    return {
+        leftEyeBlink: readBlendshape(blendshapes, 'eyeBlinkLeft'),
+        rightEyeBlink: readBlendshape(blendshapes, 'eyeBlinkRight'),
+        jawOpen: readBlendshape(blendshapes, 'jawOpen'),
+        browInnerUp: readBlendshape(blendshapes, 'browInnerUp'),
+        browOuterUpLeft: readBlendshape(blendshapes, 'browOuterUpLeft'),
+        browOuterUpRight: readBlendshape(blendshapes, 'browOuterUpRight'),
+        eyeSquintLeft: readBlendshape(blendshapes, 'eyeSquintLeft'),
+        eyeSquintRight: readBlendshape(blendshapes, 'eyeSquintRight'),
+        mouthSmileLeft: readBlendshape(blendshapes, 'mouthSmileLeft'),
+        mouthSmileRight: readBlendshape(blendshapes, 'mouthSmileRight'),
+        mouthPressLeft: readBlendshape(blendshapes, 'mouthPressLeft'),
+        mouthPressRight: readBlendshape(blendshapes, 'mouthPressRight'),
+    };
 }

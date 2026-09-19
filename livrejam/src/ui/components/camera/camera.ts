@@ -66,7 +66,14 @@ export class Camera {
     protected readonly rightEyeClosed = computed(
         () => this.frame()?.face?.rightEye.state === 'closed',
     );
-    protected readonly mouthOpen = computed(() => this.frame()?.face?.mouth === 'open');
+    protected readonly mouthOpen = computed(() => this.frame()?.face?.mouth.state === 'open');
+    protected readonly sixtySevenActive = computed(
+        () => this.frame()?.gestures.sixtySeven.active ?? false,
+    );
+    protected readonly sixtySevenLevel = computed(() =>
+        Math.round((this.frame()?.gestures.sixtySeven.level ?? 0) * 100),
+    );
+    protected readonly sigmaActive = computed(() => this.frame()?.gestures.sigma.active ?? false);
     protected readonly overlayViewBox = computed(() => {
         const { width, height } = this.videoSize();
         const side = Math.min(width, height);
