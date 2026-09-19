@@ -1,0 +1,123 @@
+{
+  "blocks": [
+    {
+      "slug": "kenney-roguelike-rpg-pack",
+      "pack": "roguelike-rpg-pack",
+      "source": "Kenney",
+      "license": "CC0",
+      "url": "https://kenney.nl/assets/roguelike-rpg-pack",
+      "files": 4
+    },
+    {
+      "slug": "kenney-roguelike-caves-dungeons",
+      "pack": "roguelike-caves-dungeons",
+      "source": "Kenney",
+      "license": "CC0",
+      "url": "https://kenney.nl/assets/roguelike-caves-dungeons",
+      "files": 4
+    },
+    {
+      "slug": "kenney-micro-roguelike",
+      "pack": "micro-roguelike",
+      "source": "Kenney",
+      "license": "CC0",
+      "url": "https://kenney.nl/assets/micro-roguelike",
+      "files": 326
+    },
+    {
+      "slug": "kenney-tiny-dungeon",
+      "pack": "tiny-dungeon",
+      "source": "Kenney",
+      "license": "CC0",
+      "url": "https://kenney.nl/assets/tiny-dungeon",
+      "files": 136
+    },
+    {
+      "slug": "kenney-tiny-town",
+      "pack": "tiny-town",
+      "source": "Kenney",
+      "license": "CC0",
+      "url": "https://kenney.nl/assets/tiny-town",
+      "files": 136
+    }
+  ],
+  "weapons": [
+    {
+      "slug": "pixel-weapons",
+      "source": "OpenGameArt",
+      "license": "CC0",
+      "url": "https://opengameart.org/content/pixel-weapons",
+      "files": 10
+    },
+    {
+      "slug": "cc0-ranged-icons",
+      "source": "OpenGameArt",
+      "license": "CC0",
+      "url": "https://opengameart.org/content/cc0-ranged-icons",
+      "files": 3
+    },
+    {
+      "slug": "cc0-firearm-icons",
+      "source": "OpenGameArt",
+      "license": "CC0",
+      "url": "https://opengameart.org/content/cc0-firearm-icons",
+      "files": 3
+    },
+    {
+      "slug": "crossbow-arbalest",
+      "source": "OpenGameArt",
+      "license": "CC0",
+      "url": "https://opengameart.org/content/crossbow-arbalest",
+      "files": 1
+    },
+    {
+      "slug": "2d-guns",
+      "source": "OpenGameArt",
+      "license": "CC0",
+      "url": "https://opengameart.org/content/2d-guns",
+      "files": 107
+    },
+    {
+      "slug": "dark-fantasy-items",
+      "source": "OpenGameArt",
+      "license": "CC0",
+      "url": "https://opengameart.org/content/dark-fantasy-item-sprites",
+      "files": 2
+    },
+    {
+      "slug": "lpc-more-weapons",
+      "source": "OpenGameArt",
+      "license": "CC-BY 4.0",
+      "url": "https://opengameart.org/content/lpc-more-weapons",
+      "files": 34
+    },
+    {
+      "slug": "lpc-short-sword",
+      "source": "OpenGameArt",
+      "license": "CC-BY 3.0 / CC-BY 4.0",
+      "url": "https://opengameart.org/content/lpc-short-sword",
+      "files": 5
+    },
+    {
+      "slug": "lpc-smash-weapons",
+      "source": "OpenGameArt",
+      "license": "CC-BY 4.0",
+      "url": "https://opengameart.org/content/lpc-smash-weapons",
+      "files": 9
+    },
+    {
+      "slug": "weapons-kit-pixel-art",
+      "source": "OpenGameArt",
+      "license": "CC-BY 4.0",
+      "url": "https://opengameart.org/content/weapons-kit-pixel-art",
+      "files": 3
+    },
+    {
+      "slug": "axes-pixel-art",
+      "source": "OpenGameArt",
+      "license": "CC-BY 4.0",
+      "url": "https://opengameart.org/content/axes-pixel-art",
+      "files": 1
+    }
+  ]
+}

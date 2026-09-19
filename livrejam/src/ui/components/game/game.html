@@ -1,0 +1,41 @@
+<div class="game">
+    <canvas #canvas class="game__canvas"></canvas>
+
+    @if (status() === 'ready') {
+        <div class="game__hud">
+            <span class="game__chip">
+                <i class="game__dot"></i>
+                facing <b>{{ facing() }}</b>
+            </span>
+            <span class="game__chip">
+                <i class="game__dot" [class.game__dot--air]="!grounded()"></i>
+                {{ grounded() ? 'grounded' : 'airborne' }}
+            </span>
+            <span class="game__chip">anim <b>{{ animation() }}</b></span>
+            @if (debugColliders()) {
+                <span class="game__chip game__chip--debug">colliders <b>on</b></span>
+            }
+        </div>
+
+        <p class="game__hint">
+            ← → / A D mover · Shift correr · Espaço / W pular · C colisões
+        </p>
+
+        @if (debugColliders()) {
+            <p class="game__debug">{{ debugText() }}</p>
+        }
+    }
+
+    @if (status() === 'loading') {
+        <div class="game__veil">
+            <span class="game__spinner"></span>
+            <p>Carregando cena…</p>
+        </div>
+    }
+
+    @if (status() === 'error') {
+        <div class="game__veil game__veil--error">
+            <p>{{ errorMessage() }}</p>
+        </div>
+    }
+</div>

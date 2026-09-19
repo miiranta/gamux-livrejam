@@ -1,0 +1,116 @@
+:host {
+    display: block;
+}
+
+.game {
+    position: relative;
+    display: grid;
+    place-items: center;
+}
+
+.game__canvas {
+    display: block;
+    max-width: 100%;
+    border-radius: 0.5rem;
+    /* pixel art: mantem as bordas duras ao escalar */
+    image-rendering: pixelated;
+    background: #0b0d12;
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 8%);
+}
+
+.game__hud {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    display: flex;
+    gap: 0.35rem;
+    pointer-events: none;
+}
+
+.game__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    color: #cdd6e6;
+    font-size: 0.7rem;
+    letter-spacing: 0.02em;
+    background: rgb(10 13 20 / 78%);
+    border: 1px solid rgb(255 255 255 / 10%);
+    border-radius: 999px;
+
+    b {
+        color: #fff;
+    }
+}
+
+.game__dot {
+    width: 6px;
+    height: 6px;
+    background: #7dffb0;
+    border-radius: 50%;
+
+    &--air {
+        background: #ffd25a;
+    }
+}
+
+.game__chip--debug {
+    color: #7dc8ff;
+    border-color: rgb(125 200 255 / 45%);
+}
+
+.game__hint {
+    position: absolute;
+    bottom: 0.5rem;
+    left: 50%;
+    margin: 0;
+    padding: 0.2rem 0.6rem;
+    color: #9aa6ba;
+    font-size: 0.7rem;
+    background: rgb(10 13 20 / 78%);
+    border-radius: 999px;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.game__debug {
+    position: absolute;
+    right: 0.5rem;
+    bottom: 0.5rem;
+    margin: 0;
+    padding: 0.2rem 0.5rem;
+    color: #7dc8ff;
+    font-family: ui-monospace, monospace;
+    font-size: 0.65rem;
+    background: rgb(10 13 20 / 85%);
+    border-radius: 0.3rem;
+    pointer-events: none;
+}
+
+.game__veil {
+    display: grid;
+    justify-items: center;
+    gap: 0.75rem;
+    padding: 2rem 3rem;
+    color: #cdd6e6;
+
+    &--error {
+        color: #ff9c9c;
+    }
+}
+
+.game__spinner {
+    width: 22px;
+    height: 22px;
+    border: 2px solid rgb(255 255 255 / 18%);
+    border-top-color: #7dc8ff;
+    border-radius: 50%;
+    animation: game-spin 0.8s linear infinite;
+}
+
+@keyframes game-spin {
+    to {
+        transform: rotate(1turn);
+    }
+}
