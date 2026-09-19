@@ -1,28 +1,26 @@
-import type { Aabb } from './aabb';
-import { overlaps } from './aabb';
+import type { Aabb, SolidBox } from './aabb';
+import { overlaps, solidBox } from './aabb';
 import type { Body } from './body';
 import { integrate, integrateAxis } from './body';
 
-/** Um corpo com a sua caixa de colisao, pronto para participar da simulacao. */
 export interface PhysicsBody {
     body: Body;
-    /** Tamanho da caixa de colisao, em unidades de mundo. */
+
     size: { width: number; height: number };
-    /** Quando falso, o corpo atravessa tudo (ex.: durante um ataque). */
+
     solid: boolean;
 }
 
-/** Resultado da resolucao de um corpo contra o cenario. */
 export interface CollisionResult {
-    /** Encostou em algo solido abaixo e parou de cair. */
     grounded: boolean;
-    /** Encostou em uma parede a esquerda ou a direita. */
+
     hitWall: 'left' | 'right' | null;
-    /** Encostou no teto e teve a subida cancelada. */
+
     hitCeiling: boolean;
+
+    layer: number | null;
 }
 
-/** Extrai a AABB de colisao a partir da posicao atual do corpo. */
 export function bodyBox(entry: PhysicsBody): Aabb {
     return {
         x: entry.body.position.x,
@@ -33,26 +31,33 @@ export function bodyBox(entry: PhysicsBody): Aabb {
 }
 
 export class PhysicsWorld {
-    private readonly blockers: Aabb[] = [];
+    private readonly blockers: SolidBox[] = [];
 
-    /** Adiciona uma caixa solida do cenario (parede, chao, obstaculo). */
-    addBlocker(box: Aabb): void {
-        this.blockers.push(box);
+    addBlocker(box: Aabb, layer = 0): void {
+        this.blockers.push(solidBox(box, layer));
+    }
+
+    addBlockers(boxes: readonly SolidBox[]): void {
+        for (const box of boxes) {
+            this.blockers.push(box);
+        }
+    }
+
+    clearBlockers(): void {
+        this.blockers.length = 0;
     }
 
     get blockerCount(): number {
         return this.blockers.length;
     }
 
-    /**
-     * Integra e resolve a colisao de um corpo contra o cenario.
-     *
-     * Cada eixo e integrado e resolvido separadamente (X e depois Y). Isso evita
-     * que o corpo "grude" nas quinas e garante que o apoio no chao nao seja
-     * confundido com uma parede lateral quando os dois eixos se movem no mesmo frame.
-     */
     step(entry: PhysicsBody, dt: number): CollisionResult {
-        const result: CollisionResult = { grounded: false, hitWall: null, hitCeiling: false };
+        const result: CollisionResult = {
+            grounded: false,
+            hitWall: null,
+            hitCeiling: false,
+            layer: null,
+        };
 
         if (entry.solid) {
             integrateAxis(entry.body, 'x', dt);
@@ -67,26 +72,22 @@ export class PhysicsWorld {
         entry.body.grounded = result.grounded;
 
         if (result.grounded) {
-            // atrito no apoio: desacelera o corpo sem zera-lo de imediato
             entry.body.velocity.x *= entry.body.friction;
         }
 
         return result;
     }
 
-    /** Empurra o corpo para fora de qualquer bloqueador que ele esteja invadindo. */
-    private resolveAxis(
-        entry: PhysicsBody,
-        axis: 'x' | 'y',
-        result: CollisionResult,
-    ): void {
+    private resolveAxis(entry: PhysicsBody, axis: 'x' | 'y', result: CollisionResult): void {
         for (const blocker of this.blockers) {
-            // a caixa e recalculada a cada teste: resolver um bloqueador pode
-            // empurrar o corpo para dentro de outro.
             const box = bodyBox(entry);
 
             if (!overlaps(box, blocker)) {
                 continue;
+            }
+
+            if (result.layer === null) {
+                result.layer = blocker.layer;
             }
 
             if (axis === 'x') {

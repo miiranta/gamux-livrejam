@@ -3,61 +3,110 @@ import type { SixtySevenObservation, Stream } from './types';
 
 const MIN_HANDS = 2;
 const MIN_HORIZONTAL_GAP = 0.05;
-const MIN_AMPLITUDE = 0.012;
-const IMPULSE = 0.35;
-const DECAY_PER_SECOND = 0.8;
+const WINDOW_MS = 1000;
+const MIN_SWING = 0.05;
+const REFERENCE_SWING = 0.5;
+const REFERENCE_SPEED = 15;
+const IMPULSE_PER_SECOND = 6;
+const DECAY_PER_SECOND = 4;
 const MAX_LEVEL = 1;
 const MIN_LEVEL = 0.15;
-const WINDOW_MS = 2000;
+const CROSSING_DEADBAND = 0.01;
+const GRACE_MS = 200;
+
+interface DeltaSample {
+    time: number;
+    value: number;
+}
 
 export class SixtySevenStream implements Stream<HandState[], SixtySevenObservation> {
-    private flips: number[] = [];
+    private samples: DeltaSample[] = [];
+    private crossings: number[] = [];
     private lastSign = 0;
-    private peakHigh = 0;
-    private peakLow = 0;
     private alternations = 0;
     private level = 0;
     private lastTimestamp: number | null = null;
+    private lastSeen: number | null = null;
 
     update(hands: HandState[], timestamp: number): SixtySevenObservation {
-        this.decay(this.elapsed(timestamp));
-        this.track(hands, timestamp);
+        const dt = this.elapsed(timestamp);
+        this.decay(dt);
+        this.prune(timestamp);
 
-        return {
-            active: this.level >= MIN_LEVEL,
-            confidence: this.level,
-            level: this.level,
-            frequency: this.frequency(timestamp),
-            alternations: this.alternations,
-        };
+        const delta = this.relativeHeight(hands);
+
+        if (delta === null) {
+            if (this.lastSeen === null || timestamp - this.lastSeen > GRACE_MS) {
+                this.lastSign = 0;
+            }
+
+            return this.observation(timestamp);
+        }
+
+        this.lastSeen = timestamp;
+        this.samples.push({ time: timestamp, value: delta });
+        this.countCrossing(delta, timestamp);
+        this.accumulate(dt);
+
+        return this.observation(timestamp);
     }
 
     reset(): void {
-        this.flips = [];
+        this.samples = [];
+        this.crossings = [];
         this.lastSign = 0;
-        this.peakHigh = 0;
-        this.peakLow = 0;
         this.alternations = 0;
         this.level = 0;
         this.lastTimestamp = null;
+        this.lastSeen = null;
     }
 
-    private track(hands: HandState[], timestamp: number): void {
-        const pair = this.orderedPair(hands);
-
-        if (!pair) {
-            this.lastSign = 0;
+    private accumulate(dt: number): void {
+        if (dt <= 0 || this.samples.length < 2) {
             return;
         }
 
-        const [first, second] = pair;
-        const delta = second.center.y - first.center.y;
-        this.peakHigh = Math.max(this.peakHigh, delta);
-        this.peakLow = Math.min(this.peakLow, delta);
+        const swing = this.swing();
 
-        const sign = Math.sign(delta);
+        if (swing < MIN_SWING) {
+            return;
+        }
+
+        const intensity =
+            Math.min(1, this.meanSpeed() / REFERENCE_SPEED) * Math.min(1, swing / REFERENCE_SWING);
+
+        this.level = Math.min(MAX_LEVEL, this.level + IMPULSE_PER_SECOND * intensity * dt);
+    }
+
+    private swing(): number {
+        let high = Number.NEGATIVE_INFINITY;
+        let low = Number.POSITIVE_INFINITY;
+
+        for (const sample of this.samples) {
+            high = Math.max(high, sample.value);
+            low = Math.min(low, sample.value);
+        }
+
+        return high - low;
+    }
+
+    private meanSpeed(): number {
+        let path = 0;
+
+        for (let index = 1; index < this.samples.length; index++) {
+            path += Math.abs(this.samples[index].value - this.samples[index - 1].value);
+        }
+
+        const span = (this.samples[this.samples.length - 1].time - this.samples[0].time) / 1000;
+        return span > 0 ? path / span : 0;
+    }
+
+    private countCrossing(delta: number, timestamp: number): void {
+        const sign = delta > CROSSING_DEADBAND ? 1 : delta < -CROSSING_DEADBAND ? -1 : 0;
+
         if (sign !== 0 && this.lastSign !== 0 && sign !== this.lastSign) {
-            this.registerFlip(timestamp);
+            this.alternations++;
+            this.crossings.push(timestamp);
         }
 
         if (sign !== 0) {
@@ -65,20 +114,10 @@ export class SixtySevenStream implements Stream<HandState[], SixtySevenObservati
         }
     }
 
-    private registerFlip(timestamp: number): void {
-        const amplitude = this.peakHigh - this.peakLow;
-        this.peakHigh = 0;
-        this.peakLow = 0;
-
-        if (amplitude < MIN_AMPLITUDE) {
-            return;
-        }
-
-        this.alternations++;
-        this.flips.push(timestamp);
-
-        const vigour = Math.min(1, amplitude / (MIN_AMPLITUDE * 6));
-        this.level = Math.min(MAX_LEVEL, this.level + IMPULSE * (0.5 + 0.5 * vigour));
+    private prune(timestamp: number): void {
+        const cutoff = timestamp - WINDOW_MS;
+        this.samples = this.samples.filter((sample) => sample.time >= cutoff);
+        this.crossings = this.crossings.filter((time) => time >= cutoff);
     }
 
     private decay(dt: number): void {
@@ -106,14 +145,17 @@ export class SixtySevenStream implements Stream<HandState[], SixtySevenObservati
     }
 
     private frequency(timestamp: number): number {
-        this.flips = this.flips.filter((time) => timestamp - time <= WINDOW_MS);
-
-        if (this.flips.length < 2) {
+        if (this.crossings.length < 2) {
             return 0;
         }
 
-        const span = (timestamp - this.flips[0]) / 1000;
-        return span > 0 ? (this.flips.length - 1) / span : 0;
+        const span = (timestamp - this.crossings[0]) / 1000;
+        return span > 0 ? (this.crossings.length - 1) / span : 0;
+    }
+
+    private relativeHeight(hands: HandState[]): number | null {
+        const pair = this.orderedPair(hands);
+        return pair ? pair[1].center.y - pair[0].center.y : null;
     }
 
     private orderedPair(hands: HandState[]): [HandState, HandState] | null {
@@ -130,5 +172,15 @@ export class SixtySevenStream implements Stream<HandState[], SixtySevenObservati
         }
 
         return [first, second];
+    }
+
+    private observation(timestamp: number): SixtySevenObservation {
+        return {
+            active: this.level >= MIN_LEVEL,
+            confidence: this.level,
+            level: this.level,
+            frequency: this.frequency(timestamp),
+            alternations: this.alternations,
+        };
     }
 }

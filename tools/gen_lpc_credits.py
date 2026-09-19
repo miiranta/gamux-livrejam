@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-"""Gera CREDITS.md, credits.csv e README.md a partir de credits_raw.json + manifest.json."""
 import csv, json, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -17,7 +15,6 @@ LAYER_PT = {
 
 rows = sorted(creds.items())
 
-# ---------------- credits.csv ----------------
 with open(os.path.join(OUT, "credits.csv"), "w", newline="") as f:
     w = csv.writer(f)
     w.writerow(["filename", "layer", "notes", "authors", "licenses", "urls"])
@@ -26,7 +23,6 @@ with open(os.path.join(OUT, "credits.csv"), "w", newline="") as f:
                     e["notes"], ", ".join(e["authors"]),
                     ", ".join(e["licenses"]), ", ".join(e["urls"])])
 
-# ---------------- CREDITS.md ----------------
 all_authors = []
 for _, e in rows:
     for a in e["authors"]:
@@ -34,7 +30,6 @@ for _, e in rows:
             all_authors.append(a)
 all_authors.sort(key=str.lower)
 
-# licenca resultante: interseccao das licencas de todas as camadas
 inter = set(rows[0][1]["licenses"])
 for _, e in rows[1:]:
     inter &= set(e["licenses"])
@@ -88,7 +83,6 @@ for path, e in rows:
 
 open(os.path.join(OUT, "CREDITS.md"), "w").write("\n".join(L))
 
-# ---------------- README.md ----------------
 def anim_table(setinfo):
     out = ["| animacao | frames por direcao | tamanho do sheet |",
            "|---|---|---|"]
@@ -117,15 +111,11 @@ progressivos do **mesmo** personagem.
 
 Licenca: **CC-BY-SA 3.0** (veja [CREDITS.md](CREDITS.md) — creditar e obrigatorio).
 
-## Formato
-
 - Corpo `{man['body_type']}`, frame de **{man['frame_size']}x{man['frame_size']}** px.
 - Cada PNG e um sheet de uma animacao: colunas = frames, linhas = direcao.
 - Ordem das linhas: **{', '.join(man['row_order'])}** (cima, esquerda, baixo, direita).
 - `hurt` (morte/queda) tem uma linha so.
 - `manifest.json` tem colunas/linhas/tamanho de cada animacao, pronto para ler no codigo.
-
-## Niveis de dano
 
 Cada pasta `damage_N/` tem o personagem com as feridas acumuladas ate aquele nivel.
 O nivel 4 em diante inclui **bandagens no torso**, que no LPC existem apenas nas
@@ -133,11 +123,7 @@ animacoes classicas — por isso `run` e `jump` so aparecem nos niveis 0-3.
 
 {TIER_TABLE}
 
-## Animacoes
-
 {ANIM_TABLE}
-
-## Detalhes de montagem
 
 - No gerador, as feridas de **braco** e **costelas** tem `zPos` 15, ou seja ficam
   *debaixo* da roupa e nao apareceriam. Aqui foram subidas para 112 para o ferimento
@@ -148,8 +134,6 @@ animacoes classicas — por isso `run` e `jump` so aparecem nos niveis 0-3.
   "sangrando atraves" da bandagem.
 - `run` e `jump` dos niveis 0-3 sao identicos aos que o gerador produz para o corpo
   base: as feridas usadas nesses niveis existem para essas animacoes.
-
-## Regerar / customizar
 
 O script `tools/build_lpc_character.py` (na raiz do repo) baixa tudo de novo e
 remonta os sheets. Para trocar roupa, cabelo, tipo de corpo ou a escada de niveis,
@@ -169,8 +153,3 @@ Para explorar outras pecas (armaduras, capas, chapeus, proteses, tapa-olho), use
 gerador no navegador e procure o caminho da peca em `sheet_definitions/` do repo do LPC.
 Peças brancas/cinza (capas, por exemplo) precisam ser recoloridas pelo gerador —
 os PNGs crus vem na paleta neutra.
-"""
-open(os.path.join(OUT, "README.md"), "w").write(R)
-print("CREDITS.md, credits.csv e README.md gerados em", OUT)
-print("autores unicos:", len(all_authors))
-print("licenca comum:", sorted(inter))

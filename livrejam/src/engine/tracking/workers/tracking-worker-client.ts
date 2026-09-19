@@ -1,4 +1,4 @@
-import type { FaceHandTrackerOptions, TrackingFrame } from '../tracking';
+import type { FaceHandTrackerOptions, TrackingFrame } from '..';
 import type { WorkerRequest, WorkerResponse } from './protocol';
 
 export interface TrackingWorkerClientOptions {

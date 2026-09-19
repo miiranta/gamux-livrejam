@@ -1,6 +1,4 @@
-/// <reference lib="webworker" />
-
-import { FaceHandTracker } from '../tracking';
+import { FaceHandTracker } from '..';
 import type { WorkerRequest, WorkerResponse } from './protocol';
 
 let tracker: FaceHandTracker | null = null;

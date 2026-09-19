@@ -1,0 +1,66 @@
+export const DUNGEON_DROP = {
+    viewScale: 2.25,
+    background: '#0b0d12',
+    tile: {
+        size: 16,
+        scale: 2,
+        columns: 20,
+        rows: 12,
+        wallThickness: 2,
+        floorThickness: 1,
+    },
+    physics: {
+        gravity: 900,
+        friction: 0.82,
+    },
+    dodger: {
+        box: { width: 24, height: 26 },
+        maxSpeedMin: 120,
+        maxSpeedMax: 300,
+        accelerationX: 900,
+        dragX: 6,
+        jumpSpeed: 330,
+        maxFallSpeed: 900,
+        deathDelay: 0.6,
+    },
+    faller: {
+        box: { width: 16, height: 16 },
+        gravity: 900,
+        maxFallSpeed: 520,
+        spawnMargin: 40,
+        spawnHeight: 24,
+        lateralSpeed: 160,
+        slideDragX: 2.4,
+        settleSeconds: 1.2,
+        despawnBelow: 32,
+    },
+    drop: {
+        baseSpeed: 140,
+        maxSpeed: 500,
+        speedStep: 40,
+        baseInterval: 1.05,
+        minInterval: 0.4,
+        horizontalSpeed: 200,
+        fastFallSpeed: 700,
+    },
+    impact: {
+        fallerHalfWidth: 8,
+        dodgerHalfWidth: 12,
+        nearMissDistance: 12,
+    },
+    ai: {
+        modelUrl: 'models/dodger-policy.json',
+        observationSize: 24,
+        actionCount: 6,
+        predictionInterval: 1 / 60,
+        observeRadius: 260,
+    },
+    score: {
+        survivedPerSecond: 10,
+        dodge: 5,
+        dodgeDistance: 24,
+        nearMiss: 1,
+    },
+};
+
+export type DungeonDropConfig = typeof DUNGEON_DROP;

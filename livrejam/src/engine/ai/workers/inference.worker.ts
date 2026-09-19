@@ -1,0 +1,62 @@
+/// <reference lib="webworker" />
+
+import { parseNetwork } from '../model-format';
+import type { NeuralNetwork } from '../neural-network';
+import type { InferenceRequest, InferenceResponse } from './protocol';
+
+let network: NeuralNetwork | null = null;
+const output = new Float32Array(0);
+
+function respond(message: InferenceResponse, transfer?: Transferable[]): void {
+    self.postMessage(message, transfer ? { transfer } : undefined);
+}
+
+async function handleInit(request: Extract<InferenceRequest, { type: 'init' }>): Promise<void> {
+    const response = await fetch(request.url);
+    if (!response.ok) {
+        throw new Error(`Falha ao carregar o modelo: ${response.status}`);
+    }
+
+    network = parseNetwork(await response.json());
+    respond({
+        type: 'ready',
+        inputSize: network.inputSize,
+        outputSize: network.outputSize,
+    });
+}
+
+function handleObserve(request: Extract<InferenceRequest, { type: 'observe' }>): void {
+    if (!network) {
+        throw new Error('Inferencia recebida antes da inicializacao.');
+    }
+
+    const scores = network.forward(request.observation, output);
+    respond({ type: 'action', id: request.id, action: network.argmax(scores) });
+}
+
+function handleDispose(): void {
+    network = null;
+}
+
+self.onmessage = async (event: MessageEvent<InferenceRequest>) => {
+    const request = event.data;
+
+    try {
+        switch (request.type) {
+            case 'init':
+                await handleInit(request);
+                break;
+            case 'observe':
+                handleObserve(request);
+                break;
+            case 'dispose':
+                handleDispose();
+                break;
+        }
+    } catch (error) {
+        respond({
+            type: 'error',
+            message: error instanceof Error ? error.message : String(error),
+        });
+    }
+};

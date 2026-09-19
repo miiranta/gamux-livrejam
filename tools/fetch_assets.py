@@ -1,38 +1,18 @@
-#!/usr/bin/env python3
-"""Baixa blocos de construcao (cenario) e armas para o jogo.
-
-Fontes:
-  - Kenney (kenney.nl): blocos de construcao 16x16, licenca CC0.
-  - OpenGameArt (opengameart.org): armas em varias licencas (CC0 / CC-BY).
-
-O que entra no jogo: apenas imagens (png/svg/gif/jpg), os arquivos de licenca e
-eventuais .txt/.xml/.json de apoio. Packs vindos de .zip sao extraidos; arquivos
-soltos sao baixados direto.
-
-Para adicionar/atualizar uma fonte, edite as listas BLOCKS e WEAPONS.
-Uso: python3 tools/fetch_assets.py [destino]
-"""
 import json, os, re, sys, urllib.request, urllib.parse, zipfile, io, shutil
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEST = sys.argv[1] if len(sys.argv) > 1 else "livrejam/public/assets"
 UA = {"User-Agent": "livrejam-asset-fetch"}
 
-# Extensoes que valem a pena manter (o resto e demo/mockup/url/atalho)
 KEEP_EXT = {".png", ".svg", ".gif", ".jpg", ".jpeg", ".webp",
             ".txt", ".xml", ".json", ".md", ".tmx", ".tsx"}
-# Nomes que costumam ser ruido (previews, exemplos, atalhos do Windows).
-# Aplicado so ao nome do arquivo, nunca ao caminho: varias pastas uteis se
-# chamam "demo" (ex.: "Weapon demo/") e nao podem ser descartadas.
 SKIP_RE = re.compile(r"(preview|sample|mockup|demo|screenshot|thumb|\.url$|"
                      r"__MACOSX|desktop\.ini)", re.I)
-
 
 def download(url):
     req = urllib.request.Request(url, headers=UA)
     with urllib.request.urlopen(req, timeout=180) as r:
         return r.read()
-
 
 def keep(name):
     base = os.path.basename(name)
@@ -43,15 +23,12 @@ def keep(name):
         return False
     return not SKIP_RE.search(base)
 
-
 def extract(data, out_dir, slug):
-    """Extrai um zip mantendo a estrutura, filtrando ruido."""
     z = zipfile.ZipFile(io.BytesIO(data))
     n = 0
     for info in z.infolist():
         if info.is_dir() or not keep(info.filename):
             continue
-        # remove uma pasta-raiz unica e redundante, se houver
         parts = info.filename.split("/")
         if len(parts) > 1 and parts[0].lower().replace(" ", "-") in (
                 slug, slug.replace("-", "_"), slug.replace("-", "")):
@@ -66,7 +43,6 @@ def extract(data, out_dir, slug):
         n += 1
     return n
 
-
 def save(data, out_dir, name):
     os.makedirs(out_dir, exist_ok=True)
     dst = os.path.join(out_dir, name)
@@ -74,10 +50,6 @@ def save(data, out_dir, name):
         f.write(data)
     return dst
 
-
-# ---------------------------------------------------------------------------
-# Blocos de construcao (cenario) - Kenney, tudo CC0
-# slug -> pagina do pack (a URL do zip e descoberta na propria pagina)
 BLOCKS = [
     "roguelike-rpg-pack",
     "roguelike-caves-dungeons",
@@ -86,11 +58,7 @@ BLOCKS = [
     "tiny-town",
 ]
 
-# ---------------------------------------------------------------------------
-# Armas - OpenGameArt. Cada entrada:
-#   slug, licenca, tipo (zip|files), urls (zip) ou lista de arquivos
 WEAPONS = [
-    # --- CC0 (sem obrigacao de credito) ---
     dict(slug="pixel-weapons", page="pixel-weapons", lic="CC0",
          zip="https://opengameart.org/sites/default/files/PixelWeapons_1.zip"),
     dict(slug="cc0-ranged-icons", page="cc0-ranged-icons", lic="CC0",
@@ -108,7 +76,6 @@ WEAPONS = [
     dict(slug="dark-fantasy-items", page="dark-fantasy-item-sprites", lic="CC0",
          files=["https://opengameart.org/sites/default/files/00_items.png",
                 "https://opengameart.org/sites/default/files/00_items_0.png"]),
-    # --- CC-BY (credito obrigatorio) ---
     dict(slug="lpc-more-weapons", page="lpc-more-weapons", lic="CC-BY 4.0",
          zip="https://opengameart.org/sites/default/files/lpc-more-weapons_1.zip"),
     dict(slug="lpc-short-sword", page="lpc-short-sword",
@@ -123,14 +90,12 @@ WEAPONS = [
          files=["https://opengameart.org/sites/default/files/all_27.png"]),
 ]
 
-
 def kenney_zip_url(slug):
     html = download(f"https://kenney.nl/assets/{slug}").decode("utf-8", "replace")
     m = re.search(r"href='(https://kenney\.nl/media/pages/assets/[^']*\.zip)'", html)
     if not m:
         raise RuntimeError(f"zip nao encontrado para {slug}")
     return m.group(1)
-
 
 def main():
     out_blocks = os.path.join(DEST, "tiles")
@@ -173,7 +138,6 @@ def main():
     with open(os.path.join(HERE, "assets_sources.json"), "w") as f:
         json.dump(meta, f, indent=2)
     print(f"\n== metadados -> tools/assets_sources.json")
-
 
 if __name__ == "__main__":
     main()

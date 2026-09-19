@@ -1,4 +1,3 @@
-/** Carrega imagens de uma lista de caminhos, em paralelo. */
 export type ImageMap<T extends string> = Record<T, HTMLImageElement>;
 
 export function loadImages<T extends string>(paths: Record<T, string>): Promise<ImageMap<T>> {
@@ -17,10 +16,6 @@ export function loadImages<T extends string>(paths: Record<T, string>): Promise<
     ).then((pairs) => Object.fromEntries(pairs) as ImageMap<T>);
 }
 
-/**
- * Desenha um frame de um sheet, evitando suavizacao para manter o pixel art nitido.
- * `column` e `row` sao indices de tile; `frameSize` e o lado do frame no sheet.
- */
 export function drawSprite(
     ctx: CanvasRenderingContext2D,
     sheet: HTMLImageElement,

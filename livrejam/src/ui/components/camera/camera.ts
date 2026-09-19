@@ -16,7 +16,7 @@ import {
     type Point2D,
     type TrackingFrame,
 } from '../../../engine/tracking';
-import { TrackingWorkerClient } from '../../../engine/workers';
+import { TrackingWorkerClient } from '../../../engine/tracking/workers';
 
 type CameraStatus = 'idle' | 'starting' | 'running' | 'error';
 

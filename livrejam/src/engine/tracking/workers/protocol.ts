@@ -1,4 +1,4 @@
-import type { FaceHandTrackerOptions, TrackingFrame } from '../tracking';
+import type { FaceHandTrackerOptions, TrackingFrame } from '..';
 
 export interface WorkerInitRequest {
     type: 'init';

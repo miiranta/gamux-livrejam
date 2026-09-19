@@ -1,7 +1,3 @@
-/**
- * Caixa alinhada aos eixos (AABB).
- * `x`/`y` são o canto superior esquerdo, como em coordenadas de tela.
- */
 export interface Aabb {
     x: number;
     y: number;
@@ -9,12 +5,20 @@ export interface Aabb {
     height: number;
 }
 
-/** Verdadeiro quando as duas caixas se sobrepoem (encostar não conta). */
+export interface SolidBox extends Aabb {
+    layer: number;
+}
+
+export function solidBox(box: Aabb, layer = 0): SolidBox {
+    return { x: box.x, y: box.y, width: box.width, height: box.height, layer };
+}
+
 export function overlaps(a: Aabb, b: Aabb): boolean {
     return (
-        a.x < b.x + b.width &&
-        a.x + a.width > b.x &&
-        a.y < b.y + b.height &&
-        a.y + a.height > b.y
+        a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y
     );
+}
+
+export function boxCenter(box: Aabb): { x: number; y: number } {
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }

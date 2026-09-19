@@ -2,32 +2,33 @@
     display: block;
 }
 
-.game {
+.game-canvas {
     position: relative;
     display: grid;
     place-items: center;
 }
 
-.game__canvas {
+.game-canvas__surface {
     display: block;
     max-width: 100%;
-    border-radius: 0.5rem;
-    /* pixel art: mantem as bordas duras ao escalar */
-    image-rendering: pixelated;
     background: #0b0d12;
+    border-radius: 0.5rem;
     box-shadow: 0 0 0 1px rgb(255 255 255 / 8%);
+    image-rendering: pixelated;
 }
 
-.game__hud {
+.game-canvas__hud {
     position: absolute;
     top: 0.5rem;
     left: 0.5rem;
     display: flex;
+    flex-wrap: wrap;
     gap: 0.35rem;
+    max-width: calc(100% - 1rem);
     pointer-events: none;
 }
 
-.game__chip {
+.game-canvas__chip {
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
@@ -42,25 +43,53 @@
     b {
         color: #fff;
     }
+
+    &--error {
+        color: #ff9c9c;
+        border-color: rgb(255 156 156 / 45%);
+    }
 }
 
-.game__dot {
+.game-canvas__dot {
     width: 6px;
     height: 6px;
     background: #7dffb0;
     border-radius: 50%;
 
-    &--air {
+    &--warn {
         background: #ffd25a;
+    }
+
+    &--danger {
+        background: #ff8a8a;
     }
 }
 
-.game__chip--debug {
-    color: #7dc8ff;
-    border-color: rgb(125 200 255 / 45%);
+.game-canvas__controls {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    display: flex;
+    gap: 0.35rem;
 }
 
-.game__hint {
+.game-canvas__button {
+    padding: 0.25rem 0.6rem;
+    color: #cdd6e6;
+    font: inherit;
+    font-size: 0.7rem;
+    background: rgb(10 13 20 / 85%);
+    border: 1px solid rgb(255 255 255 / 14%);
+    border-radius: 999px;
+    cursor: pointer;
+
+    &:hover {
+        color: #fff;
+        border-color: rgb(125 200 255 / 55%);
+    }
+}
+
+.game-canvas__hint {
     position: absolute;
     bottom: 0.5rem;
     left: 50%;
@@ -74,21 +103,22 @@
     pointer-events: none;
 }
 
-.game__debug {
+.game-canvas__debug {
     position: absolute;
     right: 0.5rem;
     bottom: 0.5rem;
+    max-width: 22rem;
     margin: 0;
-    padding: 0.2rem 0.5rem;
-    color: #7dc8ff;
+    padding: 0.3rem 0.5rem;
+    color: #ff9c9c;
     font-family: ui-monospace, monospace;
     font-size: 0.65rem;
-    background: rgb(10 13 20 / 85%);
+    background: rgb(10 13 20 / 88%);
     border-radius: 0.3rem;
     pointer-events: none;
 }
 
-.game__veil {
+.game-canvas__veil {
     display: grid;
     justify-items: center;
     gap: 0.75rem;
@@ -100,16 +130,16 @@
     }
 }
 
-.game__spinner {
+.game-canvas__spinner {
     width: 22px;
     height: 22px;
     border: 2px solid rgb(255 255 255 / 18%);
     border-top-color: #7dc8ff;
     border-radius: 50%;
-    animation: game-spin 0.8s linear infinite;
+    animation: game-canvas-spin 0.8s linear infinite;
 }
 
-@keyframes game-spin {
+@keyframes game-canvas-spin {
     to {
         transform: rotate(1turn);
     }
