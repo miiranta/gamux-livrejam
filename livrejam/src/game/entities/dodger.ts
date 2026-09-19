@@ -9,6 +9,11 @@ export interface DodgerOptions {
     facing?: 'left' | 'right';
 }
 
+export interface TrailPoint {
+    x: number;
+    y: number;
+}
+
 export class Dodger extends Character {
     jumpQueued = false;
     damage = 0;
@@ -17,6 +22,8 @@ export class Dodger extends Character {
     invulnerable = 0;
     dashTimer = 0;
     dashCooldown = 0;
+    dashGlow = 0;
+    readonly dashTrail: TrailPoint[] = [];
     private tierSpeed: number;
 
     constructor(options: DodgerOptions) {
@@ -31,7 +38,6 @@ export class Dodger extends Character {
             dragX: config.dragX,
             jumpSpeed: config.jumpStart,
             maxFallSpeed: config.maxFallSpeed,
-            friction: FACE_SMASHING.physics.friction,
             facing: options.facing,
         };
 
@@ -84,6 +90,23 @@ export class Dodger extends Character {
         return damageScale(this.level, config.speedStart, config.speedEnd);
     }
 
+    get dashProgress(): number {
+        return clamp(1 - this.dashTimer / FACE_SMASHING.dash.seconds, 0, 1);
+    }
+
+    sampleDashTrail(): void {
+        if (!this.dashing) {
+            return;
+        }
+
+        this.dashTrail.push({ x: this.feet.x, y: this.feet.y });
+        const cap = FACE_SMASHING.dash.ghostCount + 1;
+
+        while (this.dashTrail.length > cap) {
+            this.dashTrail.shift();
+        }
+    }
+
     override move(axis: number, dt: number): void {
         if (this.dashing) {
             if (axis !== 0) {
@@ -92,7 +115,16 @@ export class Dodger extends Character {
             return;
         }
 
+        this.applyGroundFriction();
         super.move(axis, dt);
+    }
+
+    applyGroundFriction(): void {
+        if (!this.physics.body.grounded) {
+            return;
+        }
+
+        this.physics.body.velocity.x *= FACE_SMASHING.physics.friction;
     }
 
     takeDamage(amount: number): number {
@@ -133,6 +165,7 @@ export class Dodger extends Character {
         this.invulnerable = Math.max(this.invulnerable - dt, 0);
         this.dashTimer = Math.max(this.dashTimer - dt, 0);
         this.dashCooldown = Math.max(this.dashCooldown - dt, 0);
+        this.dashGlow = Math.max(this.dashGlow - dt, 0);
 
         if (wasDashing && !this.dashing) {
             this.physics.body.maxSpeed.x = this.tierSpeed;
@@ -153,6 +186,8 @@ export class Dodger extends Character {
         body.velocity.x = towards * this.dashSpeed;
         this.dashTimer = config.seconds;
         this.dashCooldown = config.cooldownSeconds;
+        this.dashGlow = config.seconds + config.trailAfter;
+        this.dashTrail.length = 0;
         return true;
     }
 
@@ -181,7 +216,6 @@ export class Dodger extends Character {
             this.setAnimation('run');
             return;
         }
-
         if (!this.physics.body.grounded) {
             this.setAnimation('jump');
             return;

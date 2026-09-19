@@ -35,7 +35,8 @@ MUTED = (138, 150, 168)
 
 SERIES = (
     ("champion_damage", "melhor candidato (media)", (125, 200, 255), 3),
-    ("champion_worst_damage", "melhor candidato (pior rodada)", (255, 138, 138), 2),
+    ("held_out_damage", "avaliacao limpa (semente nova)", (150, 255, 170), 2),
+    ("champion_worst_damage", "pior ambiente do candidato", (255, 138, 138), 2),
     ("mean_damage", "media da populacao", (255, 210, 90), 2),
 )
 
@@ -90,10 +91,9 @@ def _series_points(history, key, x_of, y0, y1, y_max):
 
 
 def render_graph(history, path, meta=None):
-    """Desenha o historico em um PNG. Nunca levanta excecao para o treino parar."""
     try:
         _render(history, path, meta)
-    except Exception as error:  # pragma: no cover - o treino nao pode morrer por um grafico
+    except Exception as error:
         print(f"  (grafo falhou: {error})", flush=True)
 
 
@@ -161,17 +161,34 @@ def _render(history, path, meta):
     legend_x = x0 + 470
     for index, (key, label, color, _) in enumerate(SERIES):
         value = latest.get(key)
-        y = 16 + index * 24
+        y = 16 + index * 22
         draw.line((legend_x, y + 8, legend_x + 26, y + 8), fill=color, width=3)
         shown = f"{value:,.0f}" if value is not None else "sem dado"
         draw.text((legend_x + 34, y), f"{label}: {shown}", fill=TEXT, font=_font(15))
 
-    draw.text(
-        (x0, y1 + 32),
-        f"geracao {latest['generation']} de {meta.get('generations', '?') if meta else '?'}",
-        fill=MUTED,
-        font=_font(15),
-    )
+    cap = latest.get("drop_cap")
+    max_cap = meta.get("max_drop") if meta else None
+    if cap is not None and max_cap:
+        draw.text(
+            (x0, y1 + 32),
+            f"geracao {latest['generation']} de {meta.get('generations', '?')}",
+            fill=MUTED,
+            font=_font(15),
+        )
+        draw.text(
+            (x0 + 190, y1 + 32),
+            f"teto de dificuldade {cap:,.0f} / {max_cap:,.0f} px/s",
+            fill=MUTED,
+            font=_font(15),
+        )
+    else:
+        draw.text(
+            (x0, y1 + 32),
+            f"geracao {latest['generation']} de {meta.get('generations', '?') if meta else '?'}",
+            fill=MUTED,
+            font=_font(15),
+        )
+
     draw.text((x1, y1 + 32), "geracao", fill=MUTED, font=_font(15), anchor="ra")
 
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)

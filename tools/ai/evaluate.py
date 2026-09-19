@@ -19,6 +19,7 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=1234)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--skip-baselines", action="store_true")
+    parser.add_argument("--seeds", type=int, default=5)
     return parser.parse_args()
 
 
@@ -72,6 +73,16 @@ def main():
         "trained": trained,
     }
 
+    if args.seeds > 1:
+        runs = multi_seed(args)
+        report["seeds_detail"] = [run["mean_damage"] for run in runs]
+        report["seed_summary"] = summarise(runs)
+        print(
+            f"{args.seeds} sementes: media {report['seed_summary']['mean']:.0f} "
+            f"+- {report['seed_summary']['stdev']:.0f} "
+            f"(min {report['seed_summary']['min']:.0f}, max {report['seed_summary']['max']:.0f})"
+        )
+
     if not args.skip_baselines:
         generator = torch.Generator(device="cpu").manual_seed(args.seed)
         report["random"] = run(
@@ -95,6 +106,40 @@ def main():
     with open(out, "w", encoding="utf-8") as handle:
         json.dump(report, handle, indent=2)
     print(f"saved {out}")
+
+
+def summarise(runs):
+    import statistics
+
+    damages = [run["mean_damage"] for run in runs]
+    return {
+        "seeds": len(runs),
+        "mean": statistics.fmean(damages),
+        "min": min(damages),
+        "max": max(damages),
+        "stdev": statistics.pstdev(damages) if len(damages) > 1 else 0.0,
+    }
+
+
+def multi_seed(args):
+    device = torch.device(args.device)
+    policy, sizes = load_policy(args.model, device=args.device)
+    stacked = stack_policies([policy])
+
+    runs = []
+    for index in range(args.seeds):
+        run_args = argparse.Namespace(**vars(args))
+        run_args.seed = args.seed + index * 7919
+        runs.append(
+            run(
+                lambda observation: torch.argmax(
+                    batched_forward(observation, stacked, sizes, 1, args.envs), dim=1
+                ),
+                run_args,
+            )
+        )
+
+    return runs
 
 
 if __name__ == "__main__":

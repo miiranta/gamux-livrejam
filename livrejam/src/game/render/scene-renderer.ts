@@ -1,6 +1,7 @@
 import { CanvasRenderer, drawSheetSprite } from '../../engine/render';
 import type { Camera } from '../../engine/render';
 import { clampFrame } from '../../engine/entities';
+import { clamp } from '../../engine/math';
 import type { CharacterAnimationKey, CharacterTierSprites, DungeonSprites } from '../assets';
 import { CHARACTER_CLIPS, FALLBACK_ANIMATION } from '../assets';
 import type { Dodger, Item } from '../entities';
@@ -131,7 +132,7 @@ export class SceneRenderer {
         const feet = dodger.feet;
         const row = dodger.spriteRow(CHARACTER_CLIPS);
 
-        if (dodger.dashing) {
+        if (dodger.dashTrail.length > 0) {
             this.renderDashTrail(dodger, sheet, frame, row);
         }
 
@@ -157,31 +158,29 @@ export class SceneRenderer {
     ): void {
         const config = FACE_SMASHING.dash;
         const ctx = this.renderer.context;
-        const feet = dodger.feet;
-        const direction = -Math.sign(dodger.physics.body.velocity.x) || -dodger.facingDirection || -1;
-        const elapsed = config.seconds - dodger.dashTimer;
-        const speed = dodger.dashSpeed;
+        const points = dodger.dashTrail;
+        const strength = clamp(dodger.dashGlow / (config.seconds + config.trailAfter), 0, 1);
 
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
 
-        for (let index = 0; index < config.ghostCount; index++) {
-            const offset = (config.ghostCount - index) * speed * config.ghostSpacing;
-            const along = Math.min(offset, elapsed * speed);
+        for (let index = 0; index < points.length - 1; index++) {
+            const distance = points.length - 1 - index;
+            const age = 1 - distance / Math.max(points.length - 1, 1);
+            const fade = age * config.trailAlpha * strength;
+            const stretch = 1 + (1 - age) * 0.22;
+            const point = points[index];
 
-            if (along <= 0) {
+            if (fade <= 0.01) {
                 continue;
             }
 
-            const fade = (1 - index / (config.ghostCount + 1)) * config.trailAlpha;
-            const stretch = 1 + index * 0.18;
-
-            ctx.globalAlpha = Math.max(fade, 0);
+            ctx.globalAlpha = fade;
             drawSheetSprite(ctx, sheet, this.camera, {
                 column: frame,
                 row,
-                worldX: feet.x + direction * along - (CHARACTER_FRAME_SIZE * stretch) / 2,
-                worldY: feet.y - FOOT_OFFSET,
+                worldX: point.x - (CHARACTER_FRAME_SIZE * stretch) / 2,
+                worldY: point.y - FOOT_OFFSET,
                 width: CHARACTER_FRAME_SIZE * stretch,
                 height: CHARACTER_FRAME_SIZE,
             });

@@ -25,7 +25,7 @@ import torch
 
 import config as cfg
 from dropper import DropperPolicy
-from model import batched_forward, export_json, initial_policy, stack_policies
+from model import batched_forward, export_json, initial_policy, stack_policies, unflatten_policy
 from plot import render_graph
 from sim import FaceSmashingSim
 
@@ -44,6 +44,11 @@ def parse_args():
     parser.add_argument("--out", default="livrejam/public/models/dodger-policy.json")
     parser.add_argument("--graph", default="livrejam/public/models/dodger-policy.graph.png")
     parser.add_argument("--checkpoint-every", type=int, default=10)
+    parser.add_argument("--curriculum", type=int, default=1, choices=(0, 1))
+    parser.add_argument("--curriculum-target", type=float, default=0.18)
+    parser.add_argument("--curriculum-step", type=float, default=40.0)
+    parser.add_argument("--eval-every", type=int, default=10)
+    parser.add_argument("--eval-envs", type=int, default=2048)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     return parser.parse_args()
 
@@ -77,7 +82,7 @@ def to_layers(vector, sizes):
     return expand_candidates(vector[None, :], sizes)[0]
 
 
-def evaluate(theta, perturbations, args):
+def evaluate(theta, perturbations, args, drop_cap=None):
     sizes = cfg.NETWORK_SIZES
     population = perturbations.shape[0]
     total = population * args.envs
@@ -85,6 +90,8 @@ def evaluate(theta, perturbations, args):
 
     stacked = stack_policies(expand_candidates(candidates, sizes))
     sim = FaceSmashingSim(total, device=args.device, seed=args.seed + 1000)
+    if drop_cap is not None:
+        sim.set_drop_cap(drop_cap)
     dropper = DropperPolicy(seed=args.seed + 2000)
     observation = sim.reset()
 
@@ -124,6 +131,28 @@ def evaluate(theta, perturbations, args):
     )
 
 
+def held_out(theta, args, seed):
+    sizes = cfg.NETWORK_SIZES
+    sim = FaceSmashingSim(args.eval_envs, device=args.device, seed=seed)
+    if args.curriculum:
+        sim.set_drop_cap(cfg.DROP_MAX_SPEED)
+    dropper = DropperPolicy(seed=seed + 31337)
+    stacked = stack_policies([unflatten_policy(theta, sizes)])
+    observation = sim.reset()
+
+    for _ in range(args.episode_steps):
+        with torch.no_grad():
+            scores = batched_forward(observation, stacked, sizes, 1, args.eval_envs)
+            observation = sim.step(torch.argmax(scores, dim=1), dropper)
+
+    damage = sim.metrics()["damage_mean"]
+    return {
+        "damage": damage.mean().item(),
+        "p90": damage.quantile(0.9).item(),
+        "best_env": damage.min().item(),
+    }
+
+
 def save(theta, sizes, path, extra):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     payload = export_json(to_layers(theta, sizes), path, sizes)
@@ -158,6 +187,17 @@ def main():
         f"envs={args.envs} total={args.population * args.envs} steps={args.episode_steps}",
         flush=True,
     )
+    if args.curriculum:
+        drop_cap = cfg.DROP_BASE_SPEED
+        print(
+            f"curriculo ligado: rampa comeca com teto {drop_cap:.0f} px/s e sobe "
+            f"{args.curriculum_step:.0f} quando o dano do campeao cair abaixo de "
+            f"{args.curriculum_target * 100:.0f}% do teto",
+            flush=True,
+        )
+    else:
+        drop_cap = cfg.DROP_MAX_SPEED
+
     started = time.time()
 
     for generation in range(1, args.generations + 1):
@@ -165,7 +205,7 @@ def main():
             (args.population, parameters), device=device, dtype=torch.float32
         )
         fitness, mean_damage, worst_damage, best_damage, hits, dodges, champion_damage, champion_worst = (
-            evaluate(theta, perturbations, args)
+            evaluate(theta, perturbations, args, drop_cap)
         )
         weights = rank_weights(fitness)
 
@@ -176,6 +216,19 @@ def main():
         if top > best_fitness:
             best_fitness = top
             best_theta = theta.clone()
+
+        promoted = False
+        if (
+            args.curriculum
+            and drop_cap < cfg.DROP_MAX_SPEED
+            and champion_damage < args.curriculum_target * cfg.DAMAGE_CEILING
+        ):
+            drop_cap = min(drop_cap + args.curriculum_step, cfg.DROP_MAX_SPEED)
+            promoted = True
+
+        probe = None
+        if args.eval_every > 0 and generation % args.eval_every == 0:
+            probe = held_out(best_theta, args, args.seed + 90000 + generation)
 
         entry = {
             "generation": generation,
@@ -188,18 +241,30 @@ def main():
             "dodges": dodges,
             "champion_damage": champion_damage,
             "champion_worst_damage": champion_worst,
+            "drop_cap": drop_cap,
+            "held_out_damage": probe["damage"] if probe else None,
+            "held_out_p90": probe["p90"] if probe else None,
             "elapsed": time.time() - started,
         }
         history.append(entry)
-        render_graph(history, args.graph)
+        render_graph(history, args.graph, {
+            "generations": args.generations,
+            "drop_cap": drop_cap,
+            "max_drop": cfg.DROP_MAX_SPEED,
+        })
 
         if generation % 5 == 0 or generation == 1:
+            held = f" held {probe['damage']:7.1f}" if probe else ""
             print(
                 f"gen {generation:4d} | fit {entry['mean_fitness']:7.4f} top {top:7.4f} "
-                f"| dmg {mean_damage:7.1f} best {champion_damage:7.1f} worst {worst_damage:7.1f} "
-                f"| hits {hits:5.1f} dodges {dodges:5.1f} | {entry['elapsed']:7.1f}s",
+                f"| dmg {mean_damage:7.1f} best {champion_damage:7.1f} worst {worst_damage:7.1f}"
+                f"{held} | cap {drop_cap:5.0f} | hits {hits:5.1f} dodges {dodges:5.1f} "
+                f"| {entry['elapsed']:7.1f}s",
                 flush=True,
             )
+
+        if promoted:
+            print(f"  curriculo: teto agora {drop_cap:.0f} px/s", flush=True)
 
         if args.checkpoint_every > 0 and generation % args.checkpoint_every == 0:
             save(

@@ -13,6 +13,7 @@ que caem). Treinada com Evolution Strategies em PyTorch/CUDA.
 | `model.py` | rede MLP, forward em lote e serializacao JSON |
 | `train.py` | treino ES |
 | `plot.py` | grafico do treino em PNG, reescrito a cada geracao |
+| `curriculum` | teto de dificuldade que sobe conforme o campeao melhora |
 | `evaluate.py` | avaliacao do modelo exportado contra baselines |
 | `test_observation.py` | garante que a observacao do Python bate com a do TypeScript |
 | `fixture-harness.ts` | gera a cena de referencia (`fixtures/observation_fixture.json`) |
@@ -62,14 +63,39 @@ dependencia dos scripts de asset.
 | serie | o que e |
 | --- | --- |
 | melhor candidato (media) | dano medio do candidato de melhor fitness; e ele que vira checkpoint |
-| melhor candidato (pior rodada) | pior ambiente desse mesmo candidato, o caso que o `--worst-weight` pune |
+| avaliacao limpa (semente nova) | o mesmo candidato medido em sementes que o treino nunca viu |
+| pior ambiente do candidato | o pior ambiente dele, o caso que o `--worst-weight` pune |
 | media da populacao | media de todos os candidatos, para ver a populacao como um todo |
+
+A **avaliacao limpa** e o unico numero honesto de generalizacao do log: o fitness e
+o que esta sendo otimizado, entao ele nao consegue dizer se a politica decorou
+aquele conjunto de partidas. Se ela subir e a curva limpa ficar parada, esta
+havendo overfitting; se as duas descerem juntas, o aprendizado e real.
 
 Para redesenhar a partir de um treino ja salvo:
 
 ```bash
 .venv/bin/python tools/ai/plot.py --train-json livrejam/public/models/dodger-policy.train.json
 ```
+
+### Curriculo de dificuldade
+
+O oponente normal comeca lento (140 px/s) e acelera ate 500 px/s em ~27 s, o que
+significa que a maior parte da rodada acontece com 5 itens no ar ao mesmo tempo
+(cadencia de 0.4 s). Comecar do zero nesse regime da pouquissimo sinal: a politica
+leva dano de qualquer jeito e nao consegue associar acao e consequencia.
+
+Com `--curriculum 1` a rampa ganha um **teto** que sobe sozinho:
+
+- comeca em `drop.baseSpeed` (140 px/s);
+- quando o dano do campeao cai abaixo de `--curriculum-target` do teto de dano
+  (padrao 18%), o teto sobe `--curriculum-step` px/s;
+- o teto nunca passa de `drop.maxSpeed`.
+
+Como a cadencia e proporcional a velocidade da queda, limitar a velocidade limita
+tambem quantos itens ficam no ar. O teto atual aparece no log (`cap`) e no rodape
+do grafico, entao da para ver a dificuldade subindo junto com o aprendizado. Use
+`--curriculum 0` para treinar direto no regime final.
 
 ### Desempenho
 
@@ -206,20 +232,26 @@ disciplina e de leitura cruzada dos dois arquivos.
 
 ### O atrito no chao e mais forte do que parece
 
-`physics.friction` = 0.82 nao e decoracao: `World.step` multiplica a velocidade
-horizontal por ele **todo quadro em que o desviador esta no chao**. Como a
-aceleracao continua empurrando, o equilibrio nao e a velocidade maxima de
-projeto, e sim:
+`physics.friction` = 0.82 nao e decoracao: o atrito e aplicado **antes** da
+aceleracao, todo quadro em que o desviador esta no chao. Com o atrito na frente,
+a aceleracao continua empurrando e o limite de projeto e alcancavel:
 
 ```
-v_equilibrio = aceleracao * dt * f / (1 - f) = 1500 * (1/60) * 0.82 / 0.18 = 113,9 px/s
+v_terminal = maxSpeed = 560 px/s (nivel 0) e 150 px/s (nivel 7)
 ```
 
-Ou seja: parado no chao o desviador anda a ~114 px/s, nao aos 560 px/s do nivel 0.
-A simulacao nao aplicava esse fator, entao o treino via um personagem **5x mais
-rapido** do que o do jogo — a politica aprendia desvios que na pratica nao
-existiam. O teste `test_dash_parity` (pico de 113,889 px/s nos dois lados) e o que
-trava isso agora.
+O que **nao** funciona e aplicar o atrito depois de limitar a velocidade: nesse
+caso o teto real vira `maxSpeed * f` (459 px/s), a velocidade maxima do nivel deixa
+de ser alcancavel e a observacao passa a mentir sobre a propria capacidade. A
+aceleracao de 7376 foi escolhida para vencer o atrito e ainda chegar aos 560.
+
+O avanco (dash) ignora o atrito e o limite de velocidade: e um pico de 0,16 s que
+chega a 1000 px/s no nivel 0, com 1 s de recarga. Ele exige o chao e e recusado
+durante o tremor, entao nao e uma saida livre de qualquer situacao.
+
+O tremor (0.28 s sem controle) continua valendo e agora e **visivel** na
+observacao (indice 8), senao a politica nao tinha como saber quando perdeu o
+controle nem quando ele volta.
 
 Os numeros em si sao travados por `test_config_parity.py`, que le os dois
 arquivos e compara os 40 campos que precisam bater. Ele tambem recusa uma
@@ -319,7 +351,7 @@ Ao encostar num item o desviador recebe:
 invencibilidade tem que decair todo passo — se ela nao decair (bug ja visto), o
 desviador fica imune para sempre depois do primeiro toque.
 
-## Observacao (76 valores)
+## Observacao (77 valores)
 
 O desviador ve **todos** os itens da tela, sempre. A arena tem 512 px de largura
 (`playLeft` 64 a `playRight` 576) e o teto do placar de ameaca chega a ~569 px
@@ -336,24 +368,29 @@ inteira com folga e o filtro nunca descarta um item real.
 | 5 | dano acumulado / teto dos 8 niveis |
 | 6 | nivel atual / 7 |
 | 7 | avanco pronto (1 = sem recarga, 0 = acabou de usar) |
-| 8 | distancia livre ate a parede a esquerda / `sensorReach` |
-| 9 | distancia livre ate a parede a direita / `sensorReach` |
-| 10 | distancia livre ate o teto / `sensorReach` |
-| 11 | distancia livre ate o chao / `sensorReach` |
-| 12 + 8k | item k presente |
-| 13 + 8k | delta X ate o item / raio de observacao |
-| 14 + 8k | delta Y ate o item / raio de observacao |
-| 15 + 8k | velocidade X do item |
-| 16 + 8k | velocidade Y do item |
-| 17 + 8k | item ja pousou |
-| 18 + 8k | maior lado do item / lado do tile |
-| 19 + 8k | dano base do item / maior dano do catalogo |
+| 8 | tremor restante / `reaction.stunSeconds` (1 = sem controle) |
+| 9 | distancia livre ate a parede a esquerda / `sensorReach` |
+| 10 | distancia livre ate a parede a direita / `sensorReach` |
+| 11 | distancia livre ate o teto / `sensorReach` |
+| 12 | distancia livre ate o chao / `sensorReach` |
+| 13 + 8k | item k presente |
+| 14 + 8k | delta X ate o item / raio de observacao |
+| 15 + 8k | delta Y ate o item / raio de observacao |
+| 16 + 8k | velocidade X do item |
+| 17 + 8k | velocidade Y do item |
+| 18 + 8k | item ja pousou |
+| 19 + 8k | maior lado do item / lado do tile |
+| 20 + 8k | dano base do item / maior dano do catalogo |
 
 O indice 7 e o que faz a arrancada ser aprendivel. Sem ele a politica nao sabe se
 pode usar o avanco, tenta em todo passo e desperdica a recarga de 1 s; com ele o
 valor cai linearmente de 1 a 0 e a rede consegue escolher o momento.
 
-Os indices 8 a 11 sao os **sensores de colisao**. Eles sao calculados a partir da
+O indice 8 faz o mesmo para o tremor. O tremor e uma restricao real (0,28 s sem
+controle horizontal), entao a politica precisa saber que perdeu o controle para
+nao gastar decisoes tentando andar, e precisa ver o instante em que ele volta.
+
+Os indices 9 a 12 sao os **sensores de colisao**. Eles sao calculados a partir da
 lista de bloqueadores da fase, nao de coordenadas escritas no codigo: a distancia
 ate a parede mais proxima e medida com a mesma caixa que colide (corpo inteiro, nao
 o centro) e limitada a `sensorReach` = 192 px. Se o mapa mudar de forma, de buracos

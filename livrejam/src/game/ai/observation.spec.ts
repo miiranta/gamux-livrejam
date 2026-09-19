@@ -6,9 +6,10 @@ import { Dodger, Item } from '../entities';
 import { createObservationBuffer, writeObservation } from './observation';
 
 const RADIUS = FACE_SMASHING.ai.observeRadius;
-const GLOBAL_FEATURES = 12;
+const GLOBAL_FEATURES = 13;
 const ITEM_FEATURES = 8;
 const SENSORS = ['wallLeft', 'wallRight', 'ceiling', 'ground'] as const;
+const SENSOR_OFFSET = 9;
 const REACH = FACE_SMASHING.ai.sensorReach;
 const SLOTS = (FACE_SMASHING.ai.observationSize - GLOBAL_FEATURES) / ITEM_FEATURES;
 const ARENA = FACE_SMASHING.tile.columns - FACE_SMASHING.tile.wallThickness * 2;
@@ -72,7 +73,7 @@ interface SensorReading {
 function sensorMetres(buffer: Float32Array): SensorReading {
     const [wallLeft, wallRight, ceiling, ground] = SENSORS.map((name, index) => {
         void name;
-        return Math.round(buffer[8 + index] * REACH);
+        return Math.round(buffer[SENSOR_OFFSET + index] * REACH);
     });
 
     return { wallLeft, wallRight, ceiling, ground };
@@ -115,6 +116,26 @@ describe('writeObservation', () => {
         expect(buffer[5]).toBeCloseTo((FACE_SMASHING.damage.perLevel * 2) / 4000, 6);
         expect(buffer[6]).toBeCloseTo(2 / 7, 6);
         expect(buffer[7]).toBeCloseTo(1, 6);
+        expect(buffer[8]).toBeCloseTo(0, 6);
+    });
+
+    it('reports the stun as a fraction of the reaction window', () => {
+        const level = createDungeonLevel();
+        const dodger = buildDodger(level, 320);
+        const buffer = createObservationBuffer();
+        const window = FACE_SMASHING.reaction.stunSeconds;
+
+        dodger.stun = window;
+        writeObservation(buffer, { level, dodger, items: [] });
+        expect(buffer[8]).toBeCloseTo(1, 6);
+
+        dodger.stun = window / 2;
+        writeObservation(buffer, { level, dodger, items: [] });
+        expect(buffer[8]).toBeCloseTo(0.5, 6);
+
+        dodger.stun = 0;
+        writeObservation(buffer, { level, dodger, items: [] });
+        expect(buffer[8]).toBeCloseTo(0, 6);
     });
 
     it('reports the dash cooldown as readiness', () => {

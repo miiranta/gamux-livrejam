@@ -23,6 +23,7 @@ interface Fixture {
         damage: number;
         grounded: boolean;
         dashCooldown?: number;
+        stun?: number;
     };
     items: FixtureItem[];
     observation: number[];
@@ -42,6 +43,7 @@ describe('observation contract', () => {
         dodger.damage = data.dodger.damage;
         dodger.applyTier();
         dodger.dashCooldown = data.dodger.dashCooldown ?? 0;
+        dodger.stun = data.dodger.stun ?? 0;
         dodger.physics.body.velocity.x = data.dodger.velocityX;
         dodger.physics.body.velocity.y = 0;
         dodger.physics.body.grounded = data.dodger.grounded;
@@ -72,7 +74,7 @@ describe('observation contract', () => {
 
     it('covers every observation slot with items in the fixture', () => {
         const data = fixture as Fixture;
-        const globals = 12;
+        const globals = 13;
         const slots = (FACE_SMASHING.ai.observationSize - globals) / 8;
         const present = Array.from({ length: slots }, (_, index) =>
             data.observation[globals + index * 8],

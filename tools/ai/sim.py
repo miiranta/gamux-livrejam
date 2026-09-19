@@ -44,6 +44,7 @@ class FaceSmashingSim:
         self.slots = cfg.MAX_ITEM_SLOTS
         self.generator = torch.Generator(device="cpu").manual_seed(seed)
         self.item_generator = None
+        self.drop_cap = cfg.DROP_MAX_SPEED
 
         boxes = torch.tensor(cfg.blockers(), dtype=self.dtype, device=self.device)
         self.blocker_x = boxes[:, 0]
@@ -214,11 +215,6 @@ class FaceSmashingSim:
         )
 
     def sense_collisions(self):
-        """Distancia livre ate o bloqueador mais proximo em cada direcao.
-
-        Le a mesma lista de bloqueadores que a colisao usa, entao continua
-        correta se o mapa mudar: nenhuma coordenada de parede esta escrita aqui.
-        """
         left = self.pos_x
         right = self.pos_x + cfg.DODGER_BOX[0]
         top = self.pos_y
@@ -283,10 +279,11 @@ class FaceSmashingSim:
         observation[:, 7] = 1.0 - torch.clamp(
             self.dash_cooldown / cfg.DASH_COOLDOWN, min=0.0, max=1.0
         )
+        observation[:, 8] = torch.clamp(self.stun / cfg.REACTION_STUN, min=0.0, max=1.0)
 
         sensors = self.sense_collisions()
         for index, name in enumerate(SENSOR_ORDER):
-            observation[:, 8 + index] = torch.clamp(sensors[name], min=0.0, max=cfg.SENSOR_REACH) / cfg.SENSOR_REACH
+            observation[:, 9 + index] = torch.clamp(sensors[name], min=0.0, max=cfg.SENSOR_REACH) / cfg.SENSOR_REACH
 
         half_width = self.item_half_width[self.obstacle_item]
         half_height = self.item_half_height[self.obstacle_item]
@@ -386,6 +383,11 @@ class FaceSmashingSim:
         self.dash_cooldown = torch.clamp(self.dash_cooldown - cfg.DT, min=0.0)
 
         dashing_now = self.dash_timer > 0.0
+        self.vel_x = torch.where(
+            self.grounded & ~dashing_now,
+            self.vel_x * cfg.DODGER_GROUND_FRICTION,
+            self.vel_x,
+        )
         accelerated = torch.clamp(
             self.vel_x + axis * cfg.DODGER_ACCELERATION * cfg.DT, -max_speed, max_speed
         )
@@ -420,17 +422,17 @@ class FaceSmashingSim:
         jump_now = jumping & ~self.jump_latch & was_grounded
         self.vel_y = torch.where(jump_now, -self.current_jump(), self.vel_y)
         self.jump_latch = jumping
-        self.vel_x = torch.where(
-            self.grounded, self.vel_x * cfg.DODGER_GROUND_FRICTION, self.vel_x
-        )
         self.pos_x = torch.clamp(self.pos_x, 0.0, cfg.WIDTH - cfg.DODGER_BOX[0])
+
+    def set_drop_cap(self, cap):
+        self.drop_cap = min(max(cap, cfg.DROP_BASE_SPEED), cfg.DROP_MAX_SPEED)
 
     def step_dropper(self, policy):
         self.drop_ramp = self.drop_ramp + cfg.DT
         ramp = self.drop_ramp >= cfg.DROP_RAMP_SECONDS
         self.drop_speed = torch.where(
             ramp,
-            torch.clamp(self.drop_speed + cfg.DROP_SPEED_STEP, max=cfg.DROP_MAX_SPEED),
+            torch.clamp(self.drop_speed + cfg.DROP_SPEED_STEP, max=self.drop_cap),
             self.drop_speed,
         )
         self.drop_ramp = torch.where(ramp, self.drop_ramp - cfg.DROP_RAMP_SECONDS, self.drop_ramp)

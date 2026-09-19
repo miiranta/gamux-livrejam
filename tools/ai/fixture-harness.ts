@@ -18,6 +18,7 @@ dodger.physics.body.velocity.x = 120;
 dodger.physics.body.velocity.y = 0;
 dodger.physics.body.grounded = false;
 dodger.dashCooldown = FACE_SMASHING.dash.cooldownSeconds * 0.25;
+dodger.stun = FACE_SMASHING.reaction.stunSeconds * 0.5;
 
 const scenario = [
     { index: 0, x: 380, y: 120, vx: 10, vy: 180, spin: 0, roll: 0.25 },
@@ -50,6 +51,7 @@ process.stdout.write(`${JSON.stringify({
         damage: dodger.damage,
         grounded: false,
         dashCooldown: dodger.dashCooldown,
+        stun: dodger.stun,
     },
     items: scenario,
     observation: Array.from(buffer),

@@ -49,6 +49,7 @@ def build_sim(fixture, device="cpu"):
         [cfg.damage_level(dodger["damage"])], dtype=torch.long, device=sim.device
     )
     sim.dash_cooldown = scalar(dodger.get("dashCooldown", 0.0), sim)
+    sim.stun = scalar(dodger.get("stun", 0.0), sim)
 
     measured_speed = sim.current_max_speed().item()
     assert abs(measured_speed - dodger["maxSpeedX"]) < 1e-3, (

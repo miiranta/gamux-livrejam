@@ -66,7 +66,7 @@ export const FACE_SMASHING = {
         maxSpeedEnd: 150,
         jumpStart: 588,
         jumpEnd: 320,
-        accelerationX: 1500,
+        accelerationX: 7376,
         dragX: 6,
         maxFallSpeed: 900,
     },
@@ -76,7 +76,7 @@ export const FACE_SMASHING = {
         seconds: 0.16,
         cooldownSeconds: 1,
         ghostCount: 5,
-        ghostSpacing: 0.013,
+        trailAfter: 0.1,
         trailAlpha: 0.42,
     },
     damage: {
@@ -140,7 +140,7 @@ export const FACE_SMASHING = {
     },
     ai: {
         modelUrl: 'models/dodger-policy.json',
-        observationSize: 76,
+        observationSize: 77,
         actionCount: 8,
         observeRadius: 576,
         sensorReach: 192,

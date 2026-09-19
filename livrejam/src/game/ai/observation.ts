@@ -1,3 +1,4 @@
+import { clamp } from '../../engine/math';
 import type { SolidBox } from '../../engine/physics';
 import type { Dodger, Item } from '../entities';
 import type { DungeonLevel } from '../level';
@@ -46,7 +47,7 @@ export function decodeAction(action: number): ActionIntent {
 }
 
 const OBSERVATION_SIZE = FACE_SMASHING.ai.observationSize;
-const GLOBAL_FEATURES = 12;
+const GLOBAL_FEATURES = 13;
 const ITEM_FEATURES = 8;
 const ITEM_SLOTS = (OBSERVATION_SIZE - GLOBAL_FEATURES) / ITEM_FEATURES;
 const SENSOR_REACH = FACE_SMASHING.ai.sensorReach;
@@ -82,10 +83,11 @@ export function writeObservation(target: Float32Array, context: ObservationConte
     target[5] = dodger.damage / DAMAGE_CEILING;
     target[6] = dodger.level / TIER_LAST;
     target[7] = 1 - dodger.dashCooldownRatio;
+    target[8] = clamp(dodger.stun / config.reaction.stunSeconds, 0, 1);
 
     const sensors = senseCollisions(context.blockers ?? level.colliders, gapBox(dodger));
     for (let index = 0; index < SENSOR_FEATURES.length; index++) {
-        target[8 + index] = Math.min(sensors[SENSOR_FEATURES[index]] / SENSOR_REACH, 1);
+        target[9 + index] = Math.min(sensors[SENSOR_FEATURES[index]] / SENSOR_REACH, 1);
     }
 
     const selected = selectThreats(items, dodgerX, dodgerTop, ITEM_SLOTS);

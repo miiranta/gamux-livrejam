@@ -283,7 +283,7 @@ export class FaceSmashing {
         this.action =
             this.policy.ready && !dodger.stunned
                 ? decodeAction(this.policy.decide(this.observation))
-            : { axis: 0, jump: false, dash: false, facing: 0 };
+                : { axis: 0, jump: false, dash: false, facing: 0 };
 
         dodger.advanceReaction(dt);
         dodger.move(this.action.axis, dt);
@@ -308,6 +308,7 @@ export class FaceSmashing {
 
         this.world.step(dodger.physics, dt);
         dodger.consumeJump();
+        dodger.sampleDashTrail();
         dodger.resolveAnimation();
         dodger.advanceAnimation(dt, DODGER_ANIMATIONS);
     }
