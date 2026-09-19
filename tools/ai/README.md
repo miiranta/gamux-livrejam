@@ -12,6 +12,7 @@ que caem). Treinada com Evolution Strategies em PyTorch/CUDA.
 | `dropper.py` | politica do "jogador" que solta os objetos durante o treino |
 | `model.py` | rede MLP, forward em lote e serializacao JSON |
 | `train.py` | treino ES |
+| `plot.py` | grafico do treino em PNG, reescrito a cada geracao |
 | `evaluate.py` | avaliacao do modelo exportado contra baselines |
 | `test_observation.py` | garante que a observacao do Python bate com a do TypeScript |
 | `fixture-harness.ts` | gera a cena de referencia (`fixtures/observation_fixture.json`) |
@@ -44,10 +45,31 @@ Saidas:
 
 - `livrejam/public/models/dodger-policy.json` — pesos carregados pelo jogo.
 - `livrejam/public/models/dodger-policy.train.json` — historico do treino.
+- `livrejam/public/models/dodger-policy.graph.png` — grafico, reescrito a cada
+  geracao (veja abaixo).
 
 O checkpoint e escrito a cada `--checkpoint-every` geracoes, entao o jogo tem
 sempre um modelo valido para carregar durante o treino. O `--seed` fixa a
-aleatoriedade: troque-o para reproduzir ou variar a rodada.
+alatoriedade: troque-o para reproduzir ou variar a rodada.
+
+### Grafico ao vivo
+
+O treino desenha `dodger-policy.graph.png` **a cada geracao**, entao da para
+acompanhar com a imagem aberta ao lado do terminal (no VS Code, abra o arquivo:
+ele recarrega sozinho quando muda). Sem matplotlib de proposito: o Pillow ja e
+dependencia dos scripts de asset.
+
+| serie | o que e |
+| --- | --- |
+| melhor candidato (media) | dano medio do candidato de melhor fitness; e ele que vira checkpoint |
+| melhor candidato (pior rodada) | pior ambiente desse mesmo candidato, o caso que o `--worst-weight` pune |
+| media da populacao | media de todos os candidatos, para ver a populacao como um todo |
+
+Para redesenhar a partir de um treino ja salvo:
+
+```bash
+.venv/bin/python tools/ai/plot.py --train-json livrejam/public/models/dodger-policy.train.json
+```
 
 ### Desempenho
 
@@ -91,14 +113,16 @@ dano vai enfraquecendo o personagem nivel a nivel.
 A recompensa por candidato e:
 
 ```
-1 - dano_medio/teto - worst_weight * pior_dano/teto + dodge_weight * esquivas/(60*2)
+1 - dano_medio/teto - worst_weight * pior_ambiente/teto + dodge_weight * esquivas/(60*2)
 ```
 
 - `dano_medio`: quanto o candidato levou por rodada, em media.
-- `pior_dano`: a pior rodada daquele candidato. E o termo que evita uma
+- `pior_ambiente`: o pior ambiente do candidato. E o termo que evita uma
   politica que so otimiza a media (ex.: "correr para o canto funciona quase
   sempre"). Aumente `--worst-weight` para forcar mais robustez, ao custo da
-  media.
+  media. Ele e o pior **ambiente**, nao a pior rodada de um ambiente: cada
+  ambiente roda ~1 rodada por geracao, entao a pior rodada de um ambiente
+  coincide com a media dele e o termo nao faria nada.
 - `esquivas`: reforco pequeno e positivo para o candidato nao ficar parado; sem
   ele a politica pode preferir nao se mexer quando o dano esperado for igual.
 

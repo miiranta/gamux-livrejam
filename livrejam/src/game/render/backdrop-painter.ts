@@ -11,9 +11,6 @@ const TORCH_POOL_RATIO = 1.4;
 const CEILING_SHADE_ALPHA = 0.6;
 const HAZE_BAND_TILES = 3;
 
-const VIGNETTE_CENTER_Y = 0.55;
-const VIGNETTE_INNER = 0.34;
-
 export class BackdropPainter {
     private readonly canopy = new CanopyPainter();
 

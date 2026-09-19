@@ -9,9 +9,11 @@ roda com lotes enormes: 64 politicas x 512 ambientes = 32768 ambientes num
 unico tensor, o que da ~12 milhoes de passos-ambiente por segundo.
 
 Fitness (por candidato):
-    vida_media/horizonte + worst_weight * pior_vida/horizonte + 0.05 * (1 - mortes)
-O termo da pior vida e o que empurra a politica para "sobrevive em qualquer
-situacao" em vez de maximizar so a media.
+    1 - dano_medio/teto - worst_weight * pior_ambiente/teto + dodge_weight * esquivas
+O termo da pior ambiente e o que empurra a politica para "funciona em qualquer
+situacao" em vez de otimizar so a media. O `dano_worst` do simulador conta rodadas,
+e cada ambiente roda ~1 rodada por geracao, entao o pior caso que interessa aqui e
+o pior **ambiente** do candidato (nao a pior rodada de um ambiente).
 """
 
 import argparse
@@ -24,6 +26,7 @@ import torch
 import config as cfg
 from dropper import DropperPolicy
 from model import batched_forward, export_json, initial_policy, stack_policies
+from plot import render_graph
 from sim import FaceSmashingSim
 
 
@@ -39,6 +42,7 @@ def parse_args():
     parser.add_argument("--dodge-weight", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--out", default="livrejam/public/models/dodger-policy.json")
+    parser.add_argument("--graph", default="livrejam/public/models/dodger-policy.graph.png")
     parser.add_argument("--checkpoint-every", type=int, default=10)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     return parser.parse_args()
@@ -90,27 +94,33 @@ def evaluate(theta, perturbations, args):
             observation = sim.step(torch.argmax(scores, dim=1), dropper)
 
     metrics = sim.metrics()
-    mean_damage = metrics["damage_mean"].view(population, args.envs)
-    worst_episode = metrics["damage_worst"].view(population, args.envs)
+    damage = metrics["damage_mean"].view(population, args.envs)
     dodges = metrics["dodges"].view(population, args.envs)
     hits = metrics["hits"].view(population, args.envs)
 
     ceiling = cfg.DAMAGE_CEILING
 
+    by_env = damage.mean(dim=1)
+    worst_env = damage.max(dim=1).values
+
     fitness = (
         1.0
-        - mean_damage.mean(dim=1) / ceiling
-        - args.worst_weight * worst_episode.mean(dim=1) / ceiling
+        - by_env / ceiling
+        - args.worst_weight * worst_env / ceiling
         + args.dodge_weight * (dodges.mean(dim=1) / (cfg.ROUND_SECONDS * 2))
     )
 
+    champion = int(torch.argmax(fitness).item())
+
     return (
         fitness,
-        mean_damage.mean().item(),
-        worst_episode.mean().item(),
-        mean_damage.max().item(),
+        by_env.mean().item(),
+        worst_env.mean().item(),
+        damage.max().item(),
         hits.mean().item(),
         dodges.mean().item(),
+        by_env[champion].item(),
+        worst_env[champion].item(),
     )
 
 
@@ -154,8 +164,8 @@ def main():
         perturbations = torch.randn(
             (args.population, parameters), device=device, dtype=torch.float32
         )
-        fitness, mean_damage, worst_damage, best_damage, hits, dodges = evaluate(
-            theta, perturbations, args
+        fitness, mean_damage, worst_damage, best_damage, hits, dodges, champion_damage, champion_worst = (
+            evaluate(theta, perturbations, args)
         )
         weights = rank_weights(fitness)
 
@@ -176,14 +186,17 @@ def main():
             "best_damage": best_damage,
             "hits": hits,
             "dodges": dodges,
+            "champion_damage": champion_damage,
+            "champion_worst_damage": champion_worst,
             "elapsed": time.time() - started,
         }
         history.append(entry)
+        render_graph(history, args.graph)
 
         if generation % 5 == 0 or generation == 1:
             print(
                 f"gen {generation:4d} | fit {entry['mean_fitness']:7.4f} top {top:7.4f} "
-                f"| dmg {mean_damage:7.1f} best {best_damage:7.1f} worst {worst_damage:7.1f} "
+                f"| dmg {mean_damage:7.1f} best {champion_damage:7.1f} worst {worst_damage:7.1f} "
                 f"| hits {hits:5.1f} dodges {dodges:5.1f} | {entry['elapsed']:7.1f}s",
                 flush=True,
             )

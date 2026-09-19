@@ -139,7 +139,7 @@ export class FaceSmashing {
             {
                 width: this.viewWidth,
                 height: this.viewHeight,
-                postProcess: FACE_SMASHING.postProcess,
+                postProcess: undefined,
             },
         );
         renderer.resize(this.viewWidth, this.viewHeight);

@@ -1,4 +1,4 @@
-import type { Camera, GradientRamp } from '../../engine/render';
+import type { Camera } from '../../engine/render';
 import { applyRamp } from '../../engine/render';
 import { valueNoise } from '../../engine/math';
 import type { DungeonSprites } from '../assets';

@@ -153,7 +153,9 @@ class FaceSmashingSim:
 
         self.episodes = self.episodes + mask
         self.damage_sum = self.damage_sum + self.damage * mask
-        self.damage_worst = self.damage_worst + self.damage * mask
+        self.damage_worst = torch.where(
+            done, torch.maximum(self.damage_worst, self.damage), self.damage_worst
+        )
         self.final_level = torch.where(done, self.level.to(self.dtype), self.final_level)
         self.score = torch.where(
             done, self.score + cfg.SCORE_SURVIVED_PER_SECOND * cfg.ROUND_SECONDS, self.score
@@ -702,9 +704,7 @@ class FaceSmashingSim:
         return {
             "episodes": episodes,
             "damage_mean": self.damage_sum / torch.clamp(episodes, min=1.0),
-            "damage_worst": torch.where(
-                episodes > 0, self.damage_worst / torch.clamp(episodes, min=1.0), self.damage
-            ),
+            "damage_worst": self.damage_worst,
             "final_level": self.final_level,
             "dodges": self.dodges,
             "near_misses": self.near_misses,

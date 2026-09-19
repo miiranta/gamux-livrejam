@@ -57,6 +57,9 @@ def load(relative):
     return Image.open(os.path.join(PUBLIC, relative)).convert("RGBA")
 
 
+ALPHA_CUTOFF = 16
+
+
 def components(image, min_area=30):
     width, height = image.size
     pixels = image.load()
@@ -68,7 +71,7 @@ def components(image, min_area=30):
             if seen[index]:
                 continue
             seen[index] = 1
-            if pixels[x, y][3] <= 16:
+            if pixels[x, y][3] <= ALPHA_CUTOFF:
                 continue
             stack = [(x, y)]
             min_x = max_x = x
@@ -87,7 +90,7 @@ def components(image, min_area=30):
                         next_y = current_y + offset_y
                         if 0 <= next_x < width and 0 <= next_y < height:
                             next_index = next_y * width + next_x
-                            if not seen[next_index] and pixels[next_x, next_y][3] > 16:
+                            if not seen[next_index] and pixels[next_x, next_y][3] > ALPHA_CUTOFF:
                                 seen[next_index] = 1
                                 stack.append((next_x, next_y))
             if area >= min_area:
@@ -114,16 +117,35 @@ def group_rows(boxes, height):
     return [box for row in rows for box in row["boxes"]]
 
 
+def is_clear_column(image, x, top, bottom):
+    """Uma coluna so pode entrar no recorte se for totalmente transparente."""
+    return all(image.getpixel((x, y))[3] <= ALPHA_CUTOFF for y in range(top, bottom))
+
+
+def is_clear_row(image, y, left, right):
+    return all(image.getpixel((x, y))[3] <= ALPHA_CUTOFF for x in range(left, right))
+
+
 def crop(image, box, pad=1):
+    """Recorta o sprite crescendo a margem so por cima de pixels vazios.
+
+    Crescer a caixa cegamente puxava pixels do sprite vizinho, que apareciam
+    como pontinhos soltos no item (o machado e o martelo sofriam disso).
+    """
     min_x, min_y, max_x, max_y, _ = box
-    return image.crop(
-        (
-            max(0, min_x - pad),
-            max(0, min_y - pad),
-            min(image.width, max_x + pad),
-            min(image.height, max_y + pad),
-        )
-    )
+    left, top, right, bottom = min_x, min_y, max_x, max_y
+
+    for _ in range(pad):
+        if left > 0 and is_clear_column(image, left - 1, top, bottom):
+            left -= 1
+        if right < image.width and is_clear_column(image, right, top, bottom):
+            right += 1
+        if top > 0 and is_clear_row(image, top - 1, left, right):
+            top -= 1
+        if bottom < image.height and is_clear_row(image, bottom, left, right):
+            bottom += 1
+
+    return image.crop((left, top, right, bottom))
 
 
 def tile_path(index):
