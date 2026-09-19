@@ -1,66 +1,70 @@
 {
-    "app": {
-        "title": "Quebrando a Cara",
-        "subtitle": "LivreJam 2026"
+  "app": {
+    "title": "Quebrando a Cara",
+    "subtitle": "LivreJam 2026"
+  },
+  "menu": {
+    "play": "Jogar",
+    "resume": "Continuar",
+    "restart": "Reiniciar",
+    "abandon": "Abandonar",
+    "configuration": "Configuração",
+    "credits": "Créditos",
+    "language": "Idioma",
+    "back": "Voltar"
+  },
+  "settings": {
+    "audio": "Áudio",
+    "music": "Música",
+    "sfx": "Efeitos sonoros",
+    "match": "Partida",
+    "matchTime": "Tempo de partida",
+    "matchTimeHint": "Quanto tempo dura cada partida."
+  },
+  "credits": {
+    "title": "Créditos",
+    "empty": "Nada por aqui ainda."
+  },
+  "language": {
+    "title": "Idioma",
+    "en-us": "English (US)",
+    "pt-br": "Português (BR)"
+  },
+  "fullscreen": {
+    "enter": "Entrar em tela cheia",
+    "exit": "Sair da tela cheia"
+  },
+  "hud": {
+    "score": "Pontos",
+    "best": "Recorde",
+    "survived": "Sobreviveu",
+    "dodges": "Desvios",
+    "nearMisses": "Quase",
+    "maxSpeed": "Vel. máxima",
+    "dropSpeed": "Queda",
+    "ai": "IA",
+    "policy": "política",
+    "pause": "Pausar",
+    "loading": "Carregando a masmorra…",
+    "hint": "A / D mover · S acelerar queda · Espaço soltar · a IA pilota o personagem",
+    "state": {
+      "idle": "ociosa",
+      "loading": "carregando",
+      "error": "erro"
     },
-    "menu": {
-        "play": "Jogar",
-        "resume": "Continuar",
-        "restart": "Reiniciar",
-        "abandon": "Abandonar",
-        "configuration": "Configuração",
-        "credits": "Créditos",
-        "language": "Idioma",
-        "back": "Voltar"
+    "dev": {
+      "reloadAi": "Recarregar IA",
+      "faster": "Rapido",
+      "colliders": "Colisores"
     },
-    "settings": {
-        "audio": "Áudio",
-        "music": "Música",
-        "sfx": "Efeitos sonoros",
-        "match": "Partida",
-        "matchTime": "Tempo de partida",
-        "matchTimeHint": "Quanto tempo dura cada partida."
-    },
-    "credits": {
-        "title": "Créditos",
-        "empty": "Nada por aqui ainda."
-    },
-    "language": {
-        "title": "Idioma",
-        "en-us": "English (US)",
-        "pt-br": "Português (BR)"
-    },
-    "fullscreen": {
-        "enter": "Entrar em tela cheia",
-        "exit": "Sair da tela cheia"
-    },
-    "hud": {
-        "score": "Pontos",
-        "best": "Recorde",
-        "survived": "Sobreviveu",
-        "dodges": "Desvios",
-        "nearMisses": "Quase",
-        "maxSpeed": "Vel. máxima",
-        "dropSpeed": "Queda",
-        "ai": "IA",
-        "policy": "política",
-        "pause": "Pausar",
-        "loading": "Carregando a masmorra…",
-        "hint": "A / D mover · S acelerar queda · Espaço soltar · a IA pilota o personagem",
-        "state": {
-            "idle": "ociosa",
-            "loading": "carregando",
-            "error": "erro"
-        },
-        "dev": {
-            "reloadAi": "Recarregar IA"
-        }
-    },
-    "end": {
-        "title": "It's over...",
-        "subtitle": "Não sobra nada",
-        "score": "Pontos",
-        "retry": "Tentar de novo",
-        "exit": "Sair"
-    }
+    "damage": "Dano",
+    "tier": "Nivel"
+  },
+  "end": {
+    "title": "It's over...",
+    "subtitle": "Não sobra nada",
+    "score": "Pontos",
+    "retry": "Tentar de novo",
+    "exit": "Sair"
+  }
 }

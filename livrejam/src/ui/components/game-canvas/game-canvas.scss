@@ -22,6 +22,7 @@
     top: 0.5rem;
     right: 0.5rem;
     left: 0.5rem;
+    z-index: 2;
     display: flex;
     flex-wrap: wrap;
     gap: 0.35rem;
@@ -85,6 +86,19 @@
     &--accent {
         background: #7dc8ff;
     }
+
+    &--clock {
+        background: #ffe9a8;
+    }
+}
+
+.game-canvas__chip--clock {
+    color: var(--lj-accent-hi, #7dc8ff);
+
+    b {
+        color: var(--lj-accent-hi, #7dc8ff);
+        font-variant-numeric: tabular-nums;
+    }
 }
 
 .game-canvas__controls {
@@ -95,6 +109,10 @@
 }
 
 .game-canvas__button {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 1.6rem;
     padding: 0.25rem 0.6rem;
     color: #cdd6e6;
     font: inherit;
@@ -108,6 +126,31 @@
         color: #fff;
         border-color: rgb(125 200 255 / 55%);
     }
+
+    &--pause {
+        width: 1.6rem;
+        padding: 0;
+    }
+}
+
+.game-canvas__pause-rim {
+    position: absolute;
+    inset: 3px;
+    border: 1px solid rgb(255 255 255 / 18%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.game-canvas__pause-glyph {
+    position: relative;
+    width: 0.6rem;
+    height: 0.62rem;
+    background: linear-gradient(
+        90deg,
+        #cdd6e6 0 30%,
+        transparent 30% 70%,
+        #cdd6e6 70% 100%
+    );
 }
 
 .game-canvas__hint {

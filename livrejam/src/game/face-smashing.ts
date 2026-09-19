@@ -25,18 +25,21 @@ export interface MatchStats {
     damage: number;
     level: number;
     dodgerSpeed: number;
-    itemSpeed: number;
-    roundTime: number;
+    dropSpeed: number;
+    timeLeft: number;
+    matchDuration: number;
 }
 
 export interface FaceSmashingCallbacks {
     onStats: (stats: MatchStats) => void;
+    onMatchEnd?: (result: MatchStats) => void;
 }
 
 export interface FaceSmashingOptions {
     canvas: HTMLCanvasElement;
     callbacks: FaceSmashingCallbacks;
     random?: () => number;
+    matchDuration?: number;
     policy?: PolicyLike;
 }
 
@@ -80,11 +83,14 @@ export class FaceSmashing {
     private best = 0;
     private showColliders = false;
     private dropAimX = 0;
+    private running = true;
+    private matchDuration: number;
 
     constructor(private readonly options: FaceSmashingOptions) {
         this.random = options.random ?? Math.random;
         this.callbacks = options.callbacks;
         this.policy = options.policy ?? new IdlePolicy();
+        this.matchDuration = options.matchDuration ?? FACE_SMASHING.match.defaultDurationSeconds;
         this.level = createDungeonLevel();
         this.world.addBlockers(this.level.colliders);
         this.input = new KeyboardActionMap<DropAction>(KEY_BINDINGS);
@@ -143,6 +149,23 @@ export class FaceSmashing {
         this.policy = policy;
     }
 
+    get paused(): boolean {
+        return !this.running;
+    }
+
+    pause(): void {
+        this.running = false;
+    }
+
+    resume(): void {
+        this.running = true;
+    }
+
+    setMatchDuration(seconds: number): void {
+        this.matchDuration = seconds;
+        this.restart();
+    }
+
     accelerate(): void {
         this.spawner.accelerate();
     }
@@ -159,6 +182,7 @@ export class FaceSmashing {
         this.dodges = 0;
         this.nearMisses = 0;
         this.score = 0;
+        this.running = true;
         this.spawner.reset();
         this.impacts.reset();
         this.effects.clear();
@@ -174,6 +198,10 @@ export class FaceSmashing {
     }
 
     private update(dt: number): void {
+        if (!this.running) {
+            return;
+        }
+
         this.updateDropper(dt);
         this.updateDodger(dt);
         this.updateItems(dt);
@@ -325,7 +353,7 @@ export class FaceSmashing {
             this.onImpact(outcome);
         }
 
-        if (this.survived >= FACE_SMASHING.round.seconds) {
+        if (this.survived >= this.matchDuration) {
             this.finishRound();
             return;
         }
@@ -376,6 +404,8 @@ export class FaceSmashing {
         this.best = Math.max(this.best, Math.round(this.score));
         this.restartTimer = FACE_SMASHING.round.restartDelay;
         this.publishStats();
+        this.callbacks.onMatchEnd?.(this.statsSnapshot());
+        this.running = false;
     }
 
     private observe(): void {
@@ -392,8 +422,12 @@ export class FaceSmashing {
     }
 
     private publishStats(): void {
+        this.callbacks.onStats(this.statsSnapshot());
+    }
+
+    private statsSnapshot(): MatchStats {
         const dodger = this.dodger;
-        this.callbacks.onStats({
+        return {
             score: Math.round(this.score),
             best: this.best,
             survived: this.survived,
@@ -402,9 +436,10 @@ export class FaceSmashing {
             damage: dodger ? dodger.damage : 0,
             level: dodger ? dodger.level : 0,
             dodgerSpeed: Math.round(this.dodgerMaxSpeed),
-            itemSpeed: Math.round(this.spawner.speed),
-            roundTime: FACE_SMASHING.round.seconds,
-        });
+            dropSpeed: Math.round(this.spawner.speed),
+            timeLeft: Math.max(this.matchDuration - this.survived, 0),
+            matchDuration: this.matchDuration,
+        };
     }
 
     private render(): void {
