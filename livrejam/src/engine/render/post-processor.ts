@@ -9,7 +9,11 @@ void main() {
 `;
 
 const FRAGMENT_SHADER = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 
 varying vec2 v_uv;
 
@@ -26,12 +30,14 @@ uniform float u_bloom;
 uniform float u_bloomThreshold;
 uniform float u_saturation;
 
-float hash(vec2 point) {
-    return fract(sin(dot(point, vec2(12.9898, 78.233))) * 43758.5453123);
-}
-
 float luminance(vec3 color) {
     return dot(color, vec3(0.299, 0.587, 0.114));
+}
+
+float hash(vec2 point) {
+    vec3 scrambled = fract(vec3(point.xyx) * vec3(0.1031, 0.1030, 0.0973));
+    scrambled += dot(scrambled, scrambled.yzx + 33.33);
+    return fract((scrambled.x + scrambled.y) * scrambled.z);
 }
 
 void main() {

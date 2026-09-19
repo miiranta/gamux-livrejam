@@ -19,29 +19,25 @@ function pair(leftY: number, rightY: number): HandState[] {
     return [hand(0.3, leftY), hand(0.7, rightY)];
 }
 
-function alternate(
+function strokeFor(
     stream: SixtySevenStream,
-    cycles: number,
-    startTime: number,
+    durationMs: number,
+    frequency: number,
+    swing: number,
+    startTime = 0,
     stepMs = FRAME_MS,
-    swing = WIDE,
 ): { time: number; level: number } {
     let time = startTime;
     let level = 0;
-    const half = swing / 4;
+    const quarter = swing / 4;
 
-    for (let cycle = 0; cycle < cycles; cycle++) {
-        level = stream.update(pair(0.5 - half, 0.5 + half), time).level;
-        time += stepMs;
-        level = stream.update(pair(0.5 + half, 0.5 - half), time).level;
+    for (let elapsed = 0; elapsed < durationMs; elapsed += stepMs) {
+        const phase = Math.cos(2 * Math.PI * frequency * (elapsed / 1000));
+        level = stream.update(pair(0.5 - quarter * phase, 0.5 + quarter * phase), time).level;
         time += stepMs;
     }
 
     return { time, level };
-}
-
-function hold(stream: SixtySevenStream, time: number, durationMs: number): number {
-    return stream.update([], time + durationMs).level;
 }
 
 function alternateFor(
@@ -51,21 +47,21 @@ function alternateFor(
     stepMs = FRAME_MS,
     swing = WIDE,
 ): { time: number; level: number } {
-    let time = startTime;
-    let level = 0;
-    let up = true;
-    const half = swing / 4;
-    const end = startTime + durationMs;
+    return strokeFor(stream, durationMs, 1000 / (2 * stepMs), swing, startTime, stepMs);
+}
 
-    while (time < end) {
-        const near = up ? 0.5 - half : 0.5 + half;
-        const far = up ? 0.5 + half : 0.5 - half;
-        level = stream.update(pair(near, far), time).level;
-        time += stepMs;
-        up = !up;
-    }
+function alternate(
+    stream: SixtySevenStream,
+    cycles: number,
+    startTime: number,
+    stepMs = FRAME_MS,
+    swing = WIDE,
+): { time: number; level: number } {
+    return alternateFor(stream, cycles * 2 * stepMs, startTime, stepMs, swing);
+}
 
-    return { time, level };
+function hold(stream: SixtySevenStream, time: number, durationMs: number): number {
+    return stream.update([], time + durationMs).level;
 }
 
 describe('SixtySevenStream', () => {
@@ -201,6 +197,42 @@ describe('SixtySevenStream', () => {
         const { level } = alternateFor(stream, 400, 0, FRAME_MS, 0.002);
 
         expect(level).toBe(0);
+    });
+
+    it('detects fast movement at a realistic hand separation', () => {
+        const stream = new SixtySevenStream();
+        const { time, level } = strokeFor(stream, 600, 4, 0.3);
+
+        expect(level).toBeGreaterThan(0.2);
+        expect(stream.update([], time).active).toBe(true);
+    });
+
+    it('scales with stroke frequency', () => {
+        const slow = new SixtySevenStream();
+        const fast = new SixtySevenStream();
+        const slowLevel = strokeFor(slow, 300, 2, 0.25).level;
+        const fastLevel = strokeFor(fast, 300, 4, 0.25).level;
+
+        expect(fastLevel).toBeGreaterThan(slowLevel * 2);
+    });
+
+    it('scales with stroke amplitude', () => {
+        const small = new SixtySevenStream();
+        const large = new SixtySevenStream();
+        const smallLevel = strokeFor(small, 600, 4, 0.15).level;
+        const largeLevel = strokeFor(large, 600, 4, 0.3).level;
+
+        expect(largeLevel).toBeGreaterThan(smallLevel * 1.5);
+    });
+
+    it('is insensitive to the sampling rate', () => {
+        const dense = new SixtySevenStream();
+        const sparse = new SixtySevenStream();
+        const denseLevel = strokeFor(dense, 500, 4, 0.3).level;
+        const sparseLevel = strokeFor(sparse, 500, 4, 0.3, 0, 50).level;
+
+        expect(sparseLevel).toBeGreaterThan(denseLevel * 0.6);
+        expect(sparseLevel).toBeLessThan(denseLevel * 1.4);
     });
 
     it('resets every accumulated value', () => {
