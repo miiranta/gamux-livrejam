@@ -2,7 +2,7 @@
     <video #video class="camera__video" playsinline muted></video>
 
     @if (frame(); as current) {
-        <svg class="camera__overlay" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <svg class="camera__overlay" [attr.viewBox]="overlayViewBox()">
             @if (current.face; as face) {
                 <polyline class="camera__face" [attr.points]="faceOutline(face)" />
 
@@ -10,9 +10,9 @@
                     <circle
                         class="camera__eye"
                         [class.camera__eye--closed]="eye.closed"
-                        [attr.cx]="toPercent(eye.point.x)"
-                        [attr.cy]="toPercent(eye.point.y)"
-                        r="1.2"
+                        [attr.cx]="toVideoX(eye.point.x)"
+                        [attr.cy]="toVideoY(eye.point.y)"
+                        [attr.r]="markerRadius(0.012)"
                     />
                 }
             }
@@ -20,9 +20,9 @@
             @for (hand of current.hands; track $index) {
                 <circle
                     class="camera__hand"
-                    [attr.cx]="toPercent(hand.center.x)"
-                    [attr.cy]="toPercent(hand.center.y)"
-                    r="2"
+                    [attr.cx]="toVideoX(hand.center.x)"
+                    [attr.cy]="toVideoY(hand.center.y)"
+                    [attr.r]="markerRadius(0.02)"
                 />
             }
         </svg>

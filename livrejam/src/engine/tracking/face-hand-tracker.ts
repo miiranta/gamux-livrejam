@@ -1,262 +1,145 @@
-import {
-    FaceLandmarker,
-    FilesetResolver,
-    HandLandmarker,
-    type Classifications,
-    type NormalizedLandmark,
-} from '@mediapipe/tasks-vision';
+import type { Classifications, NormalizedLandmark } from '@mediapipe/tasks-vision';
 
-import { BLENDSHAPE_INDEX, type BlendshapeName } from './blendshapes';
+import { centroid } from '../math';
+import { readBlendshape } from './blendshape-reader';
+import { DEFAULT_CONFIG } from './config';
+import { HandStabilizer } from './hand-stabilizer';
+import { toPoint3DList, FACE_LANDMARK } from './landmarks';
+import { MediaPipeModels, type HandDetection } from './mediapipe-models';
+import { SmoothedStateFilter } from './state-filter';
 import type {
-    FaceState,
-    HandState,
-    Handedness,
-    MouthState,
     EyeState,
-    Point2D,
-    Point3D,
+    FaceHandTrackerConfig,
+    FaceHandTrackerOptions,
+    FaceState,
+    Handedness,
+    HandState,
+    MouthState,
     TrackingFrame,
-    TrackingThresholds,
 } from './types';
 
-export const DEFAULT_THRESHOLDS: TrackingThresholds = {
-    eyeClosed: 0.5,
-    mouthOpen: 0.35,
-};
-
-const HYSTERESIS = 0.08;
-
-function assetUrl(path: string): string {
-    return new URL(path, document.baseURI).href;
-}
-
-function toPoint3D(landmark: NormalizedLandmark): Point3D {
-    return { x: landmark.x, y: landmark.y, z: landmark.z };
-}
-
-function centroid(landmarks: Point3D[]): Point2D {
-    if (landmarks.length === 0) {
-        return { x: 0, y: 0 };
-    }
-    let x = 0;
-    let y = 0;
-    for (const point of landmarks) {
-        x += point.x;
-        y += point.y;
-    }
-    return { x: x / landmarks.length, y: y / landmarks.length };
-}
-
-function readScore(blendshapes: Classifications | undefined, name: BlendshapeName): number {
-    const categories = blendshapes?.categories;
-    if (!categories) {
-        return 0;
-    }
-
-    const byName = categories.find((entry) => entry.categoryName === name);
-    if (byName) {
-        return byName.score;
-    }
-
-    const index = BLENDSHAPE_INDEX[name];
-    return categories.find((entry) => entry.index === index)?.score ?? 0;
-}
-
-function toHandedness(name: string | undefined): Handedness {
-    return name === 'Left' || name === 'Right' ? name : 'Unknown';
-}
-
-class BinaryStateFilter<TState extends string> {
-    private state: TState;
-
-    constructor(
-        private readonly onState: TState,
-        private readonly offState: TState,
-        private readonly onThreshold: number,
-    ) {
-        this.state = offState;
-    }
-
-    update(score: number): TState {
-        const isOn = this.state === this.onState;
-        this.state = isOn
-            ? score < this.onThreshold - HYSTERESIS
-                ? this.offState
-                : this.onState
-            : score > this.onThreshold + HYSTERESIS
-              ? this.onState
-              : this.offState;
-        return this.state;
-    }
-
-    reset(): void {
-        this.state = this.offState;
-    }
-}
-
-export interface FaceHandTrackerOptions {
-    thresholds?: TrackingThresholds;
-    numHands?: number;
-    useGpu?: boolean;
-}
-
 export class FaceHandTracker {
-    private faceLandmarker: FaceLandmarker | null = null;
-    private handLandmarker: HandLandmarker | null = null;
+    private readonly config: FaceHandTrackerConfig;
+    private readonly models = new MediaPipeModels();
+    private readonly handStabilizer: HandStabilizer;
+
+    private readonly leftEye: SmoothedStateFilter<EyeState>;
+    private readonly rightEye: SmoothedStateFilter<EyeState>;
+    private readonly mouth: SmoothedStateFilter<MouthState>;
+
     private lastTimestamp = -1;
 
-    private readonly leftEyeFilter: BinaryStateFilter<EyeState>;
-    private readonly rightEyeFilter: BinaryStateFilter<EyeState>;
-    private readonly mouthFilter: BinaryStateFilter<MouthState>;
-
-    private readonly thresholds: TrackingThresholds;
-    private readonly numHands: number;
-    private readonly useGpu: boolean;
-
     constructor(options: FaceHandTrackerOptions = {}) {
-        this.thresholds = options.thresholds ?? DEFAULT_THRESHOLDS;
-        this.numHands = options.numHands ?? 2;
-        this.useGpu = options.useGpu ?? true;
+        this.config = mergeConfig(options);
 
-        this.leftEyeFilter = new BinaryStateFilter<EyeState>(
-            'closed',
-            'open',
-            this.thresholds.eyeClosed,
-        );
-        this.rightEyeFilter = new BinaryStateFilter<EyeState>(
-            'closed',
-            'open',
-            this.thresholds.eyeClosed,
-        );
-        this.mouthFilter = new BinaryStateFilter<MouthState>(
-            'open',
-            'closed',
-            this.thresholds.mouthOpen,
-        );
+        const { eyeClosed, mouthOpen } = this.config.thresholds;
+        this.leftEye = new SmoothedStateFilter<EyeState>('closed', 'open', eyeClosed);
+        this.rightEye = new SmoothedStateFilter<EyeState>('closed', 'open', eyeClosed);
+        this.mouth = new SmoothedStateFilter<MouthState>('open', 'closed', mouthOpen);
+
+        this.handStabilizer = new HandStabilizer(this.config.handStability);
     }
 
     get isReady(): boolean {
-        return this.faceLandmarker !== null && this.handLandmarker !== null;
+        return this.models.isReady;
     }
 
     async init(): Promise<void> {
-        if (this.isReady) {
-            return;
-        }
-
-        const vision = await FilesetResolver.forVisionTasks(assetUrl('wasm'));
-
-        const buildFace = (delegate: 'GPU' | 'CPU') =>
-            FaceLandmarker.createFromOptions(vision, {
-                baseOptions: {
-                    modelAssetPath: assetUrl('models/face_landmarker.task'),
-                    delegate,
-                },
-                runningMode: 'VIDEO',
-                numFaces: 1,
-                outputFaceBlendshapes: true,
-            });
-
-        const buildHand = (delegate: 'GPU' | 'CPU') =>
-            HandLandmarker.createFromOptions(vision, {
-                baseOptions: {
-                    modelAssetPath: assetUrl('models/hand_landmarker.task'),
-                    delegate,
-                },
-                runningMode: 'VIDEO',
-                numHands: this.numHands,
-            });
-
-        try {
-            const delegate = this.useGpu ? 'GPU' : 'CPU';
-            [this.faceLandmarker, this.handLandmarker] = await Promise.all([
-                buildFace(delegate),
-                buildHand(delegate),
-            ]);
-        } catch (error) {
-            if (!this.useGpu) {
-                throw error;
-            }
-
-            console.warn('FaceHandTracker: GPU delegate failed, retrying on CPU.', error);
-            [this.faceLandmarker, this.handLandmarker] = await Promise.all([
-                buildFace('CPU'),
-                buildHand('CPU'),
-            ]);
-        }
+        await this.models.init(this.config);
     }
 
     process(video: HTMLVideoElement, timestamp: number): TrackingFrame {
-        if (!this.faceLandmarker || !this.handLandmarker) {
+        if (!this.models.isReady) {
             throw new Error('FaceHandTracker.process() called before init().');
         }
 
-        const safeTimestamp = timestamp > this.lastTimestamp ? timestamp : this.lastTimestamp + 1;
-        this.lastTimestamp = safeTimestamp;
-
-        const faceResult = this.faceLandmarker.detectForVideo(video, safeTimestamp);
-        const handResult = this.handLandmarker.detectForVideo(video, safeTimestamp);
+        const safeTimestamp = this.nextTimestamp(timestamp);
+        const face = this.models.detectFace(video, safeTimestamp);
+        const hands = this.models.detectHands(video, safeTimestamp);
 
         return {
             timestamp: safeTimestamp,
-            face: this.toFaceState(faceResult.faceLandmarks[0], faceResult.faceBlendshapes[0]),
-            hands: handResult.landmarks.map((landmarks, index) => {
-                const category = handResult.handedness[index]?.[0];
-                return this.toHandState(
-                    landmarks,
-                    handResult.worldLandmarks[index] ?? [],
-                    category?.categoryName,
-                    category?.score ?? 0,
-                );
-            }),
+            face: this.toFaceState(face.landmarks[0], face.blendshapes[0]),
+            hands: this.handStabilizer.resolve(toHandStates(hands), safeTimestamp),
         };
     }
 
     close(): void {
-        this.faceLandmarker?.close();
-        this.handLandmarker?.close();
-        this.faceLandmarker = null;
-        this.handLandmarker = null;
+        this.models.close();
+        this.handStabilizer.reset();
+        this.resetExpressionState();
         this.lastTimestamp = -1;
-        this.leftEyeFilter.reset();
-        this.rightEyeFilter.reset();
-        this.mouthFilter.reset();
     }
 
     private toFaceState(
         landmarks: NormalizedLandmark[] | undefined,
         blendshapes: Classifications | undefined,
     ): FaceState | null {
-        if (!landmarks || landmarks.length === 0) {
+        if (!landmarks?.length) {
+            this.resetExpressionState();
             return null;
         }
 
-        const leftEyeBlink = readScore(blendshapes, 'eyeBlinkLeft');
-        const rightEyeBlink = readScore(blendshapes, 'eyeBlinkRight');
-        const jawOpen = readScore(blendshapes, 'jawOpen');
+        const scores = {
+            leftEyeBlink: readBlendshape(blendshapes, 'eyeBlinkLeft'),
+            rightEyeBlink: readBlendshape(blendshapes, 'eyeBlinkRight'),
+            jawOpen: readBlendshape(blendshapes, 'jawOpen'),
+        };
+
+        const points = toPoint3DList(landmarks);
 
         return {
-            leftEye: this.leftEyeFilter.update(leftEyeBlink),
-            rightEye: this.rightEyeFilter.update(rightEyeBlink),
-            mouth: this.mouthFilter.update(jawOpen),
-            scores: { leftEyeBlink, rightEyeBlink, jawOpen },
-            landmarks: landmarks.map(toPoint3D),
+            leftEye: {
+                state: this.leftEye.update(scores.leftEyeBlink),
+                center: points[FACE_LANDMARK.leftIrisCenter],
+            },
+            rightEye: {
+                state: this.rightEye.update(scores.rightEyeBlink),
+                center: points[FACE_LANDMARK.rightIrisCenter],
+            },
+            mouth: this.mouth.update(scores.jawOpen),
+            scores,
+            landmarks: points,
         };
     }
 
-    private toHandState(
-        landmarks: NormalizedLandmark[],
-        worldLandmarks: NormalizedLandmark[],
-        handednessName: string | undefined,
-        score: number,
-    ): HandState {
-        const points = landmarks.map(toPoint3D);
+    private nextTimestamp(timestamp: number): number {
+        this.lastTimestamp = timestamp > this.lastTimestamp ? timestamp : this.lastTimestamp + 1;
+        return this.lastTimestamp;
+    }
+
+    private resetExpressionState(): void {
+        this.leftEye.reset();
+        this.rightEye.reset();
+        this.mouth.reset();
+    }
+}
+
+function mergeConfig(options: FaceHandTrackerOptions): FaceHandTrackerConfig {
+    return {
+        ...DEFAULT_CONFIG,
+        ...options,
+        thresholds: { ...DEFAULT_CONFIG.thresholds, ...options.thresholds },
+        handModel: { ...DEFAULT_CONFIG.handModel, ...options.handModel },
+        handStability: { ...DEFAULT_CONFIG.handStability, ...options.handStability },
+    };
+}
+
+function toHandStates(detection: HandDetection): HandState[] {
+    return detection.landmarks.map((landmarks, index) => {
+        const points = toPoint3DList(landmarks);
+        const category = detection.handedness[index]?.[0];
+
         return {
-            handedness: toHandedness(handednessName),
-            score,
+            handedness: toHandedness(category?.categoryName),
+            score: category?.score ?? 0,
             landmarks: points,
-            worldLandmarks: worldLandmarks.map(toPoint3D),
+            worldLandmarks: toPoint3DList(detection.worldLandmarks[index] ?? []),
             center: centroid(points),
         };
-    }
+    });
+}
+
+function toHandedness(name: string | undefined): Handedness {
+    return name === 'Left' || name === 'Right' ? name : 'Unknown';
 }

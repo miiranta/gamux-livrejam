@@ -11,22 +11,14 @@ import {
 } from '@angular/core';
 
 import {
+    FACE_OVAL,
     FaceHandTracker,
     type FaceState,
     type Point2D,
-    type Point3D,
     type TrackingFrame,
 } from '../../../engine/tracking';
 
 type CameraStatus = 'idle' | 'starting' | 'running' | 'error';
-
-const FACE_OVAL_INDICES = [
-    10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152,
-    148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109,
-];
-
-const LEFT_IRIS_INDEX = 468;
-const RIGHT_IRIS_INDEX = 473;
 
 const CAMERA_CONSTRAINTS: MediaStreamConstraints = {
     video: { width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -39,7 +31,7 @@ const RETRY_DELAY_MS = 400;
 interface EyeMarker {
     key: string;
     closed: boolean;
-    point: Point3D;
+    point: Point2D;
 }
 
 @Component({
@@ -60,10 +52,16 @@ export class Camera {
     protected readonly status = signal<CameraStatus>('idle');
     protected readonly errorMessage = signal<string>('');
     protected readonly frame = signal<TrackingFrame | null>(null);
+    protected readonly videoSize = signal({ width: 16, height: 9 });
     protected readonly isRunning = computed(() => this.status() === 'running');
-    protected readonly leftEyeClosed = computed(() => this.frame()?.face?.leftEye === 'closed');
-    protected readonly rightEyeClosed = computed(() => this.frame()?.face?.rightEye === 'closed');
+    protected readonly leftEyeClosed = computed(() => this.frame()?.face?.leftEye.state === 'closed');
+    protected readonly rightEyeClosed = computed(() => this.frame()?.face?.rightEye.state === 'closed');
     protected readonly mouthOpen = computed(() => this.frame()?.face?.mouth === 'open');
+    protected readonly overlayViewBox = computed(() => {
+        const { width, height } = this.videoSize();
+        const side = Math.min(width, height);
+        return `${(width - side) / 2} ${(height - side) / 2} ${side} ${side}`;
+    });
 
     constructor() {
         afterNextRender(() => void this.start());
@@ -99,6 +97,10 @@ export class Camera {
 
             video.srcObject = stream;
             await video.play();
+            this.videoSize.set({
+                width: video.videoWidth || 16,
+                height: video.videoHeight || 9,
+            });
 
             await this.tracker.init();
             if (session !== this.session) {
@@ -129,8 +131,17 @@ export class Camera {
         void this.start();
     };
 
-    protected toPercent(value: number): string {
-        return `${value * 100}%`;
+    protected toVideoX(normalized: number): number {
+        return normalized * this.videoSize().width;
+    }
+
+    protected toVideoY(normalized: number): number {
+        return normalized * this.videoSize().height;
+    }
+
+    protected markerRadius(ratio: number): number {
+        const { width, height } = this.videoSize();
+        return Math.min(width, height) * ratio;
     }
 
     protected formatPosition(point: Point2D): string {
@@ -138,9 +149,10 @@ export class Camera {
     }
 
     protected faceOutline(face: FaceState): string {
-        return FACE_OVAL_INDICES.map((index) => {
+        const { width, height } = this.videoSize();
+        return FACE_OVAL.map((index) => {
             const point = face.landmarks[index];
-            return point ? `${point.x * 100},${point.y * 100}` : '';
+            return point ? `${point.x * width},${point.y * height}` : '';
         })
             .filter(Boolean)
             .join(' ');
@@ -150,13 +162,13 @@ export class Camera {
         return [
             {
                 key: 'left',
-                closed: face.leftEye === 'closed',
-                point: face.landmarks[LEFT_IRIS_INDEX] ?? { x: 0, y: 0, z: 0 },
+                closed: face.leftEye.state === 'closed',
+                point: face.leftEye.center,
             },
             {
                 key: 'right',
-                closed: face.rightEye === 'closed',
-                point: face.landmarks[RIGHT_IRIS_INDEX] ?? { x: 0, y: 0, z: 0 },
+                closed: face.rightEye.state === 'closed',
+                point: face.rightEye.center,
             },
         ];
     }

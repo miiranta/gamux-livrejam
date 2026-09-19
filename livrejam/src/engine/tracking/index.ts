@@ -1,12 +1,16 @@
-export {
-    FaceHandTracker,
-    DEFAULT_THRESHOLDS,
-    type FaceHandTrackerOptions,
-} from './face-hand-tracker';
+export { FaceHandTracker } from './face-hand-tracker';
 export { BLENDSHAPE_COUNT, BLENDSHAPE_INDEX, type BlendshapeName } from './blendshapes';
+export { DEFAULT_CONFIG, MODEL_PATHS } from './config';
+export { FACE_LANDMARK, FACE_OVAL } from './landmarks';
 export type {
+    EyeObservation,
     EyeState,
+    FaceHandTrackerConfig,
+    FaceHandTrackerOptions,
+    FaceScores,
     FaceState,
+    HandModelOptions,
+    HandStabilityOptions,
     HandState,
     Handedness,
     MouthState,

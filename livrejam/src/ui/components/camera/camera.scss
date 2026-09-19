@@ -32,8 +32,9 @@
 .camera__face {
     fill: none;
     stroke: rgb(120 200 255 / 65%);
-    stroke-width: 0.35;
+    stroke-width: 1.5;
     stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
 }
 
 .camera__eye {
@@ -47,7 +48,8 @@
 .camera__hand {
     fill: rgb(255 210 90 / 50%);
     stroke: #ffd25a;
-    stroke-width: 0.3;
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
 }
 
 .camera__hud {
