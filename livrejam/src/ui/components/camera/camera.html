@@ -46,6 +46,9 @@
                     Mouth
                     <b>{{ mouthOpen() ? 'open' : 'closed' }}</b>
                 </span>
+                <span class="camera__pill camera__pill--delegate">
+                    {{ usingGpu() ? 'GPU' : 'CPU' }}
+                </span>
             </div>
 
             <div class="camera__hands">

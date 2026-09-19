@@ -3,7 +3,6 @@ import type { Classifications, NormalizedLandmark } from '@mediapipe/tasks-visio
 import { centroid } from '../math';
 import { readBlendshape } from './blendshape-reader';
 import { DEFAULT_CONFIG } from './config';
-import { HandStabilizer } from './hand-stabilizer';
 import { toPoint3DList, FACE_LANDMARK } from './landmarks';
 import { MediaPipeModels, type HandDetection } from './mediapipe-models';
 import { SmoothedStateFilter } from './state-filter';
@@ -21,52 +20,53 @@ import type {
 export class FaceHandTracker {
     private readonly config: FaceHandTrackerConfig;
     private readonly models = new MediaPipeModels();
-    private readonly handStabilizer: HandStabilizer;
-
     private readonly leftEye: SmoothedStateFilter<EyeState>;
     private readonly rightEye: SmoothedStateFilter<EyeState>;
     private readonly mouth: SmoothedStateFilter<MouthState>;
 
+    private usingGpu: boolean;
     private lastTimestamp = -1;
 
     constructor(options: FaceHandTrackerOptions = {}) {
         this.config = mergeConfig(options);
+        this.usingGpu = this.config.useGpu;
 
         const { eyeClosed, mouthOpen } = this.config.thresholds;
         this.leftEye = new SmoothedStateFilter<EyeState>('closed', 'open', eyeClosed);
         this.rightEye = new SmoothedStateFilter<EyeState>('closed', 'open', eyeClosed);
         this.mouth = new SmoothedStateFilter<MouthState>('open', 'closed', mouthOpen);
-
-        this.handStabilizer = new HandStabilizer(this.config.handStability);
     }
 
     get isReady(): boolean {
         return this.models.isReady;
     }
 
-    async init(): Promise<void> {
-        await this.models.init(this.config);
+    get isUsingGpu(): boolean {
+        return this.usingGpu && this.models.isUsingGpu;
     }
 
-    process(video: HTMLVideoElement, timestamp: number): TrackingFrame {
+    async init(baseUrl: string): Promise<void> {
+        await this.models.init(this.config, baseUrl);
+    }
+
+    process(image: ImageBitmap, timestamp: number): TrackingFrame {
         if (!this.models.isReady) {
             throw new Error('FaceHandTracker.process() called before init().');
         }
 
         const safeTimestamp = this.nextTimestamp(timestamp);
-        const face = this.models.detectFace(video, safeTimestamp);
-        const hands = this.models.detectHands(video, safeTimestamp);
+        const face = this.models.detectFace(image, safeTimestamp);
+        const hands = this.models.detectHands(image, safeTimestamp);
 
         return {
             timestamp: safeTimestamp,
             face: this.toFaceState(face.landmarks[0], face.blendshapes[0]),
-            hands: this.handStabilizer.resolve(toHandStates(hands), safeTimestamp),
+            hands: toHandStates(hands),
         };
     }
 
     close(): void {
         this.models.close();
-        this.handStabilizer.reset();
         this.resetExpressionState();
         this.lastTimestamp = -1;
     }
@@ -121,7 +121,6 @@ function mergeConfig(options: FaceHandTrackerOptions): FaceHandTrackerConfig {
         ...options,
         thresholds: { ...DEFAULT_CONFIG.thresholds, ...options.thresholds },
         handModel: { ...DEFAULT_CONFIG.handModel, ...options.handModel },
-        handStability: { ...DEFAULT_CONFIG.handStability, ...options.handStability },
     };
 }
 

@@ -12,11 +12,11 @@ import {
 
 import {
     FACE_OVAL,
-    FaceHandTracker,
     type FaceState,
     type Point2D,
     type TrackingFrame,
 } from '../../../engine/tracking';
+import { TrackingWorkerClient } from '../../../engine/workers';
 
 type CameraStatus = 'idle' | 'starting' | 'running' | 'error';
 
@@ -42,20 +42,30 @@ interface EyeMarker {
 })
 export class Camera {
     private readonly videoRef = viewChild<ElementRef<HTMLVideoElement>>('video');
-    private readonly tracker = new FaceHandTracker();
+    private readonly tracker = new TrackingWorkerClient({
+        onFrame: (frame) => this.frame.set(frame),
+        onError: (message) => this.fail(message),
+        onReady: (usingGpu) => this.usingGpu.set(usingGpu),
+    });
     private readonly destroyRef = inject(DestroyRef);
 
     private stream: MediaStream | null = null;
     private animationFrameId: number | null = null;
     private session = 0;
+    private lastVideoTime = -1;
 
     protected readonly status = signal<CameraStatus>('idle');
     protected readonly errorMessage = signal<string>('');
     protected readonly frame = signal<TrackingFrame | null>(null);
+    protected readonly usingGpu = signal(false);
     protected readonly videoSize = signal({ width: 16, height: 9 });
     protected readonly isRunning = computed(() => this.status() === 'running');
-    protected readonly leftEyeClosed = computed(() => this.frame()?.face?.leftEye.state === 'closed');
-    protected readonly rightEyeClosed = computed(() => this.frame()?.face?.rightEye.state === 'closed');
+    protected readonly leftEyeClosed = computed(
+        () => this.frame()?.face?.leftEye.state === 'closed',
+    );
+    protected readonly rightEyeClosed = computed(
+        () => this.frame()?.face?.rightEye.state === 'closed',
+    );
     protected readonly mouthOpen = computed(() => this.frame()?.face?.mouth === 'open');
     protected readonly overlayViewBox = computed(() => {
         const { width, height } = this.videoSize();
@@ -65,10 +75,7 @@ export class Camera {
 
     constructor() {
         afterNextRender(() => void this.start());
-        this.destroyRef.onDestroy(() => {
-            this.stop();
-            this.tracker.close();
-        });
+        this.destroyRef.onDestroy(() => this.stop());
     }
 
     protected async start(): Promise<void> {
@@ -102,7 +109,7 @@ export class Camera {
                 height: video.videoHeight || 9,
             });
 
-            await this.tracker.init();
+            await this.tracker.start();
             if (session !== this.session) {
                 return;
             }
@@ -122,7 +129,9 @@ export class Camera {
     protected stop(): void {
         this.session++;
         this.releaseStream();
+        this.tracker.stop();
         this.frame.set(null);
+        this.usingGpu.set(false);
         this.status.set('idle');
     }
 
@@ -217,24 +226,36 @@ export class Camera {
     private loop = (): void => {
         const video = this.videoRef()?.nativeElement;
 
-        if (
-            video &&
-            this.status() === 'running' &&
-            video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
-        ) {
-            try {
-                this.frame.set(this.tracker.process(video, performance.now()));
-            } catch (error) {
-                this.errorMessage.set(describeError(error));
-                this.stop();
-                return;
-            }
+        if (!video || this.status() !== 'running') {
+            return;
         }
 
-        if (this.status() === 'running') {
-            this.animationFrameId = requestAnimationFrame(this.loop);
+        if (video.currentTime !== this.lastVideoTime) {
+            this.lastVideoTime = video.currentTime;
+            this.captureAndDetect(video);
         }
+
+        this.animationFrameId = requestAnimationFrame(this.loop);
     };
+
+    private captureAndDetect(video: HTMLVideoElement): void {
+        if (
+            this.tracker.isBusy ||
+            video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+            !video.videoWidth
+        ) {
+            return;
+        }
+
+        void createImageBitmap(video)
+            .then((bitmap) => this.tracker.detect(bitmap, performance.now()))
+            .catch(() => undefined);
+    }
+
+    private fail(message: string): void {
+        this.errorMessage.set(message);
+        this.stop();
+    }
 }
 
 function delay(ms: number): Promise<void> {

@@ -52,18 +52,11 @@ export interface HandModelOptions {
     minTrackingConfidence: number;
 }
 
-export interface HandStabilityOptions {
-    holdMs: number;
-    matchDistance: number;
-    duplicateDistance: number;
-}
-
 export interface FaceHandTrackerConfig {
     numHands: number;
     useGpu: boolean;
     thresholds: TrackingThresholds;
     handModel: HandModelOptions;
-    handStability: HandStabilityOptions;
 }
 
 export type FaceHandTrackerOptions = Partial<{

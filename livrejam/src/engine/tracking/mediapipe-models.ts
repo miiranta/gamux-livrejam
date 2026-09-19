@@ -26,17 +26,27 @@ export interface HandDetection {
 export class MediaPipeModels {
     private face: FaceLandmarker | null = null;
     private hand: HandLandmarker | null = null;
+    private baseUrl = '';
+    private delegate: Delegate = 'CPU';
 
     get isReady(): boolean {
         return this.face !== null && this.hand !== null;
     }
 
-    async init(config: FaceHandTrackerConfig): Promise<void> {
+    get isUsingGpu(): boolean {
+        return this.delegate === 'GPU';
+    }
+
+    async init(config: FaceHandTrackerConfig, baseUrl: string): Promise<void> {
         if (this.isReady) {
             return;
         }
 
-        const vision = await FilesetResolver.forVisionTasks(assetUrl(MODEL_PATHS.wasm));
+        this.baseUrl = baseUrl;
+        const vision = await FilesetResolver.forVisionTasks(
+            this.assetUrl(MODEL_PATHS.wasm),
+            isWorkerContext(),
+        );
 
         try {
             await this.load(vision, config, config.useGpu ? 'GPU' : 'CPU');
@@ -50,21 +60,21 @@ export class MediaPipeModels {
         }
     }
 
-    detectFace(video: HTMLVideoElement, timestamp: number): FaceDetection {
+    detectFace(image: ImageBitmap, timestamp: number): FaceDetection {
         if (!this.face) {
             throw new Error('Face model not initialised.');
         }
 
-        const result = this.face.detectForVideo(video, timestamp);
+        const result = this.face.detectForVideo(image, timestamp);
         return { landmarks: result.faceLandmarks, blendshapes: result.faceBlendshapes };
     }
 
-    detectHands(video: HTMLVideoElement, timestamp: number): HandDetection {
+    detectHands(image: ImageBitmap, timestamp: number): HandDetection {
         if (!this.hand) {
             throw new Error('Hand model not initialised.');
         }
 
-        const result = this.hand.detectForVideo(video, timestamp);
+        const result = this.hand.detectForVideo(image, timestamp);
         return {
             landmarks: result.landmarks,
             worldLandmarks: result.worldLandmarks,
@@ -77,6 +87,7 @@ export class MediaPipeModels {
         this.hand?.close();
         this.face = null;
         this.hand = null;
+        this.delegate = 'CPU';
     }
 
     private async load(
@@ -86,13 +97,13 @@ export class MediaPipeModels {
     ): Promise<void> {
         const [face, hand] = await Promise.all([
             FaceLandmarker.createFromOptions(vision, {
-                baseOptions: { modelAssetPath: assetUrl(MODEL_PATHS.face), delegate },
+                baseOptions: { modelAssetPath: this.assetUrl(MODEL_PATHS.face), delegate },
                 runningMode: 'VIDEO',
                 numFaces: 1,
                 outputFaceBlendshapes: true,
             }),
             HandLandmarker.createFromOptions(vision, {
-                baseOptions: { modelAssetPath: assetUrl(MODEL_PATHS.hand), delegate },
+                baseOptions: { modelAssetPath: this.assetUrl(MODEL_PATHS.hand), delegate },
                 runningMode: 'VIDEO',
                 numHands: config.numHands,
                 ...config.handModel,
@@ -101,9 +112,14 @@ export class MediaPipeModels {
 
         this.face = face;
         this.hand = hand;
+        this.delegate = delegate;
+    }
+
+    private assetUrl(path: string): string {
+        return new URL(path, this.baseUrl).href;
     }
 }
 
-function assetUrl(path: string): string {
-    return new URL(path, document.baseURI).href;
+function isWorkerContext(): boolean {
+    return typeof window === 'undefined';
 }

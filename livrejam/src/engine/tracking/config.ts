@@ -8,14 +8,9 @@ export const DEFAULT_CONFIG: FaceHandTrackerConfig = {
         mouthOpen: 0.35,
     },
     handModel: {
-        minHandDetectionConfidence: 0.25,
-        minHandPresenceConfidence: 0.25,
-        minTrackingConfidence: 0.25,
-    },
-    handStability: {
-        holdMs: 400,
-        matchDistance: 0.3,
-        duplicateDistance: 0.18,
+        minHandDetectionConfidence: 0.5,
+        minHandPresenceConfidence: 0.5,
+        minTrackingConfidence: 0.5,
     },
 };
 

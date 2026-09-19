@@ -10,7 +10,6 @@ export type {
     FaceScores,
     FaceState,
     HandModelOptions,
-    HandStabilityOptions,
     HandState,
     Handedness,
     MouthState,
