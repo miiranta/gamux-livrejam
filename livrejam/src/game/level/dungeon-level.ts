@@ -51,7 +51,15 @@ export function createDungeonLevel(): DungeonLevel {
     return {
         grid,
         tiles,
-        colliders: mergeColliders(solid, columns, rows, grid.tileSize, LAYER_WALL, LAYER_FLOOR, floorRow),
+        colliders: mergeColliders(
+            solid,
+            columns,
+            rows,
+            grid.tileSize,
+            LAYER_WALL,
+            LAYER_FLOOR,
+            floorRow,
+        ),
         floorTop,
         playLeft: grid.columnX(wallThickness),
         playRight: grid.columnX(columns - wallThickness),

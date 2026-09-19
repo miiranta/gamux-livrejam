@@ -16,9 +16,7 @@ export interface InferenceDisposeRequest {
 }
 
 export type InferenceRequest =
-    | InferenceInitRequest
-    | InferenceObserveRequest
-    | InferenceDisposeRequest;
+    InferenceInitRequest | InferenceObserveRequest | InferenceDisposeRequest;
 
 export interface InferenceReadyResponse {
     type: 'ready';
@@ -38,8 +36,6 @@ export interface InferenceErrorResponse {
 }
 
 export type InferenceResponse =
-    | InferenceReadyResponse
-    | InferenceActionResponse
-    | InferenceErrorResponse;
+    InferenceReadyResponse | InferenceActionResponse | InferenceErrorResponse;
 
 export type LoadedNetwork = NeuralNetwork;

@@ -37,7 +37,7 @@ export class FallerSpawner {
         );
     }
 
-    update(dt: number): Faller | null {
+    update(dt: number, aim?: number): Faller | null {
         this.timer += dt;
 
         if (this.timer < this.interval) {
@@ -45,15 +45,19 @@ export class FallerSpawner {
         }
 
         this.timer -= this.interval;
-        return this.spawn();
+        return this.spawn(aim);
     }
 
-    spawn(): Faller {
+    spawn(aim?: number): Faller {
         const { grid } = this.options.level;
         const size = fallerSpriteSize();
         const margin = DUNGEON_DROP.faller.spawnMargin;
         const usable = Math.max(grid.width - margin * 2 - size, 1);
-        const x = grid.left + margin + this.options.random() * usable;
+        const jitter = (this.options.random() * 2 - 1) * DUNGEON_DROP.drop.aimJitter;
+
+        const randomX = margin + this.options.random() * usable;
+        const aimedX = aim !== undefined ? aim + jitter - size / 2 : randomX;
+        const x = grid.left + Math.min(Math.max(aimedX, margin), margin + usable);
         const drift = (this.options.random() * 2 - 1) * DUNGEON_DROP.faller.lateralSpeed;
 
         return new Faller({

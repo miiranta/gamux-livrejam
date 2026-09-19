@@ -1,11 +1,11 @@
 import { GameLoop } from '../engine/loop';
 import { KeyboardActionMap, readAxisIntent } from '../engine/input';
+import { clamp } from '../engine/math';
 import { Camera, CanvasRenderer } from '../engine/render';
 import { PhysicsWorld } from '../engine/physics';
 import { CHARACTER_CLIPS, loadDungeonSprites } from './assets';
-import type { PolicyLike } from './ai';
+import type { ActionIntent, PolicyLike } from './ai';
 import { IdlePolicy, createObservationBuffer, decodeAction, writeObservation } from './ai';
-import type { ActionIntent } from './ai';
 import { DUNGEON_DROP } from './config';
 import { Dodger, Faller, randomMaxSpeed } from './entities';
 import type { DungeonLevel } from './level';
@@ -74,6 +74,7 @@ export class DungeonDrop {
     private score = 0;
     private best = 0;
     private showColliders = false;
+    private dropAimX = 0;
 
     constructor(private readonly options: DungeonDropOptions) {
         this.random = options.random ?? Math.random;
@@ -115,6 +116,7 @@ export class DungeonDrop {
         renderer.resize(this.viewWidth, this.viewHeight);
 
         this.scene = new SceneRenderer(renderer, sprites);
+        this.dropAimX = this.level.grid.left + this.level.grid.width / 2;
         this.respawn();
         this.loop.start();
     }
@@ -173,13 +175,20 @@ export class DungeonDrop {
             fast: 'fastFall',
         });
         const active = this.active;
+        const airborne = active !== null && active.state === 'falling';
 
-        if (active && active.state === 'falling') {
+        if (airborne && active) {
             const body = active.physics.body;
             body.velocity.x = intent.axis * DUNGEON_DROP.drop.horizontalSpeed;
             body.velocity.y = intent.fast
                 ? DUNGEON_DROP.drop.fastFallSpeed
                 : Math.min(body.velocity.y + DROPPED_ACCELERATION * dt, DUNGEON_DROP.drop.maxSpeed);
+        } else if (intent.axis !== 0) {
+            this.dropAimX = clamp(
+                this.dropAimX + intent.axis * DUNGEON_DROP.drop.aimSpeed * dt,
+                this.level.playLeft,
+                this.level.playRight,
+            );
         }
 
         const pressed = this.input.isDown('drop');
@@ -197,7 +206,7 @@ export class DungeonDrop {
             return;
         }
 
-        const spawned = this.spawner.spawn();
+        const spawned = this.spawner.spawn(this.dropAimX);
         this.active = spawned;
         this.fallers.push(spawned);
     }
@@ -230,6 +239,11 @@ export class DungeonDrop {
     }
 
     private updateFallers(dt: number): void {
+        const spawned = this.spawner.update(dt, this.aimPoint());
+        if (spawned) {
+            this.fallers.push(spawned);
+        }
+
         for (const faller of this.fallers) {
             const result = this.world.step(faller.physics, dt);
             faller.applyCollision(result);
@@ -243,6 +257,18 @@ export class DungeonDrop {
         if (this.active && this.active.expired) {
             this.active = null;
         }
+    }
+
+    private aimPoint(): number {
+        const dodger = this.dodger;
+        if (!dodger) {
+            return this.level.grid.left + this.level.grid.width / 2;
+        }
+
+        const { velocity, position } = dodger.physics.body;
+        const travel = this.level.floorTop - position.y;
+        const leadSeconds = Math.min(travel / DUNGEON_DROP.faller.maxFallSpeed, 0.6);
+        return dodger.feet.x + velocity.x * leadSeconds;
     }
 
     private updateRound(dt: number): void {
@@ -315,6 +341,8 @@ export class DungeonDrop {
             return;
         }
 
-        scene.render(this.level, this.fallers, dodger, { colliders: this.showColliders });
+        scene.render(this.level, this.fallers, dodger, this.dropAimX, {
+            colliders: this.showColliders,
+        });
     }
 }

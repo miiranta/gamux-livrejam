@@ -13,18 +13,23 @@ class DungeonDropSim:
         self.dtype = torch.float32
         self.blockers = [tuple(box) for box in cfg.blockers()]
         self.slots = cfg.MAX_FALLER_SLOTS
+        self.generator = torch.Generator(device="cpu").manual_seed(seed)
         self.reset()
 
+    def sample_max_speed(self):
+        weights = torch.tensor(cfg.SPEED_WEIGHTS, dtype=self.dtype)
+        picks = torch.randint(0, len(cfg.SPEED_WEIGHTS), (self.envs,), generator=self.generator)
+        return weights[picks].to(self.device)
+
     def reset(self):
+        return self.reset_mask(torch.ones(self.envs, dtype=torch.bool))
+
+    def reset_mask(self, mask):
         envs = self.envs
         device = self.device
-        generator = torch.Generator(device="cpu").manual_seed(self.seed)
+        rows = torch.arange(envs, device=device)[mask]
 
-        weights = torch.tensor(cfg.SPEED_WEIGHTS, dtype=self.dtype)
-        picks = torch.randint(0, len(cfg.SPEED_WEIGHTS), (envs,), generator=generator)
-        self.max_speed = weights[picks].to(device)
-        self.speed_index = picks.to(device)
-
+        self.max_speed = self.sample_max_speed()
         self.obstacle_x = torch.zeros((envs, self.slots), dtype=self.dtype, device=device)
         self.obstacle_y = torch.zeros((envs, self.slots), dtype=self.dtype, device=device)
         self.obstacle_vx = torch.zeros((envs, self.slots), dtype=self.dtype, device=device)
@@ -46,18 +51,21 @@ class DungeonDropSim:
 
         self.drop_timer = torch.zeros(envs, dtype=self.dtype, device=device)
         self.drop_elapsed = torch.zeros(envs, dtype=self.dtype, device=device)
-        self.drop_index = torch.zeros(envs, dtype=torch.long, device=device)
-        self.has_active = torch.zeros(envs, dtype=torch.bool, device=device)
-        self.active_slot = torch.zeros(envs, dtype=torch.long, device=device)
+        self.drop_speed = torch.full(
+            (envs,), cfg.DROP_BASE_SPEED, dtype=self.dtype, device=device
+        )
+        self.drop_ramp = torch.zeros(envs, dtype=self.dtype, device=device)
 
         self.elapsed = torch.zeros(envs, dtype=self.dtype, device=device)
         self.alive = torch.ones(envs, dtype=torch.bool, device=device)
         self.score = torch.zeros(envs, dtype=self.dtype, device=device)
         self.hits = torch.zeros(envs, dtype=self.dtype, device=device)
+        self.episodes = torch.zeros(envs, dtype=self.dtype, device=device)
         self.dodges = torch.zeros(envs, dtype=self.dtype, device=device)
         self.near_misses = torch.zeros(envs, dtype=self.dtype, device=device)
         self.survived = torch.zeros(envs, dtype=self.dtype, device=device)
-        self.generator = generator
+
+        del rows
         return self.observation()
 
     def observation(self):
@@ -77,14 +85,14 @@ class DungeonDropSim:
         obstacle_cy = self.obstacle_y + cfg.FALLER_SIZE / 2
         dx = obstacle_cx - dodger_x[:, None]
         dy = obstacle_cy - dodger_y[:, None]
-        distance = dx.abs() + torch.where(dy > 0, dy, -dy * 4)
+        distance = dx.abs() + torch.clamp(dy, min=0.0)
         ranked = torch.where(
             self.obstacle_active, distance, torch.full_like(distance, float("inf"))
         )
 
         order = torch.argsort(ranked, dim=1)[:, : cfg.FALLER_SLOTS]
         valid = self.obstacle_active.gather(1, order) & (
-            ranked.gather(1, order) < cfg.OBSERVE_RADIUS * 2
+            ranked.gather(1, order) < cfg.OBSERVE_RADIUS
         )
         gdx = dx.gather(1, order)
         gdy = dy.gather(1, order)
@@ -181,45 +189,65 @@ class DungeonDropSim:
 
     def step_dropper(self, policy):
         self.drop_elapsed = self.drop_elapsed + cfg.DT
-        self.drop_timer = self.drop_timer + cfg.DT
+        self.drop_ramp = self.drop_ramp + cfg.DT
 
-        speed = self.max_speed * 0 + cfg.drop_speed(self.drop_elapsed)
-        ready = self.drop_timer >= cfg.spawn_interval(speed)
+        ramp = self.drop_ramp >= cfg.DROP_RAMP_SECONDS
+        self.drop_speed = torch.where(
+            ramp,
+            torch.clamp(
+                self.drop_speed + cfg.DROP_SPEED_STEP, max=cfg.DROP_MAX_SPEED
+            ),
+            self.drop_speed,
+        )
+        self.drop_ramp = torch.where(ramp, self.drop_ramp - cfg.DROP_RAMP_SECONDS, self.drop_ramp)
+
+        interval = torch.clamp(
+            (cfg.DROP_BASE_INTERVAL * cfg.DROP_BASE_SPEED) / self.drop_speed,
+            min=cfg.DROP_MIN_INTERVAL,
+        )
+        self.drop_timer = self.drop_timer + cfg.DT
+        ready = self.drop_timer >= interval
 
         if bool(ready.any()):
             target = policy(
                 {
                     "pos_x": self.pos_x,
                     "vel_x": self.vel_x,
-                    "elapsed": self.drop_elapsed,
                     "obstacle_x": self.obstacle_x,
                     "obstacle_y": self.obstacle_y,
                     "obstacle_active": self.obstacle_active,
-                    "grounded": self.grounded,
                 }
             )
-            self.spawn_faller(target, ready, speed)
+            self.spawn_faller(target, ready, interval)
 
         self.step_falling()
 
-    def spawn_faller(self, target_x, ready, speed):
+    def spawn_faller(self, target_x, ready, interval):
         size = cfg.FALLER_SIZE
+        rows = torch.arange(self.envs, device=self.device)
         index = self.obstacle_cursor % self.slots
         clamped = torch.clamp(target_x, 0.0, cfg.WIDTH - size)
 
-        spawn = ready
-        rows = torch.arange(self.envs, device=self.device)
-        self.obstacle_x[rows[spawn], index[spawn]] = clamped[spawn]
-        self.obstacle_y[rows[spawn], index[spawn]] = cfg.SPAWN_Y - size
-        self.obstacle_vx[rows[spawn], index[spawn]] = 0.0
-        self.obstacle_vy[rows[spawn], index[spawn]] = speed[spawn]
-        self.obstacle_active[rows[spawn], index[spawn]] = True
-        self.obstacle_settle[rows[spawn], index[spawn]] = 0.0
-        self.obstacle_scored[rows[spawn], index[spawn]] = False
+        self.obstacle_x[rows, index] = torch.where(
+            ready, clamped, self.obstacle_x[rows, index]
+        )
+        self.obstacle_y[rows, index] = torch.where(
+            ready, torch.full_like(clamped, cfg.SPAWN_Y - size), self.obstacle_y[rows, index]
+        )
+        self.obstacle_vx[rows, index] = torch.where(
+            ready, torch.zeros_like(clamped), self.obstacle_vx[rows, index]
+        )
+        self.obstacle_vy[rows, index] = torch.where(
+            ready, self.drop_speed, self.obstacle_vy[rows, index]
+        )
+        self.obstacle_active[rows, index] = self.obstacle_active[rows, index] | ready
+        self.obstacle_settle[rows, index] = torch.where(
+            ready, torch.zeros_like(clamped), self.obstacle_settle[rows, index]
+        )
+        self.obstacle_scored[rows, index] = self.obstacle_scored[rows, index] & ~ready
 
         self.obstacle_cursor = self.obstacle_cursor + ready.to(torch.long)
-        self.drop_timer = torch.where(ready, self.drop_timer - cfg.spawn_interval(speed), self.drop_timer)
-        self.drop_index = torch.where(ready, self.drop_index + 1, self.drop_index)
+        self.drop_timer = torch.where(ready, self.drop_timer - interval, self.drop_timer)
 
     def step_falling(self):
         size = cfg.FALLER_SIZE
@@ -296,14 +324,19 @@ class DungeonDropSim:
         self.dodges = self.dodges + dodge.to(self.dtype)
         self.near_misses = self.near_misses + near.to(self.dtype)
         self.hits = self.hits + hit.to(self.dtype)
+        self.episodes = self.episodes + hit.to(self.dtype)
         self.alive = active & ~hit
-        return self.observation()
+
+        observation = self.observation()
+        observation[hit] = 0.0
+        return observation
 
     def metrics(self):
         return {
             "alive": self.alive,
             "score": self.score,
             "hits": self.hits,
+            "episodes": self.episodes,
             "survived": self.survived,
             "dodges": self.dodges,
             "near_misses": self.near_misses,

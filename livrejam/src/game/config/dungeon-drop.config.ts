@@ -42,6 +42,8 @@ export const DUNGEON_DROP = {
         minInterval: 0.4,
         horizontalSpeed: 200,
         fastFallSpeed: 700,
+        aimSpeed: 260,
+        aimJitter: 60,
     },
     impact: {
         fallerHalfWidth: 8,

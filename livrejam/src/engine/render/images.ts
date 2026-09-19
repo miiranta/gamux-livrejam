@@ -11,7 +11,3 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
         image.src = url;
     });
 }
-
-export function loadSpriteSheet(url: string, frameSize: number): Promise<SpriteSheet> {
-    return loadImage(url).then((image) => ({ image, frameSize }));
-}

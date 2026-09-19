@@ -2,7 +2,7 @@ import { CanvasRenderer, drawSheetSprite, drawTiledSprite } from '../../engine/r
 import type { Camera } from '../../engine/render';
 import { clampFrame } from '../../engine/entities';
 import type { CharacterAnimationKey, DungeonSprites } from '../assets';
-import { CHARACTER_CLIPS } from '../assets';
+import { CHARACTER_CLIPS, fallerSpriteSize } from '../assets';
 import type { Dodger, Faller } from '../entities';
 import type { DungeonLevel } from '../level';
 import { DUNGEON_DROP } from '../config';
@@ -24,7 +24,13 @@ export class SceneRenderer {
         return this.renderer.camera;
     }
 
-    render(level: DungeonLevel, fallers: readonly Faller[], dodger: Dodger, debug: SceneDebug): void {
+    render(
+        level: DungeonLevel,
+        fallers: readonly Faller[],
+        dodger: Dodger,
+        aimX: number,
+        debug: SceneDebug,
+    ): void {
         const { camera } = this.renderer;
         const ctx = this.renderer.context;
 
@@ -36,24 +42,40 @@ export class SceneRenderer {
                 continue;
             }
 
-            const sheet = this.sprites.fallers[faller.sprite];
-            drawSheetSprite(ctx, sheet, camera, {
-                column: 0,
-                row: 0,
-                worldX: faller.position.x,
-                worldY: faller.position.y,
-                width: faller.size,
-                height: faller.size,
-            });
+            drawTiledSprite(
+                ctx,
+                this.sprites.fallers[faller.sprite],
+                camera,
+                faller.position.x,
+                faller.position.y,
+                faller.size,
+            );
         }
 
         this.renderDodger(dodger);
+        this.renderAim(level, aimX);
 
         if (debug.colliders) {
             this.renderColliders(level, fallers, dodger);
         }
 
         this.renderer.present();
+    }
+
+    private renderAim(level: DungeonLevel, aimX: number): void {
+        const { camera } = this.renderer;
+        const ctx = this.renderer.context;
+        const size = fallerSpriteSize();
+        const x = camera.toScreenX(aimX - size / 2);
+        const y = camera.toScreenY(level.spawnY - size);
+        const side = camera.toScreenLength(size);
+
+        ctx.save();
+        ctx.strokeStyle = 'rgba(125, 200, 255, 0.7)';
+        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 0.5, y + 0.5, side, side);
+        ctx.restore();
     }
 
     private renderTiles(level: DungeonLevel): void {
@@ -98,11 +120,7 @@ export class SceneRenderer {
         });
     }
 
-    private renderColliders(
-        level: DungeonLevel,
-        fallers: readonly Faller[],
-        dodger: Dodger,
-    ): void {
+    private renderColliders(level: DungeonLevel, fallers: readonly Faller[], dodger: Dodger): void {
         const { camera } = this.renderer;
         const ctx = this.renderer.context;
 

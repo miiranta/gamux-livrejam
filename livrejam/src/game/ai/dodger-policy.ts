@@ -10,7 +10,9 @@ export class DodgerPolicy implements PolicyLike {
     private readonly scores: Float32Array<ArrayBuffer>;
 
     constructor(private readonly network: NeuralNetwork) {
-        this.scores = new Float32Array(new ArrayBuffer(network.outputSize * Float32Array.BYTES_PER_ELEMENT));
+        this.scores = new Float32Array(
+            new ArrayBuffer(network.outputSize * Float32Array.BYTES_PER_ELEMENT),
+        );
     }
 
     get ready(): boolean {

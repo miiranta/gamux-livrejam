@@ -29,13 +29,12 @@ def stack_policies(policies):
 
 
 def batched_forward(inputs, stacked, sizes, population, envs):
-    batch = inputs.view(population, envs, sizes[0])
-    activation = batch
+    activation = inputs.view(population, envs, sizes[0])
 
     for layer in range(len(sizes) - 1):
         weight = stacked[layer * 2]
         bias = stacked[layer * 2 + 1]
-        activation = torch.einsum("pni,pij->pnj", activation, weight) + bias[:, None, :]
+        activation = torch.einsum("pni,pji->pnj", activation, weight) + bias[:, None, :]
         if layer < len(sizes) - 2:
             activation = torch.tanh(activation)
 

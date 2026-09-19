@@ -35,7 +35,10 @@
                 class="game-canvas__chip"
                 [class.game-canvas__chip--error]="modelStatus() === 'error'"
             >
-                <i class="game-canvas__dot" [class.game-canvas__dot--warn]="modelStatus() !== 'ready'"></i>
+                <i
+                    class="game-canvas__dot"
+                    [class.game-canvas__dot--warn]="modelStatus() !== 'ready'"
+                ></i>
                 ai
                 <b>{{ modelStatus() === 'ready' ? 'policy' : modelStatus() }}</b>
             </span>
@@ -43,9 +46,7 @@
 
         <div class="game-canvas__controls">
             <button type="button" class="game-canvas__button" (click)="restart()">Restart</button>
-            <button type="button" class="game-canvas__button" (click)="accelerate()">
-                Faster
-            </button>
+            <button type="button" class="game-canvas__button" (click)="accelerate()">Faster</button>
             <button type="button" class="game-canvas__button" (click)="toggleColliders()">
                 Colliders
             </button>
@@ -54,7 +55,9 @@
             </button>
         </div>
 
-        <p class="game-canvas__hint">A / D mover · S acelerar queda · Espaço soltar · IA pilota o personagem</p>
+        <p class="game-canvas__hint">
+            A / D mover · S acelerar queda · Espaço soltar · IA pilota o personagem
+        </p>
 
         @if (modelStatus() === 'error') {
             <p class="game-canvas__debug">{{ modelMessage() }}</p>

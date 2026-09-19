@@ -1,13 +1,5 @@
-export interface ActionSource<TAction extends string> {
-    snapshot(): readonly TAction[];
-    isDown(action: TAction): boolean;
-    clear(): void;
-    dispose(): void;
-}
-
-export class KeyboardActionMap<TAction extends string> implements ActionSource<TAction> {
+export class KeyboardActionMap<TAction extends string> {
     private readonly down = new Set<TAction>();
-    private readonly pressed = new Set<TAction>();
     private readonly codes = new Map<string, TAction>();
 
     constructor(
@@ -22,17 +14,12 @@ export class KeyboardActionMap<TAction extends string> implements ActionSource<T
         this.target.addEventListener('blur', this.onBlur);
     }
 
-    snapshot(): readonly TAction[] {
-        return [...this.pressed];
-    }
-
     isDown(action: TAction): boolean {
         return this.down.has(action);
     }
 
     clear(): void {
         this.down.clear();
-        this.pressed.clear();
     }
 
     dispose(): void {
@@ -54,7 +41,6 @@ export class KeyboardActionMap<TAction extends string> implements ActionSource<T
 
         event.preventDefault();
         this.down.add(action);
-        this.pressed.add(action);
     };
 
     private readonly onKeyUp = (event: KeyboardEvent): void => {

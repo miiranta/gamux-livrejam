@@ -11,7 +11,7 @@ export interface LoadedSpriteSheet extends SpriteSheet {
 
 export interface DungeonSprites {
     tiles: Record<TileSpriteKey, HTMLImageElement>;
-    fallers: Record<FallerSpriteKey, SpriteSheet>;
+    fallers: Record<FallerSpriteKey, HTMLImageElement>;
     character: Record<CharacterAnimationKey, LoadedSpriteSheet>;
 }
 
@@ -63,29 +63,26 @@ export function loadDungeonSprites(): Promise<DungeonSprites> {
         CharacterAnimationKey,
         number,
     ][];
-    const size = fallerSpriteSize();
 
     return Promise.all([
-        Promise.all(tileEntries.map(([key, url]) => loadImage(url).then((image) => [key, image] as const))),
+        Promise.all(
+            tileEntries.map(([key, url]) => loadImage(url).then((image) => [key, image] as const)),
+        ),
         Promise.all(
             fallerEntries.map(([key, url]) =>
-                loadImage(url).then((image) => [key, { image, frameSize: size }] as const),
+                loadImage(url).then((image) => [key, image] as const),
             ),
         ),
         Promise.all(
             characterEntries.map(([key, frames]) =>
                 loadImage(`assets/character/damage_${DAMAGE_TIER}/${key}.png`).then(
-                    (image) =>
-                        [
-                            key,
-                            { image, frameSize: CHARACTER_FRAME_SIZE, frames },
-                        ] as const,
+                    (image) => [key, { image, frameSize: CHARACTER_FRAME_SIZE, frames }] as const,
                 ),
             ),
         ),
     ]).then(([tiles, fallers, character]) => ({
         tiles: Object.fromEntries(tiles) as Record<TileSpriteKey, HTMLImageElement>,
-        fallers: Object.fromEntries(fallers) as Record<FallerSpriteKey, SpriteSheet>,
+        fallers: Object.fromEntries(fallers) as Record<FallerSpriteKey, HTMLImageElement>,
         character: Object.fromEntries(character) as Record<
             CharacterAnimationKey,
             LoadedSpriteSheet

@@ -60,6 +60,8 @@ export class Character {
             size: { width: options.box.width, height: options.box.height },
             solid: true,
         };
+
+        this.physics.body.maxSpeed.x = options.maxSpeedX;
     }
 
     get size(): CharacterBox {
@@ -86,22 +88,11 @@ export class Character {
         return Math.abs(this.physics.body.velocity.x);
     }
 
-    setPosition(feet: Point2D): void {
-        this.physics.body.position.x = feet.x - this.box.width / 2;
-        this.physics.body.position.y = feet.y - this.box.height;
-    }
-
     move(axis: number, dt: number): void {
         if (axis === 0) {
             dampVelocity(this.physics.body, 'x', this.dragX, dt);
         } else {
-            accelerate(
-                this.physics.body,
-                'x',
-                axis * this.accelerationX,
-                this.maxSpeedX,
-                dt,
-            );
+            accelerate(this.physics.body, 'x', axis * this.accelerationX, this.maxSpeedX, dt);
         }
 
         if (axis !== 0) {

@@ -1,0 +1,56 @@
+{
+  "dodger": {
+    "feetX": 320,
+    "velocityX": 120,
+    "maxSpeedX": 200
+  },
+  "fallers": [
+    {
+      "x": 420,
+      "y": 100,
+      "velocityX": 0,
+      "velocityY": 200,
+      "grounded": false
+    },
+    {
+      "x": 120,
+      "y": 40,
+      "velocityX": 0,
+      "velocityY": 300,
+      "grounded": false
+    },
+    {
+      "x": 560,
+      "y": 300,
+      "velocityX": 0,
+      "velocityY": 0,
+      "grounded": true
+    }
+  ],
+  "observation": [
+    0,
+    0.6,
+    0.666667,
+    1,
+    0.446154,
+    -0.807692,
+    0,
+    0.384615,
+    0,
+    1,
+    1,
+    -0.707692,
+    -1.038462,
+    0,
+    0.576923,
+    0,
+    1,
+    1,
+    0.984615,
+    -0.038462,
+    0,
+    0,
+    1,
+    1
+  ]
+}

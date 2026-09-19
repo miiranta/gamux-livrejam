@@ -1,7 +1,7 @@
-"""Treino da politica do desviador por Evolution Strategies.
+"""Treino da politica do desviador por Evolution Strategies (OpenAI-ES).
 
-Nao usa gradiente da simulacao: amostra perturbacoes, avalia em lote no GPU e
-atualiza a media. Robusto para recompensas nao diferenciaveis (colisoes, saltos).
+Sem gradiente pela simulacao: amostra perturbacoes, avalia em lote no GPU e
+atualiza a media com pesos por ranking. Robusto para recompensa nao diferenciavel.
 """
 
 import argparse
@@ -12,40 +12,37 @@ import time
 import torch
 
 import config as cfg
+from dropper import DropperPolicy
 from model import batched_forward, export_json, initial_policy, stack_policies
 from sim import DungeonDropSim
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--generations", type=int, default=600)
-    parser.add_argument("--population", type=int, default=64)
-    parser.add_argument("--envs", type=int, default=48)
-    parser.add_argument("--episode-steps", type=int, default=900)
-    parser.add_argument("--sigma", type=float, default=0.06)
-    parser.add_argument("--learning-rate", type=float, default=0.05)
+    parser.add_argument("--generations", type=int, default=400)
+    parser.add_argument("--population", type=int, default=48)
+    parser.add_argument("--envs", type=int, default=32)
+    parser.add_argument("--episode-steps", type=int, default=1500)
+    parser.add_argument("--sigma", type=float, default=0.05)
+    parser.add_argument("--learning-rate", type=float, default=0.06)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--out", default="livrejam/public/models/dodger-policy.json")
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     return parser.parse_args()
 
 
-def rank_weights(scores):
-    population = scores.shape[0]
-    order = torch.argsort(scores)
+def rank_weights(fitness):
+    population = fitness.shape[0]
+    order = torch.argsort(fitness)
     ranks = torch.empty_like(order, dtype=torch.float32)
-    ranks[order] = torch.arange(population, dtype=torch.float32)
+    ranks[order] = torch.arange(population, dtype=torch.float32, device=fitness.device)
     centered = ranks / (population - 1) - 0.5
     return centered / (population - 1)
 
 
-def evaluate(theta, perturbations, args):
-    sizes = cfg.NETWORK_SIZES
-    population = perturbations.shape[0]
-    candidates = theta[None, :] + args.sigma * perturbations
-
+def expand_candidates(candidates, sizes):
     policies = []
-    for index in range(population):
+    for index in range(candidates.shape[0]):
         policy = []
         offset = 0
         for layer in range(len(sizes) - 1):
@@ -57,27 +54,47 @@ def evaluate(theta, perturbations, args):
             policy.append(candidates[index, offset : offset + fan_out])
             offset += fan_out
         policies.append(policy)
+    return policies
 
-    stacked = stack_policies(policies)
-    sim = DungeonDropSim(population * args.envs, device=args.device, seed=args.seed + 1000)
+
+def evaluate(theta, perturbations, args):
+    sizes = cfg.NETWORK_SIZES
+    population = perturbations.shape[0]
+    total_envs = population * args.envs
+    candidates = theta[None, :] + args.sigma * perturbations
+
+    stacked = stack_policies(expand_candidates(candidates, sizes))
+    sim = DungeonDropSim(total_envs, device=args.device, seed=args.seed + 1000)
+    dropper = DropperPolicy(seed=args.seed + 2000)
     observation = sim.reset()
 
-    totals = torch.zeros(population * args.envs, device=args.device)
-    survived = torch.zeros(population * args.envs, device=args.device)
+    alive_steps = torch.zeros(total_envs, device=args.device)
+    survived = torch.zeros(total_envs, device=args.device)
+    episodes = torch.zeros(total_envs, device=args.device)
 
     for _ in range(args.episode_steps):
         with torch.no_grad():
             logits = batched_forward(observation, stacked, sizes, population, args.envs)
             actions = torch.argmax(logits, dim=1)
-            observation = sim.step(actions)
-            totals = totals + sim.metrics()["score"]
-            survived = survived + sim.metrics()["alive"].to(torch.float32)
+            observation = sim.step(actions, dropper)
+            metrics = sim.metrics()
+            alive = metrics["alive"].to(torch.float32)
+            alive_steps = alive_steps + alive
+            survived = survived + alive
+            episodes = metrics["episodes"]
 
-    totals = totals.view(population, args.envs)
-    survived = survived.view(population, args.envs)
+    average_life = survived / torch.clamp(episodes, min=1.0)
+    coverage = alive_steps / args.episode_steps
+    combined = (average_life / args.episode_steps + coverage * 0.1).view(
+        population, args.envs
+    ).mean(dim=1)
 
-    fitness = survived.mean(dim=1) + 0.01 * totals.mean(dim=1)
-    return fitness, survived.mean(), totals.mean()
+    return (
+        combined,
+        coverage.mean(),
+        episodes.mean(),
+        (average_life * cfg.DT).mean(),
+    )
 
 
 def main():
@@ -85,7 +102,8 @@ def main():
     torch.manual_seed(args.seed)
 
     device = torch.device(args.device)
-    policy = initial_policy(cfg.NETWORK_SIZES, device=args.device, seed=args.seed)
+    sizes = cfg.NETWORK_SIZES
+    policy = initial_policy(sizes, device=args.device, seed=args.seed)
     theta = torch.cat([tensor.reshape(-1) for tensor in policy]).to(torch.float32)
     parameters = theta.numel()
 
@@ -93,17 +111,22 @@ def main():
     best_fitness = float("-inf")
     history = []
 
-    print(f"device={device} parameters={parameters} population={args.population} envs={args.envs}")
+    print(
+        f"device={device} parameters={parameters} population={args.population} "
+        f"envs={args.envs} steps={args.episode_steps}"
+    )
     started = time.time()
 
     for generation in range(1, args.generations + 1):
         perturbations = torch.randn(
             (args.population, parameters), device=device, dtype=torch.float32
         )
-        fitness, mean_survived, mean_score = evaluate(theta, perturbations, args)
+        fitness, coverage, episodes, average_life = evaluate(theta, perturbations, args)
         weights = rank_weights(fitness)
 
-        gradient = (perturbations * weights[:, None]).sum(dim=0) / (args.population * args.sigma)
+        gradient = (perturbations * weights[:, None]).sum(dim=0) / (
+            args.population * args.sigma
+        )
         theta = theta + args.learning_rate * gradient
 
         top = fitness.max().item()
@@ -115,22 +138,24 @@ def main():
             "generation": generation,
             "mean_fitness": fitness.mean().item(),
             "top_fitness": top,
-            "mean_survived": mean_survived.item(),
-            "mean_score": mean_score.item(),
+            "alive_ratio": coverage.item(),
+            "episodes": episodes.item(),
+            "average_life_seconds": average_life.item(),
             "elapsed": time.time() - started,
         }
         history.append(entry)
 
-        if generation % 10 == 0 or generation == 1:
+        if generation % 5 == 0 or generation == 1:
             print(
-                f"gen {generation:4d} | fitness {entry['mean_fitness']:8.3f} "
-                f"top {top:8.3f} | survived {entry['mean_survived']:6.2f}s "
-                f"| score {entry['mean_score']:8.1f} | {entry['elapsed']:6.1f}s"
+                f"gen {generation:4d} | fit {entry['mean_fitness']:7.4f} top {top:7.4f} "
+                f"| alive {entry['alive_ratio'] * 100:5.1f}% "
+                f"| life {entry['average_life_seconds']:5.2f}s "
+                f"| deaths {entry['episodes']:6.1f} | {entry['elapsed']:6.1f}s",
+                flush=True,
             )
 
     final = []
     offset = 0
-    sizes = cfg.NETWORK_SIZES
     for layer in range(len(sizes) - 1):
         fan_in = sizes[layer]
         fan_out = sizes[layer + 1]

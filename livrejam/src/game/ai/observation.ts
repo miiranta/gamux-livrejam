@@ -50,10 +50,7 @@ export interface ObservationContext {
     fallers: readonly Faller[];
 }
 
-export function writeObservation(
-    target: Float32Array,
-    context: ObservationContext,
-): Float32Array {
+export function writeObservation(target: Float32Array, context: ObservationContext): Float32Array {
     const { level, dodger, fallers } = context;
     const { grid } = level;
     const { body } = dodger.physics;
@@ -99,27 +96,21 @@ export function writeObservation(
     return target;
 }
 
-function selectNearest(
-    fallers: readonly Faller[],
-    x: number,
-    y: number,
-    limit: number,
-): Faller[] {
+function selectNearest(fallers: readonly Faller[], x: number, y: number, limit: number): Faller[] {
     const ranked = fallers
         .filter((faller) => !faller.expired)
         .map((faller) => ({
             faller,
             score: fallerThreat(faller, x, y),
         }))
-        .filter((entry) => entry.score < DUNGEON_DROP.ai.observeRadius * 2)
+        .filter((entry) => entry.score < DUNGEON_DROP.ai.observeRadius)
         .sort((a, b) => a.score - b.score);
 
     return ranked.slice(0, limit).map((entry) => entry.faller);
 }
 
 function fallerThreat(faller: Faller, x: number, y: number): number {
-    const dx = Math.abs(faller.centerX - x);
-    const dy = faller.centerY - y;
-    const vertical = dy > 0 ? dy : dy * -4;
-    return dx + vertical;
+    const horizontal = Math.abs(faller.centerX - x);
+    const below = faller.centerY - y;
+    return horizontal + Math.max(below, 0);
 }

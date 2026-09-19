@@ -18,7 +18,3 @@ export function overlaps(a: Aabb, b: Aabb): boolean {
         a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y
     );
 }
-
-export function boxCenter(box: Aabb): { x: number; y: number } {
-    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-}

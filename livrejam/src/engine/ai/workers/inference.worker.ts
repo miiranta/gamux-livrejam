@@ -5,10 +5,10 @@ import type { NeuralNetwork } from '../neural-network';
 import type { InferenceRequest, InferenceResponse } from './protocol';
 
 let network: NeuralNetwork | null = null;
-const output = new Float32Array(0);
+let output = new Float32Array(0);
 
-function respond(message: InferenceResponse, transfer?: Transferable[]): void {
-    self.postMessage(message, transfer ? { transfer } : undefined);
+function respond(message: InferenceResponse): void {
+    self.postMessage(message);
 }
 
 async function handleInit(request: Extract<InferenceRequest, { type: 'init' }>): Promise<void> {
@@ -18,6 +18,7 @@ async function handleInit(request: Extract<InferenceRequest, { type: 'init' }>):
     }
 
     network = parseNetwork(await response.json());
+    output = new Float32Array(network.outputSize);
     respond({
         type: 'ready',
         inputSize: network.inputSize,

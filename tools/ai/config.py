@@ -114,28 +114,3 @@ def drop_speed(elapsed):
     steps = int(elapsed / DROP_RAMP_SECONDS)
     return min(DROP_BASE_SPEED + steps * DROP_SPEED_STEP, DROP_MAX_SPEED)
 
-
-def dropper_target(pos_x, vel_x, elapsed, obstacle_x, obstacle_y, obstacle_active, grounded, random):
-    size = FALLER_SIZE
-    dodger_x = pos_x + DODGER_BOX[0] / 2
-    faller_cx = obstacle_x + size / 2
-    faller_cy = obstacle_y + size / 2
-
-    falling = obstacle_active & (faller_cy < FLOOR_TOP)
-    lead = torch.clamp((FLOOR_TOP - faller_cy) / FALLER_MAX_FALL, 0.0, 0.9)
-    predicted = faller_cx + obstacle_x * 0 + vel_x * lead
-    dodger_predicted = dodger_x + vel_x * lead
-
-    safe = torch.where(falling, (predicted - dodger_predicted).abs(), torch.full_like(predicted, float("inf")))
-    best = safe.argmin(dim=1)
-    rows = torch.arange(pos_x.shape[0], device=pos_x.device)
-    target = predicted[rows, best]
-    covered = torch.isfinite(safe[rows, best])
-
-    margin = 60.0
-    jitter = (random((pos_x.shape[0],)) * 2 - 1) * margin
-    offset = torch.where(grounded, torch.full_like(target, 0.0), torch.full_like(target, 0.0))
-    aim = target + jitter + offset
-    fallback = margin + random((pos_x.shape[0],)) * (WIDTH - margin * 2 - size)
-    return torch.where(covered, aim, fallback)
-

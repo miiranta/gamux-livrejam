@@ -1,4 +1,4 @@
-"""Avaliacao do modelo exportado, com linha de base aleatoria."""
+"""Avaliacao do modelo exportado contra linhas de base."""
 
 import argparse
 import json
@@ -6,6 +6,7 @@ import json
 import torch
 
 import config as cfg
+from dropper import DropperPolicy
 from model import batched_forward, load_policy, stack_policies
 from sim import DungeonDropSim
 
@@ -13,32 +14,38 @@ from sim import DungeonDropSim
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="livrejam/public/models/dodger-policy.json")
-    parser.add_argument("--episodes", type=int, default=512)
-    parser.add_argument("--steps", type=int, default=1800)
+    parser.add_argument("--episodes", type=int, default=1024)
+    parser.add_argument("--steps", type=int, default=3600)
     parser.add_argument("--seed", type=int, default=1234)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     return parser.parse_args()
 
 
-def run(sim, actions_fn, steps, population, envs):
+def run(actions_fn, args, seed_offset=0):
+    sim = DungeonDropSim(args.episodes, device=args.device, seed=args.seed + seed_offset)
+    dropper = DropperPolicy(seed=args.seed + 500 + seed_offset)
     observation = sim.reset()
-    survived = torch.zeros(population * envs, device=sim.device)
-    score = torch.zeros(population * envs, device=sim.device)
-    hits = torch.zeros(population * envs, device=sim.device)
 
-    for _ in range(steps):
-        actions = actions_fn(observation)
-        observation = sim.step(actions)
-        metrics = sim.metrics()
-        survived = survived + metrics["alive"].to(torch.float32)
-        score = score + metrics["score"]
-        hits = hits + metrics["hits"]
+    survived = torch.zeros(args.episodes, device=args.device)
+    episodes = torch.zeros(args.episodes, device=args.device)
 
+    for _ in range(args.steps):
+        with torch.no_grad():
+            observation = sim.step(actions_fn(observation), dropper)
+            metrics = sim.metrics()
+            alive = metrics["alive"].to(torch.float32)
+            survived = survived + alive
+            episodes = metrics["episodes"]
+
+    average_life = survived / torch.clamp(episodes, min=1.0) * cfg.DT
     return {
-        "survived": survived.mean().item() * cfg.DT,
-        "score": score.mean().item(),
-        "hits": hits.mean().item(),
-        "survived_per_env": survived.view(population, envs).mean(dim=1) * cfg.DT,
+        "average_life_seconds": average_life.mean().item(),
+        "median_life_seconds": average_life.median().item(),
+        "min_life_seconds": average_life.min().item(),
+        "max_life_seconds": average_life.max().item(),
+        "deaths": episodes.mean().item(),
+        "alive_ratio": (survived / args.steps).mean().item(),
+        "score": sim.metrics()["score"].mean().item(),
     }
 
 
@@ -50,65 +57,36 @@ def main():
     policy, sizes = load_policy(args.model, device=args.device)
     stacked = stack_policies([policy])
 
-    trained = DungeonDropSim(args.episodes, device=args.device, seed=args.seed)
-    trained_result = run(
-        trained,
+    trained = run(
         lambda observation: torch.argmax(
             batched_forward(observation, stacked, sizes, 1, args.episodes), dim=1
         ),
-        args.steps,
-        1,
-        args.episodes,
+        args,
     )
 
-    random_sim = DungeonDropSim(args.episodes, device=args.device, seed=args.seed)
     generator = torch.Generator(device="cpu").manual_seed(args.seed)
-    random_result = run(
-        random_sim,
+    random_actions = run(
         lambda observation: torch.randint(
             0, cfg.ACTION_COUNT, (observation.shape[0],), generator=generator
         ).to(device),
-        args.steps,
-        1,
-        args.episodes,
+        args,
+        seed_offset=1,
     )
 
-    frozen = DungeonDropSim(args.episodes, device=args.device, seed=args.seed)
-    frozen_result = run(
-        frozen,
-        lambda observation: torch.zeros(
-            observation.shape[0], dtype=torch.long, device=device
-        ),
-        args.steps,
-        1,
-        args.episodes,
+    idle = run(
+        lambda observation: torch.zeros(observation.shape[0], dtype=torch.long, device=device),
+        args,
+        seed_offset=2,
     )
 
-    survived = trained_result["survived_per_env"]
     report = {
         "model": args.model,
         "episodes": args.episodes,
         "steps": args.steps,
         "horizon_seconds": args.steps * cfg.DT,
-        "trained": {
-            "survived_seconds": trained_result["survived"],
-            "score": trained_result["score"],
-            "hits": trained_result["hits"],
-            "min": survived.min().item(),
-            "max": survived.max().item(),
-            "median": survived.median().item(),
-            "hit_free_ratio": (survived >= args.steps * cfg.DT - cfg.DT).to(torch.float32).mean().item(),
-        },
-        "random": {
-            "survived_seconds": random_result["survived"],
-            "score": random_result["score"],
-            "hits": random_result["hits"],
-        },
-        "idle": {
-            "survived_seconds": frozen_result["survived"],
-            "score": frozen_result["score"],
-            "hits": frozen_result["hits"],
-        },
+        "trained": trained,
+        "random": random_actions,
+        "idle": idle,
     }
 
     print(json.dumps(report, indent=2))
