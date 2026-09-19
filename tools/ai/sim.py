@@ -28,6 +28,12 @@ import items as items_catalog
 
 HALF_TURN = 6.283185307179586
 
+SENSOR_ORDER = ("wallLeft", "wallRight", "ceiling", "ground")
+
+
+def tensor_minimum(values):
+    return values.min(dim=1).values
+
 
 class FaceSmashingSim:
     def __init__(self, envs, device="cpu", seed=0):
@@ -87,6 +93,9 @@ class FaceSmashingSim:
     def current_jump(self):
         return self.level_scale(cfg.DODGER_JUMP_START, cfg.DODGER_JUMP_END)
 
+    def current_dash(self):
+        return self.level_scale(cfg.DASH_SPEED_START, cfg.DASH_SPEED_END)
+
     def reset(self):
         envs = self.envs
         device = self.device
@@ -115,6 +124,8 @@ class FaceSmashingSim:
         self.jump_latch = torch.zeros(envs, dtype=torch.bool, device=device)
         self.stun = torch.zeros(envs, dtype=self.dtype, device=device)
         self.invulnerable = torch.zeros(envs, dtype=self.dtype, device=device)
+        self.dash_timer = torch.zeros(envs, dtype=self.dtype, device=device)
+        self.dash_cooldown = torch.zeros(envs, dtype=self.dtype, device=device)
 
         self.damage = torch.zeros(envs, dtype=self.dtype, device=device)
         self.level = torch.zeros(envs, dtype=torch.long, device=device)
@@ -179,7 +190,18 @@ class FaceSmashingSim:
             ),
             self.pos_y,
         )
-        for field in ("vel_x", "vel_y", "damage", "drop_timer", "drop_ramp", "round_elapsed", "stun", "invulnerable"):
+        for field in (
+            "vel_x",
+            "vel_y",
+            "damage",
+            "drop_timer",
+            "drop_ramp",
+            "round_elapsed",
+            "stun",
+            "invulnerable",
+            "dash_timer",
+            "dash_cooldown",
+        ):
             current = getattr(self, field)
             setattr(self, field, torch.where(done, torch.zeros_like(current), current))
         self.grounded = torch.where(done, torch.ones_like(self.grounded), self.grounded)
@@ -188,6 +210,56 @@ class FaceSmashingSim:
         self.drop_speed = torch.where(
             done, torch.full_like(self.drop_speed, cfg.DROP_BASE_SPEED), self.drop_speed
         )
+
+    def sense_collisions(self):
+        """Distancia livre ate o bloqueador mais proximo em cada direcao.
+
+        Le a mesma lista de bloqueadores que a colisao usa, entao continua
+        correta se o mapa mudar: nenhuma coordenada de parede esta escrita aqui.
+        """
+        left = self.pos_x
+        right = self.pos_x + cfg.DODGER_BOX[0]
+        top = self.pos_y
+        bottom = self.pos_y + cfg.DODGER_BOX[1]
+
+        reach = torch.full_like(self.pos_x, cfg.SENSOR_REACH)
+        sensors = {
+            "wallLeft": reach.clone(),
+            "wallRight": reach.clone(),
+            "ceiling": reach.clone(),
+            "ground": reach.clone(),
+        }
+
+        vertical = (top[:, None] < self.blocker_bottom) & (bottom[:, None] > self.blocker_y)
+        horizontal = (left[:, None] < self.blocker_right) & (right[:, None] > self.blocker_x)
+        big = torch.full_like(self.pos_x, cfg.SENSOR_REACH * 4.0)[:, None]
+
+        wall_left = torch.where(
+            vertical & (self.blocker_right <= left[:, None]),
+            left[:, None] - self.blocker_right,
+            big,
+        )
+        wall_right = torch.where(
+            vertical & (self.blocker_x >= right[:, None]),
+            self.blocker_x - right[:, None],
+            big,
+        )
+        ceiling = torch.where(
+            horizontal & (self.blocker_bottom <= top[:, None]),
+            top[:, None] - self.blocker_bottom,
+            big,
+        )
+        ground = torch.where(
+            horizontal & (self.blocker_y >= bottom[:, None]),
+            self.blocker_y - bottom[:, None],
+            big,
+        )
+
+        sensors["wallLeft"] = tensor_minimum(wall_left)
+        sensors["wallRight"] = tensor_minimum(wall_right)
+        sensors["ceiling"] = tensor_minimum(ceiling)
+        sensors["ground"] = tensor_minimum(ground)
+        return sensors
 
     def observation(self):
         half = (cfg.PLAY_RIGHT - cfg.PLAY_LEFT) / 2
@@ -206,6 +278,13 @@ class FaceSmashingSim:
         observation[:, 4] = self.vel_y / cfg.DODGER_MAX_FALL
         observation[:, 5] = self.damage / cfg.DAMAGE_CEILING
         observation[:, 6] = self.level.to(self.dtype) / (cfg.DAMAGE_LEVELS - 1)
+        observation[:, 7] = 1.0 - torch.clamp(
+            self.dash_cooldown / cfg.DASH_COOLDOWN, min=0.0, max=1.0
+        )
+
+        sensors = self.sense_collisions()
+        for index, name in enumerate(SENSOR_ORDER):
+            observation[:, 8 + index] = torch.clamp(sensors[name], min=0.0, max=cfg.SENSOR_REACH) / cfg.SENSOR_REACH
 
         half_width = self.item_half_width[self.obstacle_item]
         half_height = self.item_half_height[self.obstacle_item]
@@ -286,28 +365,48 @@ class FaceSmashingSim:
         axis = torch.where(actions == cfg.ACTION_RIGHT, torch.full_like(axis, 1.0), axis)
         axis = torch.where(actions == cfg.ACTION_JUMP_LEFT, torch.full_like(axis, -1.0), axis)
         axis = torch.where(actions == cfg.ACTION_JUMP_RIGHT, torch.full_like(axis, 1.0), axis)
+        axis = torch.where(actions == cfg.ACTION_DASH_LEFT, torch.full_like(axis, -1.0), axis)
+        axis = torch.where(actions == cfg.ACTION_DASH_RIGHT, torch.full_like(axis, 1.0), axis)
         jumping = (
             (actions == cfg.ACTION_JUMP)
             | (actions == cfg.ACTION_JUMP_LEFT)
             | (actions == cfg.ACTION_JUMP_RIGHT)
         )
+        dashing = (actions == cfg.ACTION_DASH_LEFT) | (actions == cfg.ACTION_DASH_RIGHT)
 
         max_speed = self.current_max_speed()
         moving = axis != 0
         control = self.stun <= 0.0
-        self.vel_x = torch.where(
-            moving & control,
-            torch.clamp(
-                self.vel_x + axis * cfg.DODGER_ACCELERATION * cfg.DT, -max_speed, max_speed
-            ),
-            self.vel_x * self.speed_decay,
-        )
 
         self.stun = torch.clamp(self.stun - cfg.DT, min=0.0)
         self.invulnerable = torch.clamp(self.invulnerable - cfg.DT, min=0.0)
+        self.dash_timer = torch.clamp(self.dash_timer - cfg.DT, min=0.0)
+        self.dash_cooldown = torch.clamp(self.dash_cooldown - cfg.DT, min=0.0)
+
+        dashing_now = self.dash_timer > 0.0
+        accelerated = torch.clamp(
+            self.vel_x + axis * cfg.DODGER_ACCELERATION * cfg.DT, -max_speed, max_speed
+        )
+        self.vel_x = torch.where(
+            dashing_now,
+            self.vel_x,
+            torch.where(moving & control, accelerated, self.vel_x * self.speed_decay),
+        )
+
+        dash_ready = (self.dash_cooldown <= 0.0) & ~dashing_now
+        dash_now = dashing & dash_ready & control
+        self.vel_x = torch.where(dash_now, axis * self.current_dash(), self.vel_x)
+        self.dash_timer = torch.where(
+            dash_now, torch.full_like(self.dash_timer, cfg.DASH_SECONDS), self.dash_timer
+        )
+        self.dash_cooldown = torch.where(
+            dash_now, torch.full_like(self.dash_cooldown, cfg.DASH_COOLDOWN), self.dash_cooldown
+        )
+
         was_grounded = self.grounded
         self.grounded = torch.zeros_like(self.grounded)
-        self.vel_x = torch.clamp(self.vel_x, -max_speed, max_speed)
+        speed_limit = torch.where(dashing_now | dash_now, self.current_dash(), max_speed)
+        self.vel_x = torch.clamp(self.vel_x, -speed_limit, speed_limit)
         self.pos_x = self.pos_x + self.vel_x * cfg.DT
         self.resolve_axis(0)
 
@@ -319,6 +418,9 @@ class FaceSmashingSim:
         jump_now = jumping & ~self.jump_latch & was_grounded
         self.vel_y = torch.where(jump_now, -self.current_jump(), self.vel_y)
         self.jump_latch = jumping
+        self.vel_x = torch.where(
+            self.grounded, self.vel_x * cfg.DODGER_GROUND_FRICTION, self.vel_x
+        )
         self.pos_x = torch.clamp(self.pos_x, 0.0, cfg.WIDTH - cfg.DODGER_BOX[0])
 
     def step_dropper(self, policy):

@@ -1,3 +1,4 @@
+import type { SolidBox } from '../../engine/physics';
 import type { Dodger, Item } from '../entities';
 import type { DungeonLevel } from '../level';
 import { FACE_SMASHING, ITEM_MAX_DAMAGE } from '../config';
@@ -10,6 +11,8 @@ export const DODGER_ACTIONS = {
     jump: 3,
     jumpLeft: 4,
     jumpRight: 5,
+    dashLeft: 6,
+    dashRight: 7,
 } as const;
 
 export type DodgerAction = (typeof DODGER_ACTIONS)[keyof typeof DODGER_ACTIONS];
@@ -17,29 +20,36 @@ export type DodgerAction = (typeof DODGER_ACTIONS)[keyof typeof DODGER_ACTIONS];
 export interface ActionIntent {
     axis: number;
     jump: boolean;
+    dash: boolean;
+    facing: number;
 }
 
 export function decodeAction(action: number): ActionIntent {
     switch (action) {
         case DODGER_ACTIONS.left:
-            return { axis: -1, jump: false };
+            return { axis: -1, jump: false, dash: false, facing: -1 };
         case DODGER_ACTIONS.right:
-            return { axis: 1, jump: false };
+            return { axis: 1, jump: false, dash: false, facing: 1 };
         case DODGER_ACTIONS.jump:
-            return { axis: 0, jump: true };
+            return { axis: 0, jump: true, dash: false, facing: 0 };
         case DODGER_ACTIONS.jumpLeft:
-            return { axis: -1, jump: true };
+            return { axis: -1, jump: true, dash: false, facing: -1 };
         case DODGER_ACTIONS.jumpRight:
-            return { axis: 1, jump: true };
+            return { axis: 1, jump: true, dash: false, facing: 1 };
+        case DODGER_ACTIONS.dashLeft:
+            return { axis: -1, jump: false, dash: true, facing: -1 };
+        case DODGER_ACTIONS.dashRight:
+            return { axis: 1, jump: false, dash: true, facing: 1 };
         default:
-            return { axis: 0, jump: false };
+            return { axis: 0, jump: false, dash: false, facing: 0 };
     }
 }
 
 const OBSERVATION_SIZE = FACE_SMASHING.ai.observationSize;
-const GLOBAL_FEATURES = 7;
+const GLOBAL_FEATURES = 12;
 const ITEM_FEATURES = 8;
 const ITEM_SLOTS = (OBSERVATION_SIZE - GLOBAL_FEATURES) / ITEM_FEATURES;
+const SENSOR_REACH = FACE_SMASHING.ai.sensorReach;
 
 export function createObservationBuffer(): Float32Array {
     return new Float32Array(OBSERVATION_SIZE);
@@ -49,6 +59,7 @@ export interface ObservationContext {
     level: DungeonLevel;
     dodger: Dodger;
     items: readonly Item[];
+    blockers?: readonly SolidBox[];
 }
 
 export function writeObservation(target: Float32Array, context: ObservationContext): Float32Array {
@@ -70,6 +81,12 @@ export function writeObservation(target: Float32Array, context: ObservationConte
     target[4] = body.velocity.y / config.dodger.maxFallSpeed;
     target[5] = dodger.damage / DAMAGE_CEILING;
     target[6] = dodger.level / TIER_LAST;
+    target[7] = 1 - dodger.dashCooldownRatio;
+
+    const sensors = senseCollisions(context.blockers ?? level.colliders, gapBox(dodger));
+    for (let index = 0; index < SENSOR_FEATURES.length; index++) {
+        target[8 + index] = Math.min(sensors[SENSOR_FEATURES[index]] / SENSOR_REACH, 1);
+    }
 
     const selected = selectThreats(items, dodgerX, dodgerTop, ITEM_SLOTS);
 
@@ -112,4 +129,69 @@ function itemThreat(item: Item, x: number, y: number): number {
     const horizontal = Math.abs(item.centerX - x);
     const below = item.centerY - y;
     return horizontal + Math.max(below, 0);
+}
+
+interface GapBox {
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+}
+
+type SensorName = (typeof SENSOR_FEATURES)[number];
+
+const SENSOR_FEATURES = ['wallLeft', 'wallRight', 'ceiling', 'ground'] as const;
+
+function gapBox(dodger: Dodger): GapBox {
+    const { position } = dodger.physics.body;
+    return {
+        left: position.x,
+        right: position.x + dodger.size.width,
+        top: position.y,
+        bottom: position.y + dodger.size.height,
+    };
+}
+
+function senseCollisions(
+    blockers: readonly SolidBox[],
+    box: GapBox,
+): Record<SensorName, number> {
+    const result: Record<SensorName, number> = {
+        wallLeft: SENSOR_REACH,
+        wallRight: SENSOR_REACH,
+        ceiling: SENSOR_REACH,
+        ground: SENSOR_REACH,
+    };
+
+    const overlapVertical = (blocker: SolidBox): boolean =>
+        box.top < blocker.y + blocker.height && box.bottom > blocker.y;
+    const overlapHorizontal = (blocker: SolidBox): boolean =>
+        box.left < blocker.x + blocker.width && box.right > blocker.x;
+
+    for (const blocker of blockers) {
+        const right = blocker.x + blocker.width;
+        const bottom = blocker.y + blocker.height;
+
+        if (overlapVertical(blocker)) {
+            if (right <= box.left) {
+                result.wallLeft = Math.min(result.wallLeft, box.left - right);
+            }
+
+            if (blocker.x >= box.right) {
+                result.wallRight = Math.min(result.wallRight, blocker.x - box.right);
+            }
+        }
+
+        if (overlapHorizontal(blocker)) {
+            if (bottom <= box.top) {
+                result.ceiling = Math.min(result.ceiling, box.top - bottom);
+            }
+
+            if (blocker.y >= box.bottom) {
+                result.ground = Math.min(result.ground, blocker.y - box.bottom);
+            }
+        }
+    }
+
+    return result;
 }

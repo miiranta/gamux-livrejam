@@ -58,7 +58,8 @@
       "colliders": "Colliders"
     },
     "damage": "Damage",
-    "tier": "Tier"
+    "tier": "Tier",
+    "dash": "Dash"
   },
   "end": {
     "title": "It's over...",

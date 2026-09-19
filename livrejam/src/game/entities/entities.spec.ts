@@ -183,6 +183,94 @@ describe('damage tiers', () => {
     });
 });
 
+describe('dash', () => {
+    it('starts ready', () => {
+        const dodger = createTestDodger();
+
+        expect(dodger.dashReady).toBe(true);
+        expect(dodger.dashing).toBe(false);
+        expect(dodger.dashCooldownRatio).toBe(0);
+    });
+
+    it('bursts in the requested direction and faces it', () => {
+        const dodger = createTestDodger();
+
+        expect(dodger.dash(-1)).toBe(true);
+        expect(dodger.physics.body.velocity.x).toBeCloseTo(-dodger.dashSpeed, 4);
+        expect(dodger.facing).toBe('left');
+        expect(dodger.dashing).toBe(true);
+    });
+
+    it('is faster than the tier max speed', () => {
+        const dodger = createTestDodger();
+
+        expect(dodger.dashSpeed).toBeGreaterThan(dodger.maxSpeedX);
+    });
+
+    it('loses range as the damage tiers progress', () => {
+        const dodger = createTestDodger();
+        const fresh = dodger.dashSpeed;
+
+        dodger.takeDamage(DAMAGE_PER_LEVEL * TIER_LAST);
+
+        expect(dodger.dashSpeed).toBeCloseTo(FACE_SMASHING.dash.speedEnd, 4);
+        expect(dodger.dashSpeed).toBeLessThan(fresh);
+    });
+
+    it('refuses a second dash until the cooldown elapses', () => {
+        const dodger = createTestDodger();
+        const config = FACE_SMASHING.dash;
+
+        expect(dodger.dash(1)).toBe(true);
+        expect(dodger.dash(-1)).toBe(false);
+        expect(dodger.dashReady).toBe(false);
+
+        dodger.advanceReaction(config.seconds + 0.01);
+        expect(dodger.dashReady).toBe(false);
+
+        dodger.advanceReaction(config.cooldownSeconds);
+        expect(dodger.dashReady).toBe(true);
+        expect(dodger.dash(-1)).toBe(true);
+    });
+
+    it('does not dash while stunned', () => {
+        const dodger = createTestDodger();
+        dodger.react(1, 40);
+
+        expect(dodger.stunned).toBe(true);
+        expect(dodger.dash(1)).toBe(false);
+    });
+
+    it('keeps its burst instead of being clamped to the tier max speed', () => {
+        const dodger = createTestDodger();
+        dodger.dash(1);
+
+        for (let step = 0; step < 8; step++) {
+            dodger.move(1, 1 / 60);
+            expect(dodger.physics.body.velocity.x).toBeGreaterThan(dodger.maxSpeedX * 1.2);
+        }
+    });
+
+    it('reports the animated dash as the run clip', () => {
+        const dodger = createTestDodger();
+        dodger.dash(1);
+        dodger.resolveAnimation();
+
+        expect(dodger.animation).toBe('run');
+    });
+
+    it('restores the tier speed limit once the burst ends', () => {
+        const dodger = createTestDodger();
+        const limit = dodger.maxSpeedX;
+        dodger.dash(1);
+
+        expect(dodger.physics.body.maxSpeed.x).toBeGreaterThan(limit);
+        dodger.advanceReaction(FACE_SMASHING.dash.seconds + 0.01);
+
+        expect(dodger.physics.body.maxSpeed.x).toBeCloseTo(limit, 4);
+    });
+});
+
 describe('Item', () => {
     it('starts falling with the initial velocity and spin', () => {
         const item = createTestItem();

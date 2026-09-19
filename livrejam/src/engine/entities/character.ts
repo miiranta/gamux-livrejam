@@ -88,6 +88,18 @@ export class Character {
         return Math.abs(this.physics.body.velocity.x);
     }
 
+    get facingDirection(): number {
+        if (this.facing === 'left') {
+            return -1;
+        }
+
+        if (this.facing === 'right') {
+            return 1;
+        }
+
+        return 0;
+    }
+
     move(axis: number, dt: number): void {
         if (axis === 0) {
             dampVelocity(this.physics.body, 'x', this.dragX, dt);

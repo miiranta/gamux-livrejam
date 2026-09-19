@@ -58,7 +58,8 @@
       "colliders": "Colisores"
     },
     "damage": "Dano",
-    "tier": "Nivel"
+    "tier": "Nivel",
+    "dash": "Avanco"
   },
   "end": {
     "title": "It's over...",

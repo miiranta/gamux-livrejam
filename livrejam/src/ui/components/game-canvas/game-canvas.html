@@ -53,6 +53,17 @@
                 </span>
                 <span
                     class="game-canvas__chip"
+                    [class.game-canvas__chip--muted]="stats().dashReady < 1"
+                >
+                    <i
+                        class="game-canvas__dot"
+                        [class.game-canvas__dot--accent]="stats().dashReady >= 1"
+                    ></i>
+                    {{ 'hud.dash' | translate }}
+                    <b>{{ formatDash(stats().dashReady) }}</b>
+                </span>
+                <span
+                    class="game-canvas__chip"
                     [class.game-canvas__chip--error]="modelStatus() === 'error'"
                 >
                     <i

@@ -31,6 +31,7 @@ const INITIAL_STATS: MatchStats = {
     level: 0,
     dodgerSpeed: 0,
     dropSpeed: 0,
+    dashReady: 1,
     timeLeft: 0,
     matchDuration: FACE_SMASHING.match.defaultDurationSeconds,
 };
@@ -159,6 +160,10 @@ export class GameCanvas {
 
     protected formatDamage(damage: number): string {
         return Math.round(damage).toString();
+    }
+
+    protected formatDash(readiness: number): string {
+        return readiness >= 1 ? 'ready' : `${Math.round(readiness * 100)}%`;
     }
 
     private syncMatch(screen: GameScreen, token: number): void {

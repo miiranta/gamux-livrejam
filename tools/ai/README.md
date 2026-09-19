@@ -171,12 +171,31 @@ treinada se comporta mal em jogo sem nenhum erro visivel:
 | o que | no jogo | na simulacao |
 | --- | --- | --- |
 | vetor de observacao | `ai/observation.ts` | `sim.py:observation()` |
-| mira do oponente | `dungeon-drop.ts:aimPoint()` | `dropper.py` |
+| mira do oponente | `face-smashing.ts:aimPoint()` | `dropper.py` |
 | rampa de dificuldade | `systems/item-spawner.ts` | `sim.py:step_dropper()` |
 | deriva lateral do objeto | `systems/item-spawner.ts` | `sim.py:spawn_item()` |
+| atrito no chao | `engine/physics/world.ts` | `sim.py:step_dodger()` |
+| sensores de colisao | `ai/observation.ts:senseCollisions()` | `sim.py:sense_collisions()` |
 
 O primeiro e travado por teste (`test_observation.py`); os outros dependem de
 disciplina e de leitura cruzada dos dois arquivos.
+
+### O atrito no chao e mais forte do que parece
+
+`physics.friction` = 0.82 nao e decoracao: `World.step` multiplica a velocidade
+horizontal por ele **todo quadro em que o desviador esta no chao**. Como a
+aceleracao continua empurrando, o equilibrio nao e a velocidade maxima de
+projeto, e sim:
+
+```
+v_equilibrio = aceleracao * dt * f / (1 - f) = 1500 * (1/60) * 0.82 / 0.18 = 113,9 px/s
+```
+
+Ou seja: parado no chao o desviador anda a ~114 px/s, nao aos 560 px/s do nivel 0.
+A simulacao nao aplicava esse fator, entao o treino via um personagem **5x mais
+rapido** do que o do jogo — a politica aprendia desvios que na pratica nao
+existiam. O teste `test_dash_parity` (pico de 113,889 px/s nos dois lados) e o que
+trava isso agora.
 
 Os numeros em si sao travados por `test_config_parity.py`, que le os dois
 arquivos e compara os 40 campos que precisam bater. Ele tambem recusa uma
@@ -246,15 +265,21 @@ nivel = clamp(floor(dano / 500), 0, 7)
 
 Cada nivel enfraquece a mobilidade de forma linear, do nivel 0 ao 7:
 
-| nivel | velocidade maxima | pulo (px de subida) |
-| --- | --- | --- |
-| 0 | 560 | 192 |
-| 3 | 384 | 124 |
-| 7 | 150 | 57 |
+| nivel | velocidade maxima | pulo (px de subida) | arrancada do avanco |
+| --- | --- | --- | --- |
+| 0 | 560 | 192 | 1000 |
+| 3 | 384 | 124 | 657 |
+| 7 | 150 | 57 | 400 |
 
 A subida vem de `v^2 / 2g`, nao do valor cru do pulo. No nivel 0 ela e de 192 px,
 que e exatamente metade da altura do mapa (12 linhas x 32 px = 384 px): o pulo
 nao chega ao teto e nao da para escapar da chuva de itens por cima.
+
+A **arrancada** (dash) tambem cai com o dano: e um pico de velocidade de 0.16 s
+que ignora o limite de velocidade do nivel, e o alcance util e proporcional a ela.
+O avanco cobre `1000 * 0.16 = 160 px` no nivel 0 e `400 * 0.16 = 64 px` no nivel 7,
+com recarga de 1 s. E o movimento mais rapido do jogo e a unica forma de sair de
+uma situacao ja perdida, por isso o custo de 1 s importa.
 
 Ao encostar num item o desviador recebe:
 
@@ -270,7 +295,7 @@ Ao encostar num item o desviador recebe:
 invencibilidade tem que decair todo passo — se ela nao decair (bug ja visto), o
 desviador fica imune para sempre depois do primeiro toque.
 
-## Observacao (71 valores)
+## Observacao (76 valores)
 
 O desviador ve **todos** os itens da tela, sempre. A arena tem 512 px de largura
 (`playLeft` 64 a `playRight` 576) e o teto do placar de ameaca chega a ~569 px
@@ -286,14 +311,30 @@ inteira com folga e o filtro nunca descarta um item real.
 | 4 | velocidade vertical / velocidade maxima de queda |
 | 5 | dano acumulado / teto dos 8 niveis |
 | 6 | nivel atual / 7 |
-| 7 + 8k | item k presente |
-| 8 + 8k | delta X ate o item / raio de observacao |
-| 9 + 8k | delta Y ate o item / raio de observacao |
-| 10 + 8k | velocidade X do item |
-| 11 + 8k | velocidade Y do item |
-| 12 + 8k | item ja pousou |
-| 13 + 8k | maior lado do item / lado do tile |
-| 14 + 8k | dano base do item / maior dano do catalogo |
+| 7 | avanco pronto (1 = sem recarga, 0 = acabou de usar) |
+| 8 | distancia livre ate a parede a esquerda / `sensorReach` |
+| 9 | distancia livre ate a parede a direita / `sensorReach` |
+| 10 | distancia livre ate o teto / `sensorReach` |
+| 11 | distancia livre ate o chao / `sensorReach` |
+| 12 + 8k | item k presente |
+| 13 + 8k | delta X ate o item / raio de observacao |
+| 14 + 8k | delta Y ate o item / raio de observacao |
+| 15 + 8k | velocidade X do item |
+| 16 + 8k | velocidade Y do item |
+| 17 + 8k | item ja pousou |
+| 18 + 8k | maior lado do item / lado do tile |
+| 19 + 8k | dano base do item / maior dano do catalogo |
+
+O indice 7 e o que faz a arrancada ser aprendivel. Sem ele a politica nao sabe se
+pode usar o avanco, tenta em todo passo e desperdica a recarga de 1 s; com ele o
+valor cai linearmente de 1 a 0 e a rede consegue escolher o momento.
+
+Os indices 8 a 11 sao os **sensores de colisao**. Eles sao calculados a partir da
+lista de bloqueadores da fase, nao de coordenadas escritas no codigo: a distancia
+ate a parede mais proxima e medida com a mesma caixa que colide (corpo inteiro, nao
+o centro) e limitada a `sensorReach` = 192 px. Se o mapa mudar de forma, de buracos
+ou ganhar plataformas, a observacao continua descrevendo o mapa certo sem
+re-treinar por causa do formato — so a dinamica muda.
 
 Sao **8 slots** de 8 valores, ordenados por ameaca (distancia horizontal somada a
 altura, ignorando o que esta abaixo do desviador). O jogo nunca passa de 5 itens
@@ -303,8 +344,18 @@ da observacao. O penultimo valor de cada slot da a **forma** do item e o ultimo 
 **quanto ele machuca**, que e o que permite decidir entre encostar numa faca ou num
 machado.
 
-## Acoes (6)
+## Acoes (8)
 
-`0` parado, `1` esquerda, `2` direita, `3` pular, `4` pular+esquerda, `5` pular+direita.
+`0` parado, `1` esquerda, `2` direita, `3` pular, `4` pular+esquerda,
+`5` pular+direita, `6` avanco a esquerda, `7` avanco a direita.
 
-Pular so funciona no chao; o pedido e descartado se o desviador estiver no ar.
+Pular so funciona no chao; o pedido e descartado se o desviador estiver no ar. O
+avanco tambem exige o chao (e nao tem recarga util no ar) e e recusado durante o
+tremor.
+
+As acoes sao **teclas paralelas**, nao uma lista de sequencias: o avanco nao
+substitui o pulo. Como a rede escolhe uma acao por passo (60 por segundo), ela
+alcanca combinacoes que nao existem como rotulo — avancar num passo e pular no
+seguinte sai do mesmo jeito que um "avancar + pular" dedicado, sem gastar uma
+terceira saida. Por isso sao 8 acoes e nao 10: rotulos extras so diluiriam a
+probidade de cada uma.

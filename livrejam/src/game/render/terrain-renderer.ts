@@ -1,4 +1,5 @@
-import type { Camera } from '../../engine/render';
+import type { Camera, GradientRamp } from '../../engine/render';
+import { applyRamp } from '../../engine/render';
 import { valueNoise } from '../../engine/math';
 import type { DungeonSprites } from '../assets';
 import type { DungeonLevel } from '../level';
@@ -9,11 +10,18 @@ const FLOOR_VARIATION_SEED = 0x9e3779b1;
 const WALL_SHADE_RATIO = 0.45;
 const FLOOR_EDGE_RATIO = 0.08;
 const FLOOR_SHADOW_RATIO = 0.12;
-const FLOOR_EDGE_COLOR = 'rgba(252, 226, 182, 0.47)';
-const UNLIT_TINT = 'rgba(46, 18, 10, 0.42)';
+const FLOOR_EDGE_COLOR = 'rgba(168, 206, 150, 0.42)';
+const UNLIT_TINT = 'rgba(12, 30, 26, 0.46)';
 
 export class TerrainRenderer {
-    constructor(private readonly sprites: DungeonSprites) {}
+    private readonly wallFace: HTMLCanvasElement;
+    private readonly floorFace: HTMLCanvasElement;
+
+    constructor(private readonly sprites: DungeonSprites) {
+        const ramp = FACE_SMASHING.palette.wall;
+        this.wallFace = applyRamp(sprites.wallFace, ramp);
+        this.floorFace = applyRamp(sprites.floorFace, ramp);
+    }
 
     paint(ctx: CanvasRenderingContext2D, level: DungeonLevel, camera: Camera): void {
         this.paintWalls(ctx, level, camera);
@@ -26,7 +34,7 @@ export class TerrainRenderer {
         const { grid } = level;
         const size = camera.toScreenLength(grid.tileSize);
         const variation = FACE_SMASHING.backdrop.wallVariation;
-        const face = this.sprites.wallFace;
+        const face = this.wallFace;
 
         for (const tile of level.decorations.walls) {
             const x = camera.toScreenX(grid.columnX(tile.column));
@@ -49,7 +57,7 @@ export class TerrainRenderer {
         const { grid } = level;
         const size = camera.toScreenLength(grid.tileSize);
         const variation = FACE_SMASHING.backdrop.floorVariation;
-        const face = this.sprites.floorFace;
+        const face = this.floorFace;
 
         for (const tile of level.decorations.floors) {
             const brightness =

@@ -6,8 +6,10 @@ import { Dodger, Item } from '../entities';
 import { createObservationBuffer, writeObservation } from './observation';
 
 const RADIUS = FACE_SMASHING.ai.observeRadius;
-const GLOBAL_FEATURES = 7;
+const GLOBAL_FEATURES = 12;
 const ITEM_FEATURES = 8;
+const SENSORS = ['wallLeft', 'wallRight', 'ceiling', 'ground'] as const;
+const REACH = FACE_SMASHING.ai.sensorReach;
 const SLOTS = (FACE_SMASHING.ai.observationSize - GLOBAL_FEATURES) / ITEM_FEATURES;
 const ARENA = FACE_SMASHING.tile.columns - FACE_SMASHING.tile.wallThickness * 2;
 
@@ -60,6 +62,34 @@ function slot(buffer: Float32Array, index: number): number[] {
     return Array.from(buffer.slice(base, base + ITEM_FEATURES));
 }
 
+interface SensorReading {
+    wallLeft: number;
+    wallRight: number;
+    ceiling: number;
+    ground: number;
+}
+
+function sensorMetres(buffer: Float32Array): SensorReading {
+    const [wallLeft, wallRight, ceiling, ground] = SENSORS.map((name, index) => {
+        void name;
+        return Math.round(buffer[8 + index] * REACH);
+    });
+
+    return { wallLeft, wallRight, ceiling, ground };
+}
+
+function observeFrom(level: DungeonLevel, feetX: number, lift = 0): Float32Array {
+    const dodger = buildDodger(level, feetX);
+    if (lift > 0) {
+        dodger.physics.body.position.y -= lift;
+        dodger.physics.body.grounded = false;
+    }
+
+    const buffer = createObservationBuffer();
+    writeObservation(buffer, { level, dodger, items: [] });
+    return buffer;
+}
+
 describe('writeObservation', () => {
     it('writes one value per configured input', () => {
         expect(createObservationBuffer()).toHaveLength(FACE_SMASHING.ai.observationSize);
@@ -84,6 +114,75 @@ describe('writeObservation', () => {
         expect(buffer[4]).toBeCloseTo(-0.5, 6);
         expect(buffer[5]).toBeCloseTo((FACE_SMASHING.damage.perLevel * 2) / 4000, 6);
         expect(buffer[6]).toBeCloseTo(2 / 7, 6);
+        expect(buffer[7]).toBeCloseTo(1, 6);
+    });
+
+    it('reports the dash cooldown as readiness', () => {
+        const level = createDungeonLevel();
+        const dodger = buildDodger(level, 320);
+        const buffer = createObservationBuffer();
+        const cooldown = FACE_SMASHING.dash.cooldownSeconds;
+
+        dodger.dashCooldown = cooldown;
+        writeObservation(buffer, { level, dodger, items: [] });
+        expect(buffer[7]).toBeCloseTo(0, 6);
+
+        dodger.dashCooldown = cooldown / 2;
+        writeObservation(buffer, { level, dodger, items: [] });
+        expect(buffer[7]).toBeCloseTo(0.5, 6);
+
+        dodger.dashCooldown = 0;
+        writeObservation(buffer, { level, dodger, items: [] });
+        expect(buffer[7]).toBeCloseTo(1, 6);
+    });
+
+    it('measures the free distance to the nearest blocker', () => {
+        const level = createDungeonLevel();
+        const centre = observeFrom(level, (level.playLeft + level.playRight) / 2);
+        const left = observeFrom(level, level.playLeft + 12);
+        const right = observeFrom(level, level.playRight - 12);
+
+        expect(sensorMetres(centre).ground).toBe(0);
+        expect(sensorMetres(centre).wallLeft).toBe(REACH);
+        expect(sensorMetres(centre).wallRight).toBe(REACH);
+
+        expect(sensorMetres(left).wallLeft).toBe(0);
+        expect(sensorMetres(right).wallRight).toBe(0);
+    });
+
+    it('measures the gap to the floor while airborne', () => {
+        const level = createDungeonLevel();
+        const buffer = observeFrom(level, 320, 100);
+
+        expect(sensorMetres(buffer).ground).toBe(100);
+        expect(sensorMetres(buffer).wallLeft).toBe(REACH);
+    });
+
+    it('clamps the blocker distance to the sensor reach', () => {
+        const level = createDungeonLevel();
+        const buffer = observeFrom(level, (level.playLeft + level.playRight) / 2);
+
+        for (const name of SENSORS) {
+            expect(sensorMetres(buffer)[name]).toBeLessThanOrEqual(REACH);
+        }
+    });
+
+    it('reads the blockers it is given, so another map is described correctly', () => {
+        const level = createDungeonLevel();
+        const dodger = buildDodger(level, 320);
+        const buffer = createObservationBuffer();
+        const top = dodger.physics.body.position.y;
+
+        writeObservation(buffer, {
+            level,
+            dodger,
+            items: [],
+            blockers: [{ x: 340, y: top, width: 16, height: dodger.size.height, layer: 1 }],
+        });
+
+        const metres = sensorMetres(buffer);
+        expect(metres.wallRight).toBe(340 - (320 + dodger.size.width / 2));
+        expect(metres.ground).toBe(REACH);
     });
 
     it('leaves every item slot empty without items', () => {

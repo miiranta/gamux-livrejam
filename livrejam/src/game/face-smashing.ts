@@ -14,7 +14,7 @@ import { SceneRenderer } from './render';
 import { ItemSpawner, ImpactSystem, EffectSystem } from './systems';
 import type { ImpactOutcome } from './systems';
 
-export type DropAction = 'left' | 'right' | 'fastFall' | 'drop';
+export type DropAction = 'left' | 'right' | 'fastFall' | 'drop' | 'dash';
 
 export interface MatchStats {
     score: number;
@@ -26,6 +26,7 @@ export interface MatchStats {
     level: number;
     dodgerSpeed: number;
     dropSpeed: number;
+    dashReady: number;
     timeLeft: number;
     matchDuration: number;
 }
@@ -51,6 +52,8 @@ const KEY_BINDINGS: Record<string, DropAction> = {
     ArrowDown: 'fastFall',
     KeyS: 'fastFall',
     Space: 'drop',
+    ShiftLeft: 'dash',
+    ShiftRight: 'dash',
 };
 
 const DODGER_ANIMATIONS = CHARACTER_CLIPS;
@@ -73,8 +76,9 @@ export class FaceSmashing {
     private items: Item[] = [];
     private active: Item | null = null;
     private policy: PolicyLike;
-    private action: ActionIntent = { axis: 0, jump: false };
+    private action: ActionIntent = { axis: 0, jump: false, dash: false, facing: 0 };
     private dropLatch = false;
+    private dashLatch = false;
     private restartTimer = 0;
     private survived = 0;
     private dodges = 0;
@@ -83,6 +87,7 @@ export class FaceSmashing {
     private best = 0;
     private showColliders = false;
     private dropAimX = 0;
+    private frameDelta = 1 / 60;
     private running = true;
     private matchDuration: number;
 
@@ -131,6 +136,11 @@ export class FaceSmashing {
                 viewportWidth: this.viewWidth,
                 viewportHeight: this.viewHeight,
             }),
+            {
+                width: this.viewWidth,
+                height: this.viewHeight,
+                postProcess: FACE_SMASHING.postProcess,
+            },
         );
         renderer.resize(this.viewWidth, this.viewHeight);
 
@@ -202,6 +212,7 @@ export class FaceSmashing {
             return;
         }
 
+        this.frameDelta = dt;
         this.updateDropper(dt);
         this.updateDodger(dt);
         this.updateItems(dt);
@@ -265,12 +276,31 @@ export class FaceSmashing {
             return;
         }
 
-        this.action = this.policy.ready && !dodger.stunned
-            ? decodeAction(this.policy.decide(this.observation))
-            : { axis: 0, jump: false };
+        const dashHeld = this.input.isDown('dash');
+        const dashPressed = dashHeld && !this.dashLatch;
+        this.dashLatch = dashHeld;
+
+        this.action =
+            this.policy.ready && !dodger.stunned
+                ? decodeAction(this.policy.decide(this.observation))
+            : { axis: 0, jump: false, dash: false, facing: 0 };
 
         dodger.advanceReaction(dt);
         dodger.move(this.action.axis, dt);
+
+        const dashDirection = this.action.dash
+            ? this.action.facing || dodger.facingDirection
+            : dashPressed
+              ? readAxisIntent(this.input, {
+                    negative: 'left',
+                    positive: 'right',
+                    fast: 'fastFall',
+                }).axis || dodger.facingDirection
+              : 0;
+
+        if (dashDirection !== 0) {
+            this.tryDash(dodger, dashDirection);
+        }
 
         if (this.action.jump) {
             dodger.requestJump();
@@ -280,6 +310,21 @@ export class FaceSmashing {
         dodger.consumeJump();
         dodger.resolveAnimation();
         dodger.advanceAnimation(dt, DODGER_ANIMATIONS);
+    }
+
+    private tryDash(dodger: Dodger, direction: number): boolean {
+        if (!dodger.dash(direction)) {
+            return false;
+        }
+
+        const scale = dodger.size.width;
+        this.effects.spawn({
+            kind: 'dust',
+            x: dodger.feet.x,
+            y: dodger.feet.y - 4,
+            size: scale * 1.4,
+        });
+        return true;
     }
 
     private updateItems(dt: number): void {
@@ -437,6 +482,7 @@ export class FaceSmashing {
             level: dodger ? dodger.level : 0,
             dodgerSpeed: Math.round(this.dodgerMaxSpeed),
             dropSpeed: Math.round(this.spawner.speed),
+            dashReady: dodger ? 1 - dodger.dashCooldownRatio : 1,
             timeLeft: Math.max(this.matchDuration - this.survived, 0),
             matchDuration: this.matchDuration,
         };
@@ -449,9 +495,16 @@ export class FaceSmashing {
             return;
         }
 
-        scene.render(this.level, this.items, dodger, this.dropAimX, {
-            colliders: this.showColliders,
-            effects: this.effects.active,
-        });
+        scene.render(
+            this.level,
+            this.items,
+            dodger,
+            this.dropAimX,
+            {
+                colliders: this.showColliders,
+                effects: this.effects.active,
+            },
+            { deltaSeconds: this.frameDelta },
+        );
     }
 }

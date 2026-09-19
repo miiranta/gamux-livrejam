@@ -28,31 +28,28 @@ SHORT_SIDE, LONG_SIDE = 0.85, 0.85
 MIN_LONG, MAX_LONG = 17.0, 39.0
 
 ITEMS = (
-    ("dagger", "kit", 12, 4, 12, 12, 9.0, 17.0, 0.42, 3.4, 3.0),
-    ("shuriken", "kit", 13, 4, 11, 10, 12.0, 21.0, 0.46, 2.6, 2.2),
-    ("dart", "kit", 25, 4, 10, 10, 11.0, 19.0, 0.44, 3.0, 2.4),
-    ("knife", "kit", 23, 5, 14, 11, 8.0, 15.0, 0.40, 3.6, 3.2),
-    ("arrow", "kit", 26, 4, 11, 9, 10.0, 18.0, 0.38, 3.2, 2.8),
-    ("bucket", "tile", 74, 6, 15, 10, 14.0, 24.0, 0.5, 3.0, 2.6),
-    ("torchThrow", "tile", 29, 7, 16, 10, 12.0, 22.0, 0.44, 3.4, 3.0),
-    ("hatchet", "axes", 0, 8, 20, 9, 6.0, 12.0, 0.34, 4.4, 4.0),
-    ("orb", "tile", 102, 9, 21, 9, 8.0, 15.0, 0.55, 2.4, 2.0),
-    ("runeStone", "tile", 103, 10, 22, 9, 7.0, 13.0, 0.48, 2.6, 2.2),
-    ("crateSmall", "tile", 73, 12, 25, 10, 5.0, 10.0, 0.38, 4.6, 4.2),
-    ("barrel", "tile", 82, 14, 28, 9, 4.5, 9.0, 0.34, 4.8, 4.4),
-    ("crateBig", "tile", 89, 16, 32, 8, 4.0, 8.0, 0.30, 5.0, 4.6),
-    ("shelf", "tile", 94, 18, 34, 7, 3.6, 7.5, 0.28, 5.2, 4.8),
-    ("hammer", "kit", 0, 11, 28, 9, 6.0, 11.0, 0.30, 4.8, 4.4),
-    ("club", "kit", 2, 9, 22, 8, 5.0, 10.0, 0.28, 4.6, 4.2),
-    ("sword", "kit", 14, 10, 26, 8, 5.0, 10.0, 0.26, 4.0, 3.6),
-    ("scimitar", "kit", 16, 9, 24, 7, 4.5, 9.0, 0.24, 4.2, 3.8),
-    ("spear", "kit", 17, 11, 27, 7, 4.0, 8.0, 0.22, 4.6, 4.2),
-    ("longsword", "kit", 24, 14, 34, 6, 3.6, 7.5, 0.22, 4.4, 4.0),
-    ("battleaxe", "kit", 8, 16, 40, 6, 3.2, 7.0, 0.20, 5.0, 4.6),
-    ("axe", "kit", 5, 18, 44, 5, 3.0, 6.5, 0.18, 5.2, 4.8),
-    ("labrys", "axes", 5, 22, 52, 4, 2.6, 5.5, 0.16, 5.4, 5.0),
-    ("greatAxe", "kit", 4, 26, 62, 4, 2.2, 5.0, 0.14, 5.8, 5.4),
-    ("warHammer", "kit", 10, 30, 70, 3, 1.8, 4.4, 0.12, 6.2, 5.8),
+    ("dagger", "kit", 12, 4, 12, 12, 9.0, 17.0, 0.42, 3.4, 3.0, None),
+    ("shuriken", "kit", 13, 4, 11, 10, 12.0, 21.0, 0.46, 2.6, 2.2, None),
+    ("dart", "kit", 25, 4, 10, 10, 11.0, 19.0, 0.44, 3.0, 2.4, None),
+    ("knife", "kit", 23, 5, 14, 11, 8.0, 15.0, 0.40, 3.6, 3.2, None),
+    ("arrow", "kit", 26, 4, 11, 9, 10.0, 18.0, 0.38, 3.2, 2.8, None),
+    ("bucket", "tile", 74, 6, 15, 10, 14.0, 24.0, 0.5, 3.0, 2.6, None),
+    ("hatchet", "axes", 0, 8, 20, 9, 6.0, 12.0, 0.34, 4.4, 4.0, None),
+    ("barrel", "tile", 82, 14, 28, 9, 4.5, 9.0, 0.34, 4.8, 4.4, 26.0),
+    ("crateBig", "tile", 89, 16, 32, 8, 4.0, 8.0, 0.30, 5.0, 4.6, 30.0),
+    ("anvil", "tile", 65, 18, 38, 7, 3.4, 7.0, 0.28, 5.2, 5.0, 30.0),
+    ("chest", "tile", 90, 20, 42, 6, 3.0, 6.2, 0.24, 5.4, 5.0, 34.0),
+    ("hammer", "kit", 0, 11, 28, 9, 6.0, 11.0, 0.30, 4.8, 4.4, None),
+    ("club", "kit", 2, 9, 22, 8, 5.0, 10.0, 0.28, 4.6, 4.2, None),
+    ("sword", "kit", 14, 10, 26, 8, 5.0, 10.0, 0.26, 4.0, 3.6, None),
+    ("scimitar", "kit", 16, 9, 24, 7, 4.5, 9.0, 0.24, 4.2, 3.8, None),
+    ("spear", "kit", 17, 11, 27, 7, 4.0, 8.0, 0.22, 4.6, 4.2, None),
+    ("longsword", "kit", 24, 14, 34, 6, 3.6, 7.5, 0.22, 4.4, 4.0, None),
+    ("battleaxe", "kit", 8, 16, 40, 6, 3.2, 7.0, 0.20, 5.0, 4.6, None),
+    ("axe", "kit", 5, 18, 44, 5, 3.0, 6.5, 0.18, 5.2, 4.8, None),
+    ("labrys", "axes", 5, 22, 52, 4, 2.6, 5.5, 0.16, 5.4, 5.0, None),
+    ("greatAxe", "kit", 4, 26, 62, 4, 2.2, 5.0, 0.14, 5.8, 5.4, None),
+    ("warHammer", "kit", 10, 30, 70, 3, 1.8, 4.4, 0.12, 6.2, 5.8, None),
 )
 
 
@@ -182,9 +179,9 @@ def world_size(sprite):
 
 
 def definition(item):
-    key, sheet, index, damage_min, damage_max, weight, spin_min, spin_max, restitution, angular, linear = item
+    key, sheet, index, damage_min, damage_max, weight, spin_min, spin_max, restitution, angular, linear, long_side = item
     sprite = SPRITES[sheet][index]
-    longest = world_size(sprite)
+    longest = long_side if long_side is not None else world_size(sprite)
     ratio = sprite.width / sprite.height
     if ratio >= 1:
         width, height = longest, longest / ratio

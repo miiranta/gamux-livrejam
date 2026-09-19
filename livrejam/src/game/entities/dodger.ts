@@ -15,6 +15,9 @@ export class Dodger extends Character {
     stun = 0;
     flash = 0;
     invulnerable = 0;
+    dashTimer = 0;
+    dashCooldown = 0;
+    private tierSpeed: number;
 
     constructor(options: DodgerOptions) {
         const config = FACE_SMASHING.dodger;
@@ -33,6 +36,19 @@ export class Dodger extends Character {
         };
 
         super(characterOptions);
+        this.tierSpeed = config.maxSpeedStart;
+    }
+
+    override get maxSpeedX(): number {
+        return this.tierSpeed;
+    }
+
+    override set maxSpeedX(value: number) {
+        this.tierSpeed = value;
+
+        if (!this.dashing) {
+            this.physics.body.maxSpeed.x = value;
+        }
     }
 
     get level(): number {
@@ -49,6 +65,34 @@ export class Dodger extends Character {
 
     get isInvulnerable(): boolean {
         return this.invulnerable > 0;
+    }
+
+    get dashing(): boolean {
+        return this.dashTimer > 0;
+    }
+
+    get dashReady(): boolean {
+        return this.dashCooldown <= 0;
+    }
+
+    get dashCooldownRatio(): number {
+        return clamp(this.dashCooldown / FACE_SMASHING.dash.cooldownSeconds, 0, 1);
+    }
+
+    get dashSpeed(): number {
+        const config = FACE_SMASHING.dash;
+        return damageScale(this.level, config.speedStart, config.speedEnd);
+    }
+
+    override move(axis: number, dt: number): void {
+        if (this.dashing) {
+            if (axis !== 0) {
+                this.facing = axis < 0 ? 'left' : 'right';
+            }
+            return;
+        }
+
+        super.move(axis, dt);
     }
 
     takeDamage(amount: number): number {
@@ -82,9 +126,34 @@ export class Dodger extends Character {
     }
 
     advanceReaction(dt: number): void {
+        const wasDashing = this.dashing;
+
         this.stun = Math.max(this.stun - dt, 0);
         this.flash = Math.max(this.flash - dt, 0);
         this.invulnerable = Math.max(this.invulnerable - dt, 0);
+        this.dashTimer = Math.max(this.dashTimer - dt, 0);
+        this.dashCooldown = Math.max(this.dashCooldown - dt, 0);
+
+        if (wasDashing && !this.dashing) {
+            this.physics.body.maxSpeed.x = this.tierSpeed;
+        }
+    }
+
+    dash(direction: number): boolean {
+        if (!this.dashReady || this.dashing || this.stunned) {
+            return false;
+        }
+
+        const config = FACE_SMASHING.dash;
+        const towards = direction < 0 ? -1 : 1;
+        const body = this.physics.body;
+
+        this.facing = towards < 0 ? 'left' : 'right';
+        body.maxSpeed.x = this.dashSpeed;
+        body.velocity.x = towards * this.dashSpeed;
+        this.dashTimer = config.seconds;
+        this.dashCooldown = config.cooldownSeconds;
+        return true;
     }
 
     applyTier(): void {
@@ -108,6 +177,11 @@ export class Dodger extends Character {
     }
 
     resolveAnimation(): void {
+        if (this.dashing) {
+            this.setAnimation('run');
+            return;
+        }
+
         if (!this.physics.body.grounded) {
             this.setAnimation('jump');
             return;

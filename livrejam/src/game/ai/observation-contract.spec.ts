@@ -22,6 +22,7 @@ interface Fixture {
         maxSpeedX: number;
         damage: number;
         grounded: boolean;
+        dashCooldown?: number;
     };
     items: FixtureItem[];
     observation: number[];
@@ -40,6 +41,7 @@ describe('observation contract', () => {
         dodger.maxSpeedX = data.dodger.maxSpeedX;
         dodger.damage = data.dodger.damage;
         dodger.applyTier();
+        dodger.dashCooldown = data.dodger.dashCooldown ?? 0;
         dodger.physics.body.velocity.x = data.dodger.velocityX;
         dodger.physics.body.velocity.y = 0;
         dodger.physics.body.grounded = data.dodger.grounded;
@@ -70,8 +72,11 @@ describe('observation contract', () => {
 
     it('covers every observation slot with items in the fixture', () => {
         const data = fixture as Fixture;
-        const slots = (FACE_SMASHING.ai.observationSize - 7) / 8;
-        const present = Array.from({ length: slots }, (_, index) => data.observation[7 + index * 8]);
+        const globals = 12;
+        const slots = (FACE_SMASHING.ai.observationSize - globals) / 8;
+        const present = Array.from({ length: slots }, (_, index) =>
+            data.observation[globals + index * 8],
+        );
 
         expect(data.items.length).toBeGreaterThanOrEqual(4);
         expect(present.filter((value) => value === 1).length).toBe(data.items.length);

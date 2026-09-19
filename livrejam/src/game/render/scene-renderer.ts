@@ -18,6 +18,10 @@ export interface SceneDebug {
     effects: readonly Effect[];
 }
 
+export interface SceneFrame {
+    deltaSeconds: number;
+}
+
 export class SceneRenderer {
     private readonly backdrop: BackdropPainter;
     private readonly terrain: TerrainRenderer;
@@ -42,6 +46,7 @@ export class SceneRenderer {
         dodger: Dodger,
         aimX: number,
         debug: SceneDebug,
+        frame: SceneFrame,
     ): void {
         const ctx = this.renderer.context;
 
@@ -68,7 +73,7 @@ export class SceneRenderer {
             this.renderColliders(level, items, dodger);
         }
 
-        this.renderer.present();
+        this.renderer.present(frame.deltaSeconds);
     }
 
     private ensureWorldLayer(level: DungeonLevel): HTMLCanvasElement {
@@ -124,10 +129,15 @@ export class SceneRenderer {
         const clip = CHARACTER_CLIPS[key];
         const frame = clip ? clampFrame(clip, dodger.frame) : 0;
         const feet = dodger.feet;
+        const row = dodger.spriteRow(CHARACTER_CLIPS);
+
+        if (dodger.dashing) {
+            this.renderDashTrail(dodger, sheet, frame, row);
+        }
 
         drawSheetSprite(this.renderer.context, sheet, this.camera, {
             column: frame,
-            row: dodger.spriteRow(CHARACTER_CLIPS),
+            row,
             worldX: feet.x - CHARACTER_FRAME_SIZE / 2,
             worldY: feet.y - FOOT_OFFSET,
             width: CHARACTER_FRAME_SIZE,
@@ -137,6 +147,47 @@ export class SceneRenderer {
         if (dodger.flash > 0) {
             this.renderFlash(dodger);
         }
+    }
+
+    private renderDashTrail(
+        dodger: Dodger,
+        sheet: CharacterTierSprites['walk'],
+        frame: number,
+        row: number,
+    ): void {
+        const config = FACE_SMASHING.dash;
+        const ctx = this.renderer.context;
+        const feet = dodger.feet;
+        const direction = -Math.sign(dodger.physics.body.velocity.x) || -dodger.facingDirection || -1;
+        const elapsed = config.seconds - dodger.dashTimer;
+        const speed = dodger.dashSpeed;
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+
+        for (let index = 0; index < config.ghostCount; index++) {
+            const offset = (config.ghostCount - index) * speed * config.ghostSpacing;
+            const along = Math.min(offset, elapsed * speed);
+
+            if (along <= 0) {
+                continue;
+            }
+
+            const fade = (1 - index / (config.ghostCount + 1)) * config.trailAlpha;
+            const stretch = 1 + index * 0.18;
+
+            ctx.globalAlpha = Math.max(fade, 0);
+            drawSheetSprite(ctx, sheet, this.camera, {
+                column: frame,
+                row,
+                worldX: feet.x + direction * along - (CHARACTER_FRAME_SIZE * stretch) / 2,
+                worldY: feet.y - FOOT_OFFSET,
+                width: CHARACTER_FRAME_SIZE * stretch,
+                height: CHARACTER_FRAME_SIZE,
+            });
+        }
+
+        ctx.restore();
     }
 
     private pickAnimation(dodger: Dodger, tier: CharacterTierSprites): CharacterAnimationKey {
