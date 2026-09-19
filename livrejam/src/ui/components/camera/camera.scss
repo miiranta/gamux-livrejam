@@ -1,0 +1,179 @@
+:host {
+    display: block;
+}
+
+.camera {
+    position: relative;
+    width: 70vmin;
+    max-width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    background: #0b0d12;
+    border-radius: 0.75rem;
+}
+
+.camera__video,
+.camera__overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: scaleX(-1);
+}
+
+.camera__video {
+    object-fit: cover;
+}
+
+.camera__overlay {
+    pointer-events: none;
+}
+
+.camera__face {
+    fill: none;
+    stroke: rgb(120 200 255 / 65%);
+    stroke-width: 0.35;
+    stroke-linejoin: round;
+}
+
+.camera__eye {
+    fill: #7dffb0;
+
+    &--closed {
+        fill: #ff6e6e;
+    }
+}
+
+.camera__hand {
+    fill: rgb(255 210 90 / 50%);
+    stroke: #ffd25a;
+    stroke-width: 0.3;
+}
+
+.camera__hud {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 0.75rem;
+    pointer-events: none;
+}
+
+.camera__pills,
+.camera__hands {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.camera__hands {
+    align-items: center;
+}
+
+.camera__pill,
+.camera__hands-title,
+.camera__hand-chip,
+.camera__veil button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.7rem;
+    color: rgb(233 238 247 / 85%);
+    background: rgb(11 13 18 / 62%);
+    border-radius: 999px;
+}
+
+.camera__pill {
+    b {
+        color: #fff;
+        font-weight: 600;
+        text-transform: capitalize;
+    }
+
+    &--alert {
+        color: #fff;
+        background: rgb(214 62 62 / 82%);
+    }
+}
+
+.camera__dot,
+.camera__hand-dot {
+    width: 0.4rem;
+    aspect-ratio: 1;
+    background: #7dffb0;
+    border-radius: 50%;
+}
+
+.camera__hand-dot {
+    background: #ffd25a;
+}
+
+.camera__pill--alert .camera__dot {
+    background: #fff;
+}
+
+.camera__hands-title b {
+    color: #ffd25a;
+    font-weight: 700;
+}
+
+.camera__hand-chip {
+    color: #fff;
+
+    em {
+        color: rgb(233 238 247 / 65%);
+        font-style: normal;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+.camera__veil {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 1rem;
+    font-size: 0.8rem;
+    text-align: center;
+    background: rgb(11 13 18 / 88%);
+
+    p {
+        margin: 0;
+    }
+
+    &--error {
+        color: #ffc9c9;
+    }
+
+    button {
+        color: #0b0d12;
+        font-weight: 600;
+        background: #8fd0ff;
+        border: none;
+        cursor: pointer;
+
+        &:hover {
+            background: #aee0ff;
+        }
+    }
+}
+
+.camera__spinner {
+    width: 1.5rem;
+    aspect-ratio: 1;
+    border: 2px solid rgb(233 238 247 / 25%);
+    border-top-color: #8fd0ff;
+    border-radius: 50%;
+    animation: camera-spin 700ms linear infinite;
+}
+
+@keyframes camera-spin {
+    to {
+        transform: rotate(1turn);
+    }
+}

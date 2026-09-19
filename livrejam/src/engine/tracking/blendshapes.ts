@@ -1,0 +1,66 @@
+export const BLENDSHAPE_NAMES = [
+    '_neutral',
+    'browDownLeft',
+    'browDownRight',
+    'browInnerUp',
+    'browOuterUpLeft',
+    'browOuterUpRight',
+    'cheekPuff',
+    'cheekSquintLeft',
+    'cheekSquintRight',
+    'eyeBlinkLeft',
+    'eyeBlinkRight',
+    'eyeLookDownLeft',
+    'eyeLookDownRight',
+    'eyeLookInLeft',
+    'eyeLookInRight',
+    'eyeLookOutLeft',
+    'eyeLookOutRight',
+    'eyeLookUpLeft',
+    'eyeLookUpRight',
+    'eyeSquintLeft',
+    'eyeSquintRight',
+    'eyeWideLeft',
+    'eyeWideRight',
+    'jawForward',
+    'jawLeft',
+    'jawOpen',
+    'jawRight',
+    'mouthClose',
+    'mouthDimpleLeft',
+    'mouthDimpleRight',
+    'mouthFrownLeft',
+    'mouthFrownRight',
+    'mouthFunnel',
+    'mouthLeft',
+    'mouthLowerDownLeft',
+    'mouthLowerDownRight',
+    'mouthPressLeft',
+    'mouthPressRight',
+    'mouthPucker',
+    'mouthRight',
+    'mouthRollLower',
+    'mouthRollUpper',
+    'mouthShrugLower',
+    'mouthShrugUpper',
+    'mouthSmileLeft',
+    'mouthSmileRight',
+    'mouthStretchLeft',
+    'mouthStretchRight',
+    'mouthUpperUpLeft',
+    'mouthUpperUpRight',
+    'noseSneerLeft',
+    'noseSneerRight',
+] as const;
+
+export type BlendshapeName = (typeof BLENDSHAPE_NAMES)[number];
+
+export const BLENDSHAPE_INDEX = BLENDSHAPE_NAMES.reduce(
+    (map, name, index) => {
+        map[name] = index;
+        return map;
+    },
+    {} as Record<BlendshapeName, number>,
+);
+
+export const BLENDSHAPE_COUNT = BLENDSHAPE_NAMES.length;

@@ -1,0 +1,81 @@
+<div class="camera">
+    <video #video class="camera__video" playsinline muted></video>
+
+    @if (frame(); as current) {
+        <svg class="camera__overlay" viewBox="0 0 100 100" preserveAspectRatio="none">
+            @if (current.face; as face) {
+                <polyline class="camera__face" [attr.points]="faceOutline(face)" />
+
+                @for (eye of eyeMarkers(face); track eye.key) {
+                    <circle
+                        class="camera__eye"
+                        [class.camera__eye--closed]="eye.closed"
+                        [attr.cx]="toPercent(eye.point.x)"
+                        [attr.cy]="toPercent(eye.point.y)"
+                        r="1.2"
+                    />
+                }
+            }
+
+            @for (hand of current.hands; track $index) {
+                <circle
+                    class="camera__hand"
+                    [attr.cx]="toPercent(hand.center.x)"
+                    [attr.cy]="toPercent(hand.center.y)"
+                    r="2"
+                />
+            }
+        </svg>
+    }
+
+    @if (isRunning()) {
+        <div class="camera__hud">
+            <div class="camera__pills">
+                <span class="camera__pill" [class.camera__pill--alert]="leftEyeClosed()">
+                    <i class="camera__dot"></i>
+                    Left eye
+                    <b>{{ leftEyeClosed() ? 'closed' : 'open' }}</b>
+                </span>
+                <span class="camera__pill" [class.camera__pill--alert]="rightEyeClosed()">
+                    <i class="camera__dot"></i>
+                    Right eye
+                    <b>{{ rightEyeClosed() ? 'closed' : 'open' }}</b>
+                </span>
+                <span class="camera__pill" [class.camera__pill--alert]="mouthOpen()">
+                    <i class="camera__dot"></i>
+                    Mouth
+                    <b>{{ mouthOpen() ? 'open' : 'closed' }}</b>
+                </span>
+            </div>
+
+            <div class="camera__hands">
+                <span class="camera__hands-title">
+                    Hands
+                    <b>{{ frame()?.hands?.length ?? 0 }}</b>
+                </span>
+
+                @for (hand of frame()?.hands ?? []; track $index) {
+                    <span class="camera__hand-chip">
+                        <i class="camera__hand-dot"></i>
+                        {{ hand.handedness }}
+                        <em>{{ formatPosition(hand.center) }}</em>
+                    </span>
+                }
+            </div>
+        </div>
+    }
+
+    @if (status() === 'starting') {
+        <div class="camera__veil">
+            <span class="camera__spinner"></span>
+            <p>Starting camera…</p>
+        </div>
+    }
+
+    @if (status() === 'error') {
+        <div class="camera__veil camera__veil--error">
+            <p>{{ errorMessage() }}</p>
+            <button type="button" (click)="retry()">Try again</button>
+        </div>
+    }
+</div>
