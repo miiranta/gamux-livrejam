@@ -1,0 +1,263 @@
+{
+  "body/wound/arm": {
+    "authors": [
+      "Benjamin K. Smith (BenCreating)",
+      "Sander Frenken (castelonia)"
+    ],
+    "licenses": [
+      "CC-BY-SA 3.0",
+      "GPL 3.0"
+    ],
+    "urls": [
+      "https://opengameart.org/content/lpc-zombie"
+    ],
+    "notes": "",
+    "layers": [
+      "arm"
+    ]
+  },
+  "torso/bandage": {
+    "authors": [
+      "Nila122"
+    ],
+    "licenses": [
+      "OGA-BY 3.0",
+      "CC-BY-SA 3.0",
+      "GPL 2.0",
+      "GPL 3.0"
+    ],
+    "urls": [
+      "https://opengameart.org/content/lpc-bandages"
+    ],
+    "notes": "",
+    "layers": [
+      "bandages"
+    ]
+  },
+  "body/bodies/male": {
+    "authors": [
+      "bluecarrot16",
+      "JaidynReiman",
+      "Benjamin K. Smith (BenCreating)",
+      "Evert",
+      "Eliza Wyatt (ElizaWy)",
+      "TheraHedwig",
+      "MuffinElZangano",
+      "Durrani",
+      "Johannes Sj\u00f6lund (wulax)",
+      "Stephen Challener (Redshrike)"
+    ],
+    "licenses": [
+      "OGA-BY 3.0",
+      "CC-BY-SA 3.0",
+      "GPL 3.0"
+    ],
+    "urls": [
+      "https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles",
+      "https://opengameart.org/content/lpc-medieval-fantasy-character-sprites",
+      "https://opengameart.org/content/lpc-male-jumping-animation-by-durrani",
+      "https://opengameart.org/content/lpc-runcycle-and-diagonal-walkcycle",
+      "https://opengameart.org/content/lpc-revised-character-basics",
+      "https://opengameart.org/content/lpc-be-seated",
+      "https://opengameart.org/content/lpc-runcycle-for-male-muscular-and-pregnant-character-bases-with-modular-heads",
+      "https://opengameart.org/content/lpc-jump-expanded",
+      "https://opengameart.org/content/lpc-character-bases"
+    ],
+    "notes": "see details at https://opengameart.org/content/lpc-character-bases; 'Thick' Male Revised Run/Climb by JaidynReiman (based on ElizaWy's LPC Revised)",
+    "layers": [
+      "body"
+    ]
+  },
+  "feet/boots/basic": {
+    "authors": [
+      "JaidynReiman",
+      "bluecarrot16",
+      "Nila122"
+    ],
+    "licenses": [
+      "OGA-BY 3.0",
+      "CC-BY-SA 3.0",
+      "GPL 2.0",
+      "GPL 3.0"
+    ],
+    "urls": [
+      "https://opengameart.org/content/lpc-clothes-and-hair",
+      "https://opengameart.org/content/lpc-expanded-socks-shoes"
+    ],
+    "notes": "original by Nila122, edited for male and v3 bases by bluecarrot16, Jump/Sit/Emote/Run/Revised Combat by JaidynReiman",
+    "layers": [
+      "boots"
+    ]
+  },
+  "body/wound/brain": {
+    "authors": [
+      "Benjamin K. Smith (BenCreating)",
+      "Sander Frenken (castelonia)"
+    ],
+    "licenses": [
+      "CC-BY-SA 3.0",
+      "GPL 3.0"
+    ],
+    "urls": [
+      "https://opengameart.org/content/lpc-zombie"
+    ],
+    "notes": "",
+    "layers": [
+      "brain"
+    ]
+  },
+  "body/wound/eye_left": {
+    "authors": [
+      "JaidynReiman",
+      "Benjamin K. Smith (BenCreating)",
+      "Sander Frenken (castelonia)"
+    ],
+    "licenses": [
+      "CC-BY-SA 3.0",
+      "GPL 3.0"
+    ],
+    "urls": [
+      "https://opengameart.org/content/lpc-zombie"
+    ],
+    "notes": "Zombie by BenCreating, commissioned by castelonia; flipped (left eye) variant by JaidynReiman",
+    "layers": [
+      "eye_left"
+    ]
+  },
+  "body/wound/eye_right": {
+    "authors": [
+      "Benjamin K. Smith (BenCreating)",
+      "Sander Frenken (castelonia)"
+    ],
+    "licenses": [
+      "CC-BY-SA 3.0",
+      "GPL 3.0"
+    ],
+    "urls": [
+      "https://opengameart.org/content/lpc-zombie"
+    ],
+    "notes": "Zombie by BenCreating, commissioned by castelonia",
+    "layers": [
+      "eye_right"
+    ]
+  },
+  "hair/unkempt": {
+    "authors": [
+      "JaidynReiman",
+      "Manuel Riecke (MrBeast)"
+    ],
+    "licenses": [
+      "CC-BY-SA 3.0",
+      "GPL 3.0"
+    ],
+    "urls": [
+      "https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles",
+      "https://opengameart.org/content/lpc-expanded-hair"
+    ],
+    "notes": "",
+    "layers": [
+      "hair"
+    ]
+  },
+  "head/heads/human/male": {
+    "authors": [
+      "bluecarrot16",
+      "Benjamin K. Smith (BenCreating)",
+      "Stephen Challener (Redshrike)"
+    ],
+    "licenses": [
+      "OGA-BY 3.0",
+      "CC-BY-SA 3.0",
+      "GPL 3.0"
+    ],
+    "urls": [
+      "https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles",
+      "https://opengameart.org/content/lpc-character-bases"
+    ],
+    "notes": "original head by Redshrike, tweaks by BenCreating, modular version by bluecarrot16",
+    "layers": [
+      "head"
+    ]
+  },
+  "legs/pants/male": {
+    "authors": [
+      "bluecarrot16",
+      "JaidynReiman",
+      "ElizaWy",
+      "Matthew Krohn (makrohn)",
+      "Johannes Sj\u00f6lund (wulax)",
+      "Stephen Challener (Redshrike)"
+    ],
+    "licenses": [
+      "OGA-BY 3.0",
+      "GPL 3.0",
+      "CC-BY-SA 3.0"
+    ],
+    "urls": [
+      "https://opengameart.org/content/liberated-pixel-cup-lpc-base-assets-sprites-map-tiles",
+      "https://opengameart.org/content/lpc-medieval-fantasy-character-sprites",
+      "https://opengameart.org/content/lpc-expanded-pants"
+    ],
+    "notes": "original male pants by wulax, recolors and edits to v3 base by bluecarrot16, climb/jump/run/sit/emotes/revised combat by JaidynReiman based on ElizaWy's LPC Revised",
+    "layers": [
+      "legs"
+    ]
+  },
+  "body/wound/mouth": {
+    "authors": [
+      "Benjamin K. Smith (BenCreating)",
+      "Sander Frenken (castelonia)"
+    ],
+    "licenses": [
+      "CC-BY-SA 3.0",
+      "GPL 3.0"
+    ],
+    "urls": [
+      "https://opengameart.org/content/lpc-zombie"
+    ],
+    "notes": "",
+    "layers": [
+      "mouth"
+    ]
+  },
+  "body/wound/ribs": {
+    "authors": [
+      "Benjamin K. Smith (BenCreating)",
+      "Sander Frenken (castelonia)"
+    ],
+    "licenses": [
+      "CC-BY-SA 3.0",
+      "GPL 3.0"
+    ],
+    "urls": [
+      "https://opengameart.org/content/lpc-zombie"
+    ],
+    "notes": "",
+    "layers": [
+      "ribs"
+    ]
+  },
+  "torso/clothes/longsleeve/longsleeve/male": {
+    "authors": [
+      "JaidynReiman",
+      "Johannes Sj\u00f6lund (wulax)"
+    ],
+    "licenses": [
+      "OGA-BY 3.0",
+      "CC-BY-SA 3.0",
+      "GPL 3.0"
+    ],
+    "urls": [
+      "https://opengameart.org/content/lpc-medieval-fantasy-character-sprites",
+      "http://opengameart.org/content/lpc-clothing-updates",
+      "https://opengameart.org/content/lpc-revised-character-basics",
+      "https://github.com/ElizaWy/LPC/tree/main/Characters/Clothing",
+      "https://opengameart.org/content/lpc-expanded-sit-run-jump-more",
+      "https://opengameart.org/content/lpc-expanded-simple-shirts"
+    ],
+    "notes": "original by wulax; tweaks and further recolors by bluecarrot16; cleanup and climb/jump/run/sit/emote/revised combat adapted from LPC Revised by JaidynReiman",
+    "layers": [
+      "shirt"
+    ]
+  }
+}

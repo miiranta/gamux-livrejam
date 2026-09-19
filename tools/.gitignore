@@ -1,0 +1,3 @@
+# cache de download do build_lpc_character.py (definicoes + spritesheets do LPC)
+cache/
+__pycache__/
