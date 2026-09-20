@@ -222,6 +222,24 @@ describe('ImpactSystem', () => {
         expect(impacts.evaluate([placeItem(dodger, 0)], dodger).hits).toBe(1);
     });
 
+    it('points the knockback away from the item that landed', () => {
+        const impacts = new ImpactSystem();
+        const dodger = buildDodger();
+        const gap = reach(dodger) / 2;
+
+        // `contacts` is reused between calls, so each reading is taken
+        // before the next evaluation overwrites it.
+        const fromLeft = impacts.evaluate([placeItem(dodger, gap, -1)], dodger).contacts[0]
+            .direction;
+        dodger.advanceReaction(FACE_SMASHING.reaction.invulnerableSeconds + 0.01);
+        const fromRight = impacts.evaluate([placeItem(dodger, gap, 1)], dodger).contacts[0]
+            .direction;
+
+        // A crate falling on the left throws the dodger to the right.
+        expect(fromLeft).toBe(1);
+        expect(fromRight).toBe(-1);
+    });
+
     it('applies knockback away from the impact', () => {
         const impacts = new ImpactSystem();
         const dodger = buildDodger();

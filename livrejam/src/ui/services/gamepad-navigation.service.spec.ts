@@ -144,6 +144,92 @@ describe('GamepadNavigation', () => {
         expect(navigation).toBeTruthy();
     });
 
+    it('ignores confirm and back while the actions are held', () => {
+        const button = document.createElement('button');
+        const clicked = vi.fn();
+        button.addEventListener('click', clicked);
+        document.body.append(button);
+        button.focus();
+
+        // The hold is measured against `performance.now()`, which the fake
+        // timers leave alone, so the clock is driven by hand here.
+        let now = 0;
+        vi.spyOn(performance, 'now').mockImplementation(() => now);
+
+        const navigation = create();
+        navigation.holdActions(1);
+        runFrames(2);
+        pad.buttons[GAMEPAD_BUTTON.bottom].pressed = true;
+        runFrames(2);
+
+        expect(clicked).not.toHaveBeenCalled();
+
+        // Still held when the window closes: it must not fire late.
+        now = 1100;
+        runFrames(2);
+        expect(clicked).not.toHaveBeenCalled();
+
+        pad.buttons[GAMEPAD_BUTTON.bottom].pressed = false;
+        runFrames(2);
+        pad.buttons[GAMEPAD_BUTTON.bottom].pressed = true;
+        runFrames(2);
+
+        expect(clicked).toHaveBeenCalledTimes(1);
+    });
+
+    function withSlider(): HTMLInputElement {
+        document.body.innerHTML = `
+            <app-main-menu>
+                <div data-gamepad-first>
+                    <input id="volume" type="range" min="0" max="1" step="0.05" value="0.5" />
+                    <button id="after">After</button>
+                </div>
+            </app-main-menu>
+        `;
+        focusFirst();
+        return document.getElementById('volume') as HTMLInputElement;
+    }
+
+    it('drags a focused slider sideways instead of moving the focus', () => {
+        const slider = withSlider();
+        const input = vi.fn();
+        slider.addEventListener('input', input);
+
+        create();
+        runFrames(2);
+        pad.buttons[GAMEPAD_BUTTON.dpadRight].pressed = true;
+        runFrames(2);
+
+        expect(slider.value).toBe('0.55');
+        expect(input).toHaveBeenCalledTimes(1);
+        expect(document.activeElement?.id).toBe('volume');
+    });
+
+    it('keeps the slider focused at the end of its track', () => {
+        const slider = withSlider();
+        slider.value = '0';
+
+        create();
+        runFrames(2);
+        pad.buttons[GAMEPAD_BUTTON.dpadLeft].pressed = true;
+        runFrames(2);
+
+        expect(slider.value).toBe('0');
+        expect(document.activeElement?.id).toBe('volume');
+    });
+
+    it('still leaves a slider with up and down', () => {
+        const slider = withSlider();
+
+        create();
+        runFrames(2);
+        pad.buttons[GAMEPAD_BUTTON.dpadDown].pressed = true;
+        runFrames(2);
+
+        expect(slider.value).toBe('0.5');
+        expect(document.activeElement?.id).toBe('after');
+    });
+
     it('moves focus with the d-pad', () => {
         document.body.innerHTML = `
             <app-main-menu>

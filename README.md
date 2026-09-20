@@ -57,6 +57,13 @@ Os menus tambem funcionam no controle: o d-pad (ou o analógico esquerdo) anda
 pelo foco, o botao de baixo ("A") confirma e o botao da direita ("B") volta
 (fecha um painel, sai da pausa, sai da tela de fim de jogo).
 
+Num controle de volume (as barras de audio nas opcoes), esquerda e direita
+mudam o valor em vez de sair dele; cima e baixo continuam andando pelo foco.
+
+A tela de fim de jogo ignora "A" e "B" por ~1,8s depois de abrir. A partida
+acaba sozinha, entao quem estava pulando ("A") reiniciaria a rodada antes de
+ler o placar (`holdActions` em `gamepad-navigation.service.ts`).
+
 O anel de foco usa `:focus` **e** `:focus-visible` de proposito (mixin
 `focus-ring` em `src/ui/styles/_ornaments.scss`). O navegador so liga
 `:focus-visible` depois de teclado ou mouse, e o controle foca o elemento via
