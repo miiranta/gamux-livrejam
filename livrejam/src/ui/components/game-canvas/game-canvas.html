@@ -160,27 +160,32 @@
 
         <div class="game-canvas__players">
             <section class="game-canvas__player">
+                <span class="game-canvas__player-rim" aria-hidden="true"></span>
                 <h2 class="game-canvas__player-name">{{ 'hud.players.p1' | translate }}</h2>
                 <ul class="game-canvas__player-keys">
                     @for (row of playerOneControls(); track row.labelKey) {
-                        <li>
-                            <span>{{ row.labelKey | translate }}</span>
-                            <b>{{ row.hintKey! | translate }}</b>
+                        <li class="game-canvas__key" [attr.title]="row.labelKey | translate">
+                            <app-pixel-icon [name]="row.icon" />
+                            <app-pixel-icon
+                                class="game-canvas__key-gesture"
+                                [name]="row.gesture!"
+                            />
                         </li>
                     }
                 </ul>
             </section>
 
-            <section class="game-canvas__player game-canvas__player--right">
+            <section class="game-canvas__player">
+                <span class="game-canvas__player-rim" aria-hidden="true"></span>
                 <h2 class="game-canvas__player-name">{{ 'hud.players.p2' | translate }}</h2>
                 @if (playerTwoIsAi()) {
                     <p class="game-canvas__player-ai">{{ 'hud.players.ai' | translate }}</p>
                 } @else {
                     <ul class="game-canvas__player-keys">
                         @for (row of playerTwoControls(); track row.labelKey) {
-                            <li>
-                                <span>{{ row.labelKey | translate }}</span>
-                                <b>{{ row.keys }}</b>
+                            <li class="game-canvas__key" [attr.title]="row.labelKey | translate">
+                                <app-pixel-icon [name]="row.icon" />
+                                <kbd>{{ row.keys }}</kbd>
                             </li>
                         }
                     </ul>

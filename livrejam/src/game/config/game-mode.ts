@@ -129,6 +129,7 @@ export interface PlayerIntent {
     dash: boolean;
     /** Hold to sprint; tapping a direction moves at walking speed instead. */
     run: boolean;
+    fastFall: boolean;
 }
 
 /**
@@ -144,15 +145,17 @@ export function readPlayerIntent(sources: readonly ActionSource<PlayerAction>[])
     let jump = false;
     let dash = false;
     let run = false;
+    let fastFall = false;
 
     for (const source of sources) {
         axis += Number(source.isDown('right')) - Number(source.isDown('left'));
         jump = jump || source.isDown('jump');
         dash = dash || source.isDown('dash');
         run = run || source.isDown('run');
+        fastFall = fastFall || source.isDown('fastFall');
     }
 
-    return { axis: Math.sign(axis), jump, dash, run };
+    return { axis: Math.sign(axis), jump, dash, run, fastFall };
 }
 
 /** Movement speed as a fraction of the character's damaged-tier maximum. */

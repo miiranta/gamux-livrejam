@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { HoverSound } from '../../directives';
+import { PixelIcon } from '../pixel-icon/pixel-icon';
 import { GameSettingsService, STEERING_MODES, steeringModeLabelKey } from '../../services';
 import type { SteeringMode } from '../../../game/systems';
 
@@ -12,7 +13,7 @@ import type { SteeringMode } from '../../../game/systems';
  */
 @Component({
     selector: 'app-steering-select',
-    imports: [HoverSound, TranslatePipe],
+    imports: [HoverSound, PixelIcon, TranslatePipe],
     templateUrl: './steering-select.html',
     styleUrl: './steering-select.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,

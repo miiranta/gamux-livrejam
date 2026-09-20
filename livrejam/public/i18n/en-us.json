@@ -168,13 +168,11 @@
             "ai": "AI",
             "steer": "Steer item",
             "itemDash": "Shove item",
-            "hands": "Raise a hand",
-            "eyes": "Wink an eye",
-            "mouth": "Open your mouth",
             "move": "Move",
             "jump": "Jump",
             "dash": "Dash",
-            "run": "Run"
+            "run": "Run",
+            "fastFall": "Fast fall"
         }
     },
     "end": {

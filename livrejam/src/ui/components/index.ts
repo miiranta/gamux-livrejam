@@ -7,6 +7,7 @@ export * from './language-select/language-select';
 export * from './particle-burst/particle-burst';
 export * from './particle-field/particle-field';
 export * from './pixel-button/pixel-button';
+export * from './pixel-icon/pixel-icon';
 export * from './pixel-panel/pixel-panel';
 export * from './pixel-slider/pixel-slider';
 export * from './pixel-stepper/pixel-stepper';

@@ -29,13 +29,6 @@ export function clipCycleSeconds(clip: AnimationClip): number {
     return clip.frames * clip.frameDuration;
 }
 
-/**
- * Quanto do clipe avancar neste quadro, em segundos.
- *
- * Clipes com `strideDistance` sao movidos pela distancia percorrida, nao pelo
- * relogio: uma passada inteira cobre `strideDistance` pixels de mundo, entao o
- * pe acompanha o chao em qualquer velocidade e para junto com o personagem.
- */
 export function clipAdvance(clip: AnimationClip, dt: number, distance: number): number {
     if (clip.strideDistance === undefined || clip.strideDistance <= 0) {
         return dt;

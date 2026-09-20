@@ -17,6 +17,7 @@ import { IdlePolicy, RemoteDodgerPolicy, type PolicyLike } from '../../../game/a
 import { FACE_SMASHING } from '../../../game/config';
 import { FaceSmashing, type MatchStats } from '../../../game/face-smashing';
 import { HoverSound } from '../../directives';
+import { PixelIcon, type PixelIconName } from '../pixel-icon/pixel-icon';
 import {
     AudioService,
     DebugModeService,
@@ -30,10 +31,10 @@ import {
 type CanvasStatus = 'loading' | 'ready' | 'error';
 type ModelStatus = 'idle' | 'loading' | 'ready' | 'error';
 
-/** One line of the per-player control legend: a gesture hint or a key cap. */
 interface ControlRow {
     labelKey: string;
-    hintKey?: string;
+    icon: PixelIconName;
+    gesture?: PixelIconName;
     keys?: string;
 }
 
@@ -56,7 +57,7 @@ const INITIAL_STATS: MatchStats = {
 
 @Component({
     selector: 'app-game-canvas',
-    imports: [HoverSound, TranslatePipe],
+    imports: [HoverSound, PixelIcon, TranslatePipe],
     templateUrl: './game-canvas.html',
     styleUrl: './game-canvas.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -100,26 +101,23 @@ export class GameCanvas {
         this.stats().gameMode === 'two' ? 'hud.hintPlayer' : 'hud.hint',
     );
 
-    /** Player 1 always drives the falling item, with the camera rather than keys. */
     protected readonly playerOneControls = computed<ControlRow[]>(() => [
         {
             labelKey: 'hud.players.steer',
-            hintKey:
-                this.settings.steeringMode() === 'rizz'
-                    ? 'hud.players.eyes'
-                    : 'hud.players.hands',
+            icon: 'move',
+            gesture: this.settings.steeringMode() === 'rizz' ? 'eye' : 'hand',
         },
-        { labelKey: 'hud.players.itemDash', hintKey: 'hud.players.mouth' },
+        { labelKey: 'hud.players.itemDash', icon: 'dash', gesture: 'mouth' },
     ]);
 
-    /** The character is the policy's in `single` and the second human's in `two`. */
     protected readonly playerTwoIsAi = computed(() => this.stats().gameMode !== 'two');
 
     protected readonly playerTwoControls = computed<ControlRow[]>(() => [
-        { labelKey: 'hud.players.move', keys: 'A / D' },
-        { labelKey: 'hud.players.jump', keys: 'W / Space' },
-        { labelKey: 'hud.players.dash', keys: 'Shift' },
-        { labelKey: 'hud.players.run', keys: 'Ctrl' },
+        { labelKey: 'hud.players.move', icon: 'move', keys: 'A D' },
+        { labelKey: 'hud.players.jump', icon: 'jump', keys: 'W' },
+        { labelKey: 'hud.players.fastFall', icon: 'fastFall', keys: 'S' },
+        { labelKey: 'hud.players.dash', icon: 'dash', keys: 'Shift' },
+        { labelKey: 'hud.players.run', icon: 'run', keys: 'Ctrl' },
     ]);
 
     constructor() {
