@@ -51,7 +51,7 @@ export class SpawnMarkerPainter {
 
         const centerX = level.grid.left + level.grid.width / 2;
         const x = camera.toScreenX(centerX);
-        const y = camera.toScreenY(level.spawnY - level.grid.tileSize * 0.5);
+        const y = camera.toScreenY(level.spawnY - FACE_SMASHING.item.spawnHeight / 2);
         const extent = camera.toScreenLength(config.size);
         const pixel = extent / SPAN;
         const half = (GRID * pixel) / 2;
