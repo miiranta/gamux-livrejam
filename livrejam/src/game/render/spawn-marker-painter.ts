@@ -3,8 +3,6 @@ import { FACE_SMASHING } from '../config';
 import type { DungeonLevel } from '../level';
 
 const ARROW: readonly string[] = [
-    '.............',
-    '.............',
     '###.......###',
     '.###.....###.',
     '.###.....###.',
@@ -23,7 +21,6 @@ const ARROW: readonly string[] = [
 const SPAN = ARROW.length;
 const PAD = 1;
 const GRID = SPAN + PAD * 2;
-const CENTER = (GRID - 1) / 2;
 
 let sprite: HTMLCanvasElement | null = null;
 
@@ -55,20 +52,15 @@ export class SpawnMarkerPainter {
         const centerX = level.grid.left + level.grid.width / 2;
         const x = camera.toScreenX(centerX);
         const y = camera.toScreenY(level.spawnY - level.grid.tileSize * 0.5);
-        const distance = camera.toScreenLength(config.distance);
-        const pixel = distance / SPAN;
+        const extent = camera.toScreenLength(config.size);
+        const pixel = extent / SPAN;
+        const half = (GRID * pixel) / 2;
 
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(this.angle);
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(
-            arrowSprite(),
-            -CENTER * pixel,
-            distance - SPAN * pixel,
-            GRID * pixel,
-            GRID * pixel,
-        );
+        ctx.drawImage(arrowSprite(), -half, -half, half * 2, half * 2);
         ctx.restore();
     }
 }

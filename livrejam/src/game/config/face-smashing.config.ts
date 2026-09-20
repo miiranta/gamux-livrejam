@@ -68,11 +68,11 @@ export const FACE_SMASHING = {
         maxSpeed: 280,
         speedStep: 25,
         rampSeconds: 3,
-        steerSpeed: 340,
+        steerSpeed: 238,
         thrust: 280,
     },
     spawnMarker: {
-        distance: 46,
+        size: 26,
         maxAngle: 1.05,
         color: '#e0a44a',
         highlight: '#f7cd72',
