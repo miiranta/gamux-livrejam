@@ -9,4 +9,5 @@ export * from './pixel-panel/pixel-panel';
 export * from './pixel-slider/pixel-slider';
 export * from './pixel-stepper/pixel-stepper';
 export * from './settings-panel/settings-panel';
+export * from './steering-select/steering-select';
 export * from './voice-select/voice-select';

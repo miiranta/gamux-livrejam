@@ -2,6 +2,7 @@ import { Injectable, computed, signal } from '@angular/core';
 
 import { DEFAULT_VOICE_SET, isVoiceSetKey } from '../../game/audio';
 import { FACE_SMASHING } from '../../game/config';
+import type { SteeringMode } from '../../game/systems';
 
 export interface GameSettings {
     musicVolume: number;
@@ -9,6 +10,7 @@ export interface GameSettings {
     voiceVolume: number;
     voiceSet: string;
     matchTimeSeconds: number;
+    steeringMode: SteeringMode;
 }
 
 export interface GameSettingsLimits {
@@ -18,6 +20,18 @@ export interface GameSettingsLimits {
 }
 
 export const GAME_SETTINGS_STORAGE_KEY = 'livrejam.settings';
+
+export const STEERING_MODES: readonly SteeringMode[] = ['67', 'rizz'];
+
+export const DEFAULT_STEERING_MODE: SteeringMode = '67';
+
+export function isSteeringMode(value: unknown): value is SteeringMode {
+    return STEERING_MODES.includes(value as SteeringMode);
+}
+
+export function steeringModeLabelKey(mode: SteeringMode): string {
+    return `settings.steering.${mode}`;
+}
 
 function settingsLimits(): GameSettingsLimits {
     return {
@@ -34,6 +48,7 @@ function defaultSettings(): GameSettings {
         voiceVolume: 0.9,
         voiceSet: DEFAULT_VOICE_SET,
         matchTimeSeconds: FACE_SMASHING.match.defaultDurationSeconds,
+        steeringMode: DEFAULT_STEERING_MODE,
     };
 }
 
@@ -54,6 +69,7 @@ export class GameSettingsService {
     readonly voiceVolume = computed(() => this.state().voiceVolume);
     readonly voiceSet = computed(() => this.state().voiceSet);
     readonly matchTimeSeconds = computed(() => this.state().matchTimeSeconds);
+    readonly steeringMode = computed(() => this.state().steeringMode);
     /** Human-friendly match length, e.g. "1:30". */
     readonly matchTimeLabel = computed(() => formatDuration(this.state().matchTimeSeconds));
 
@@ -82,6 +98,14 @@ export class GameSettingsService {
         this.patch({
             matchTimeSeconds: Math.round(clamp(value, minMatchTimeSeconds, maxMatchTimeSeconds)),
         });
+    }
+
+    setSteeringMode(mode: SteeringMode): void {
+        if (!isSteeringMode(mode)) {
+            return;
+        }
+
+        this.patch({ steeringMode: mode });
     }
 
     reset(): void {
@@ -168,6 +192,9 @@ function loadSettings(): GameSettings {
                 settingsLimits().minMatchTimeSeconds,
                 settingsLimits().maxMatchTimeSeconds,
             ),
+            steeringMode: isSteeringMode(parsed.steeringMode)
+                ? parsed.steeringMode
+                : fallback.steeringMode,
         };
     } catch {
         return fallback;

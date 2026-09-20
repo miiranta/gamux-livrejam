@@ -7,7 +7,14 @@ import { useReadyCamera } from '../testing/camera-testing';
 import { CameraStatusService, cameraFailureReason } from './camera-status.service';
 import { DebugModeService } from './debug-mode.service';
 import { GameFlowService } from './game-flow.service';
-import { GameSettingsService, formatDuration, parseDuration } from './game-settings.service';
+import {
+    DEFAULT_STEERING_MODE,
+    GameSettingsService,
+    STEERING_MODES,
+    formatDuration,
+    parseDuration,
+    steeringModeLabelKey,
+} from './game-settings.service';
 import { LanguageService } from './language.service';
 import { provideTestTranslate, useTestTranslations } from '../testing/i18n-testing';
 
@@ -77,6 +84,31 @@ describe('GameSettingsService', () => {
         settings.setMatchTimeSeconds(90);
 
         expect(settings.matchTimeLabel()).toBe('1:30');
+    });
+
+    it('defaults to the hand gesture for steering', () => {
+        TestBed.configureTestingModule({});
+        const settings = TestBed.inject(GameSettingsService);
+
+        expect(settings.steeringMode()).toBe(DEFAULT_STEERING_MODE);
+        expect(DEFAULT_STEERING_MODE).toBe('67');
+    });
+
+    it('stores the steering mode and rejects unknown ones', () => {
+        TestBed.configureTestingModule({});
+        const settings = TestBed.inject(GameSettingsService);
+
+        settings.setSteeringMode('rizz');
+        expect(settings.steeringMode()).toBe('rizz');
+
+        settings.setSteeringMode('nonsense' as never);
+        expect(settings.steeringMode()).toBe('rizz');
+    });
+
+    it('labels every steering mode with its own translation key', () => {
+        for (const mode of STEERING_MODES) {
+            expect(steeringModeLabelKey(mode)).toBe(`settings.steering.${mode}`);
+        }
     });
 });
 

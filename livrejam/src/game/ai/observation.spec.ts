@@ -248,7 +248,7 @@ describe('writeObservation', () => {
         expect(values[0]).toBe(1);
         expect(values[1]).toBeCloseTo((centerX - 320) / RADIUS, 6);
         expect(values[2]).toBeCloseTo((y + definition.half.height - dodgerTop) / RADIUS, 6);
-        expect(values[3]).toBeCloseTo(12 / FACE_SMASHING.item.lateralSpeed, 6);
+        expect(values[3]).toBeCloseTo(12 / FACE_SMASHING.drop.steerSpeed, 6);
         expect(values[4]).toBeCloseTo(180 / FACE_SMASHING.item.maxFallSpeed, 6);
         expect(values[5]).toBe(0);
         expect(values[6]).toBeCloseTo(

@@ -23,6 +23,7 @@ import {
     formatDuration,
     GameFlowService,
     GameSettingsService,
+    TrackingFrameService,
     type GameScreen,
 } from '../../services';
 
@@ -58,6 +59,7 @@ export class GameCanvas {
     private readonly settings = inject(GameSettingsService);
     private readonly audio = inject(AudioService);
     private readonly debug = inject(DebugModeService);
+    private readonly trackingFrames = inject(TrackingFrameService);
     private readonly inference = new InferenceWorkerClient({
         url: FACE_SMASHING.ai.modelUrl,
         expectedInputSize: FACE_SMASHING.ai.observationSize,
@@ -96,6 +98,16 @@ export class GameCanvas {
             this.syncMatch(screen, token);
         });
 
+        effect(() => {
+            const frame = this.trackingFrames.frame();
+            this.game?.setTracking(frame);
+        });
+
+        effect(() => {
+            const mode = this.settings.steeringMode();
+            this.game?.setSteeringMode(mode);
+        });
+
         this.destroyRef.onDestroy(() => this.stop());
     }
 
@@ -109,6 +121,7 @@ export class GameCanvas {
             const game = new FaceSmashing({
                 canvas,
                 matchDuration: this.settings.matchTimeSeconds(),
+                steeringMode: this.settings.steeringMode(),
                 callbacks: {
                     onStats: (next) => this.stats.set(next),
                     onMatchEnd: (result) =>

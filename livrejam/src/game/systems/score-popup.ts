@@ -1,12 +1,8 @@
 import { clamp } from '../../engine/math';
 import { FACE_SMASHING } from '../config';
 
-/**
- * Points paid for a hit that dealt `damage`. Landing a hit is the goal, so
- * even a graze is worth at least one point.
- */
 export function hitPoints(damage: number): number {
-    return Math.max(1, Math.round(damage * FACE_SMASHING.score.hitPerDamage));
+    return Math.round(damage);
 }
 
 export interface ScorePopupPose {

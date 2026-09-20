@@ -55,7 +55,6 @@ export class SceneRenderer {
         level: DungeonLevel,
         items: readonly Item[],
         dodger: Dodger,
-        aimX: number,
         debug: SceneDebug,
         frame: SceneFrame,
     ): void {
@@ -89,7 +88,6 @@ export class SceneRenderer {
         this.props.paint(ctx, level, this.camera, this.elapsed, 2);
         this.renderEffects(debug.effects);
         this.renderScorePopups(debug.scorePopups);
-        this.renderAim(level, aimX);
 
         if (debug.colliders) {
             this.renderColliders(level, items, dodger);
@@ -132,11 +130,26 @@ export class SceneRenderer {
         const ctx = this.renderer.context;
         const screenWidth = camera.toScreenLength(item.halfWidth * 2);
         const screenHeight = camera.toScreenLength(item.halfHeight * 2);
+        const opacity = item.opacity;
+
+        if (opacity <= 0) {
+            return;
+        }
+
+        const scale = item.appearScale;
+        const half = scale / 2;
 
         ctx.save();
+        ctx.globalAlpha = opacity;
         ctx.translate(camera.toScreenX(item.centerX), camera.toScreenY(item.centerY));
         ctx.rotate(item.angle);
-        ctx.drawImage(image, -screenWidth / 2, -screenHeight / 2, screenWidth, screenHeight);
+        ctx.drawImage(
+            image,
+            -screenWidth * half,
+            -screenHeight * half,
+            screenWidth * scale,
+            screenHeight * scale,
+        );
         ctx.restore();
     }
 
@@ -336,24 +349,6 @@ export class SceneRenderer {
             ctx.restore();
         }
 
-        ctx.restore();
-    }
-
-    private renderAim(level: DungeonLevel, aimX: number): void {
-        const { camera } = this.renderer;
-        const ctx = this.renderer.context;
-        const size = level.grid.tileSize;
-        const x = camera.toScreenX(aimX - size / 2);
-        const y = camera.toScreenY(level.spawnY - size);
-        const side = camera.toScreenLength(size);
-
-        ctx.save();
-        ctx.fillStyle = 'rgba(224, 164, 74, 0.28)';
-        ctx.fillRect(x, y, side, side);
-        ctx.strokeStyle = '#e0a44a';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([6, 4]);
-        ctx.strokeRect(x + 1, y + 1, side - 2, side - 2);
         ctx.restore();
     }
 

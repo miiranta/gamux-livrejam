@@ -6,15 +6,24 @@ import { PhysicsWorld } from '../engine/physics';
 import { CHARACTER_CLIPS, loadDungeonSprites } from './assets';
 import type { ActionIntent, PolicyLike } from './ai';
 import { IdlePolicy, createObservationBuffer, decodeAction, writeObservation } from './ai';
-import { FACE_SMASHING, ITEM_MAX_EXTENT } from './config';
+import { FACE_SMASHING } from './config';
 import { Dodger, Item } from './entities';
 import type { DungeonLevel } from './level';
 import { createDungeonLevel } from './level';
 import { SceneRenderer } from './render';
-import { ItemSpawner, ImpactSystem, EffectSystem, ScorePopupSystem, hitPoints } from './systems';
-import type { ImpactOutcome } from './systems';
+import {
+    ItemSpawner,
+    ImpactSystem,
+    EffectSystem,
+    ScorePopupSystem,
+    SteeringSystem,
+    hitPoints,
+} from './systems';
+import type { ImpactOutcome, SteeringMode } from './systems';
+import type { TrackingFrame } from '../engine/tracking';
 
-export type DropAction = 'left' | 'right' | 'fastFall' | 'drop' | 'dash';
+/** Keyboard actions that only aim and trigger the dodger's dash. */
+export type DashAction = 'left' | 'right' | 'dash';
 
 export interface MatchStats {
     score: number;
@@ -44,16 +53,15 @@ export interface FaceSmashingOptions {
     random?: () => number;
     matchDuration?: number;
     policy?: PolicyLike;
+    /** Defaults to the hand gesture (`67`). */
+    steeringMode?: SteeringMode;
 }
 
-const KEY_BINDINGS: Record<string, DropAction> = {
+const KEY_BINDINGS: Record<string, DashAction> = {
     ArrowLeft: 'left',
     KeyA: 'left',
     ArrowRight: 'right',
     KeyD: 'right',
-    ArrowDown: 'fastFall',
-    KeyS: 'fastFall',
-    Space: 'drop',
     ShiftLeft: 'dash',
     ShiftRight: 'dash',
 };
@@ -61,27 +69,15 @@ const KEY_BINDINGS: Record<string, DropAction> = {
 const DODGER_ANIMATIONS = CHARACTER_CLIPS;
 const DROPPED_ACCELERATION = 400;
 
-function fallSeconds(speed: number, distance: number): number {
-    const { gravity, maxFallSpeed } = FACE_SMASHING.item;
-    const clamped = Math.min(speed, maxFallSpeed);
-    const accelerating = (maxFallSpeed - clamped) / gravity;
-    const accelerated = clamped * accelerating + 0.5 * gravity * accelerating * accelerating;
-
-    if (accelerated >= distance) {
-        return (-clamped + Math.sqrt(clamped * clamped + 2 * gravity * distance)) / gravity;
-    }
-
-    return accelerating + (distance - accelerated) / maxFallSpeed;
-}
-
 export class FaceSmashing {
     private readonly level: DungeonLevel;
     private readonly world = new PhysicsWorld();
-    private readonly input: KeyboardActionMap<DropAction>;
+    private readonly input: KeyboardActionMap<DashAction>;
     private readonly spawner: ItemSpawner;
     private readonly impacts = new ImpactSystem();
     private readonly effects = new EffectSystem(FACE_SMASHING.effects);
     private readonly scorePopups = new ScorePopupSystem();
+    private readonly steering: SteeringSystem;
     private readonly loop: GameLoop;
     private readonly observation = createObservationBuffer();
     private readonly random: () => number;
@@ -93,7 +89,6 @@ export class FaceSmashing {
     private active: Item | null = null;
     private policy: PolicyLike;
     private action: ActionIntent = { axis: 0, jump: false, dash: false, facing: 0 };
-    private dropLatch = false;
     private dashLatch = false;
     private restartTimer = 0;
     private survived = 0;
@@ -102,20 +97,22 @@ export class FaceSmashing {
     private score = 0;
     private best = 0;
     private showColliders = false;
-    private dropAimX = 0;
     private frameDelta = 1 / 60;
     private running = true;
     private matchDuration: number;
+    private steeringMode: SteeringMode;
 
     constructor(private readonly options: FaceSmashingOptions) {
         this.random = options.random ?? Math.random;
         this.callbacks = options.callbacks;
         this.policy = options.policy ?? new IdlePolicy();
         this.matchDuration = options.matchDuration ?? FACE_SMASHING.match.defaultDurationSeconds;
+        this.steeringMode = options.steeringMode ?? '67';
         this.level = createDungeonLevel();
         this.world.addBlockers(this.level.colliders);
-        this.input = new KeyboardActionMap<DropAction>(KEY_BINDINGS);
+        this.input = new KeyboardActionMap<DashAction>(KEY_BINDINGS);
         this.spawner = new ItemSpawner({ level: this.level, random: this.random });
+        this.steering = new SteeringSystem(this.level);
         this.loop = new GameLoop({
             update: (dt) => this.update(dt),
             render: () => this.render(),
@@ -161,8 +158,8 @@ export class FaceSmashing {
         renderer.resize(this.viewWidth, this.viewHeight);
 
         this.scene = new SceneRenderer(renderer, sprites);
-        this.dropAimX = this.level.grid.left + this.level.grid.width / 2;
         this.respawn();
+        this.releaseItem();
         this.loop.start();
     }
 
@@ -173,6 +170,15 @@ export class FaceSmashing {
 
     setPolicy(policy: PolicyLike): void {
         this.policy = policy;
+    }
+
+    setSteeringMode(mode: SteeringMode): void {
+        this.steeringMode = mode;
+    }
+
+    /** Latest tracking frame; `null` when the camera has nothing for us. */
+    setTracking(frame: TrackingFrame | null): void {
+        this.steering.update(frame);
     }
 
     get paused(): boolean {
@@ -213,7 +219,9 @@ export class FaceSmashing {
         this.impacts.reset();
         this.effects.clear();
         this.scorePopups.clear();
+        this.steering.reset();
         this.respawn();
+        this.releaseItem();
         this.publishStats();
     }
 
@@ -230,7 +238,7 @@ export class FaceSmashing {
         }
 
         this.frameDelta = dt;
-        this.updateDropper(dt);
+        this.updateSteering(dt);
         this.updateDodger(dt);
         this.updateItems(dt);
         this.updateRound(dt);
@@ -239,45 +247,33 @@ export class FaceSmashing {
         this.observe();
     }
 
-    private updateDropper(dt: number): void {
-        const intent = readAxisIntent(this.input, {
-            negative: 'left',
-            positive: 'right',
-            fast: 'fastFall',
-        });
-        const active = this.active;
-        const airborne = active !== null && active.state === 'falling';
+    /**
+     * The player owns the falling item, not the spawn position: it always
+     * leaves the centre of the ceiling and the tracking gesture pushes it
+     * sideways on the way down.
+     */
+    private updateSteering(dt: number): void {
+        this.spawner.advance(dt);
 
-        if (airborne && active) {
-            const body = active.physics.body;
-            body.velocity.x = intent.axis * FACE_SMASHING.drop.horizontalSpeed;
-            body.velocity.y = intent.fast
-                ? FACE_SMASHING.drop.fastFallSpeed
-                : Math.min(body.velocity.y + DROPPED_ACCELERATION * dt, FACE_SMASHING.drop.maxSpeed);
-        } else if (intent.axis !== 0) {
-            this.dropAimX = clamp(
-                this.dropAimX + intent.axis * FACE_SMASHING.drop.aimSpeed * dt,
-                this.level.playLeft,
-                this.level.playRight,
-            );
-        }
-
-        const pressed = this.input.isDown('drop');
-        if (pressed && !this.dropLatch) {
-            this.dropItem();
-        }
-        this.dropLatch = pressed;
-    }
-
-    private dropItem(): void {
         const active = this.active;
 
-        if (active && active.state === 'falling') {
-            active.physics.body.velocity.y = FACE_SMASHING.drop.fastFallSpeed;
+        if (!active || active.state !== 'falling') {
             return;
         }
 
-        const spawned = this.spawner.spawn(this.dropAimX);
+        const intent = this.steering.intent(this.steeringMode, active.centerX);
+        const { body } = active.physics;
+
+        body.velocity.x = intent.axis * FACE_SMASHING.drop.steerSpeed;
+        body.velocity.y = Math.min(
+            body.velocity.y + DROPPED_ACCELERATION * dt,
+            FACE_SMASHING.drop.maxSpeed,
+        );
+    }
+
+    /** Releases the next item from the middle of the ceiling. */
+    private releaseItem(): void {
+        const spawned = this.spawner.spawn();
         this.active = spawned;
         this.items.push(spawned);
     }
@@ -312,7 +308,7 @@ export class FaceSmashing {
               ? readAxisIntent(this.input, {
                     negative: 'left',
                     positive: 'right',
-                    fast: 'fastFall',
+                    fast: 'dash',
                 }).axis || dodger.facingDirection
               : 0;
 
@@ -347,11 +343,6 @@ export class FaceSmashing {
     }
 
     private updateItems(dt: number): void {
-        const spawned = this.spawner.update(dt, this.aimPoint());
-        if (spawned) {
-            this.items.push(spawned);
-        }
-
         for (const item of this.items) {
             const result = this.world.step(item.physics, dt);
             item.applyCollision(result);
@@ -362,35 +353,12 @@ export class FaceSmashing {
             (item) => !item.expired && item.position.y < this.level.despawnY,
         );
 
-        if (this.active && this.active.expired) {
+        const active = this.active;
+
+        if (active && active.state !== 'falling') {
             this.active = null;
+            this.releaseItem();
         }
-    }
-
-    private aimPoint(): number {
-        const dodger = this.dodger;
-        if (!dodger) {
-            return this.level.grid.left + this.level.grid.width / 2;
-        }
-
-        const { velocity, grounded } = dodger.physics.body;
-        const size = ITEM_MAX_EXTENT * 2;
-        const config = FACE_SMASHING;
-        const dropHeight = this.level.floorTop - this.level.spawnY;
-        const speed = Math.max(this.spawner.speed, 1);
-        const lead = Math.min(fallSeconds(speed, dropHeight), config.drop.maxLead);
-        const topSpeed = dodger.maxSpeedX;
-        const lateral = clamp(
-            grounded ? velocity.x : velocity.x * 0.5,
-            -topSpeed,
-            topSpeed,
-        );
-
-        return clamp(
-            dodger.feet.x + lateral * lead,
-            this.level.playLeft,
-            this.level.playRight - size,
-        );
     }
 
     private updateRound(dt: number): void {
@@ -409,15 +377,11 @@ export class FaceSmashing {
         }
 
         this.survived += dt;
-        this.score += FACE_SMASHING.score.survivedPerSecond * dt;
 
         const outcome = this.impacts.evaluate(this.items, dodger);
 
         this.dodges += outcome.dodges;
         this.nearMisses += outcome.nearMisses;
-        this.score +=
-            outcome.dodges * FACE_SMASHING.score.dodge +
-            outcome.nearMisses * FACE_SMASHING.score.nearMiss;
 
         if (outcome.hits > 0) {
             this.onImpact(outcome);
@@ -466,7 +430,6 @@ export class FaceSmashing {
         });
     }
 
-    /** Landing a hit is what the player is after, so it pays points. */
     private awardHitScore(outcome: ImpactOutcome): void {
         for (const contact of outcome.contacts) {
             const points = hitPoints(contact.damage);
@@ -529,7 +492,6 @@ export class FaceSmashing {
             this.level,
             this.items,
             dodger,
-            this.dropAimX,
             {
                 colliders: this.showColliders,
                 effects: this.effects.active,

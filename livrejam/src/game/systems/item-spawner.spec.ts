@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ITEMS } from '../config';
+import { FACE_SMASHING, ITEMS } from '../config';
 import { createDungeonLevel } from '../level';
 import { ItemSpawner } from './item-spawner';
 
@@ -11,42 +11,55 @@ function createSpawner(random: () => number): ItemSpawner {
 describe('ItemSpawner', () => {
     it('starts at the base drop speed', () => {
         const spawner = createSpawner(() => 0.5);
-        expect(spawner.speed).toBeGreaterThan(0);
+        expect(spawner.speed).toBe(FACE_SMASHING.drop.baseSpeed);
     });
 
-    it('never spawns faster than the minimum interval', () => {
+    it('never accelerates past the configured maximum', () => {
         const spawner = createSpawner(() => 0.5);
         for (let step = 0; step < 200; step++) {
             spawner.accelerate();
         }
 
-        expect(spawner.interval).toBeGreaterThanOrEqual(0.4);
+        expect(spawner.speed).toBe(FACE_SMASHING.drop.maxSpeed);
     });
 
-    it('spawns nothing until the interval elapses', () => {
+    it('accelerates on the ramp cadence, not on every frame', () => {
         const spawner = createSpawner(() => 0.5);
-        expect(spawner.update(0.01)).toBeNull();
+        spawner.advance(FACE_SMASHING.drop.rampSeconds - 0.01);
+
+        expect(spawner.speed).toBe(FACE_SMASHING.drop.baseSpeed);
+
+        spawner.advance(0.02);
+        expect(spawner.speed).toBe(FACE_SMASHING.drop.baseSpeed + FACE_SMASHING.drop.speedStep);
     });
 
-    it('spawns an item once the interval elapses', () => {
+    it('returns to the base speed on reset', () => {
         const spawner = createSpawner(() => 0.5);
-        let spawned = null;
-        for (let step = 0; step < 200 && !spawned; step++) {
-            spawned = spawner.update(1 / 60);
-        }
+        spawner.accelerate();
+        spawner.reset();
 
-        expect(spawned).not.toBeNull();
-        expect(spawned?.definition.key.length).toBeGreaterThan(0);
+        expect(spawner.speed).toBe(FACE_SMASHING.drop.baseSpeed);
     });
 
-    it('keeps every spawned item inside the arena', () => {
+    it('spawns at the centre of the ceiling', () => {
         const level = createDungeonLevel();
         const spawner = new ItemSpawner({ level, random: () => 0.5 });
+        const center = level.grid.left + level.grid.width / 2;
 
         for (const definition of ITEMS) {
-            const item = spawner.spawnItem(definition, 0);
-            expect(item.position.x).toBeGreaterThanOrEqual(level.grid.left - 1);
-            expect(item.position.x + item.halfWidth * 2).toBeLessThanOrEqual(level.grid.right + 1);
+            const item = spawner.spawnItem(definition);
+            expect(item.centerX).toBeCloseTo(center, 6);
+            expect(item.state).toBe('falling');
+        }
+    });
+
+    it('falls straight down with no lateral drift', () => {
+        const spawner = createSpawner(() => 0.5);
+
+        for (let step = 0; step < 50; step++) {
+            const item = spawner.spawn();
+            expect(item.physics.body.velocity.x).toBe(0);
+            expect(item.physics.body.velocity.y).toBe(FACE_SMASHING.drop.baseSpeed);
         }
     });
 
@@ -55,14 +68,6 @@ describe('ItemSpawner', () => {
         for (let step = 0; step < 50; step++) {
             const item = spawner.spawn();
             expect(item.spinRate).toBeGreaterThan(0);
-            expect(item.state).toBe('falling');
         }
-    });
-
-    it('respects the aim point when not scattering', () => {
-        const spawner = createSpawner(() => 0.5);
-        const item = spawner.spawnItem(ITEMS[0], 300);
-        expect(item.centerX).toBeGreaterThan(280);
-        expect(item.centerX).toBeLessThan(320);
     });
 });

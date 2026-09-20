@@ -4,6 +4,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { GameSettingsService, formatDuration, parseDuration } from '../../services';
 import { PixelSlider } from '../pixel-slider/pixel-slider';
 import { PixelStepper } from '../pixel-stepper/pixel-stepper';
+import { SteeringSelect } from '../steering-select/steering-select';
 import { VoiceSelect } from '../voice-select/voice-select';
 
 /**
@@ -12,7 +13,7 @@ import { VoiceSelect } from '../voice-select/voice-select';
  */
 @Component({
     selector: 'app-settings-panel',
-    imports: [PixelSlider, PixelStepper, TranslatePipe, VoiceSelect],
+    imports: [PixelSlider, PixelStepper, SteeringSelect, TranslatePipe, VoiceSelect],
     templateUrl: './settings-panel.html',
     styleUrl: './settings-panel.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,

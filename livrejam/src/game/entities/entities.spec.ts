@@ -289,14 +289,74 @@ describe('Item', () => {
         expect(item.spinRate).toBeCloseTo(6 * FACE_SMASHING.item.spinTransfer, 4);
     });
 
-    it('expires after the settle window', () => {
+    it('pops in as it appears', () => {
         const item = createTestItem();
-        item.applyCollision({ grounded: true, hitWall: null, hitCeiling: false, layer: 2 });
 
-        for (let step = 0; step < 120; step++) {
+        expect(item.appear).toBe(0);
+        expect(item.opacity).toBe(0);
+        expect(item.appearScale).toBeCloseTo(1 + FACE_SMASHING.item.appearScale, 6);
+
+        const halfAppear = Math.floor((FACE_SMASHING.item.appearSeconds / 2) * 60);
+        for (let step = 0; step < halfAppear; step++) {
             item.update(1 / 60);
         }
 
+        expect(item.appear).toBeGreaterThan(0);
+        expect(item.appear).toBeLessThan(1);
+        expect(item.opacity).toBeCloseTo(item.appear, 6);
+        expect(item.appearScale).toBeGreaterThan(1);
+
+        for (let step = 0; step < halfAppear + 2; step++) {
+            item.update(1 / 60);
+        }
+
+        expect(item.appear).toBe(1);
+        expect(item.opacity).toBe(1);
+        expect(item.appearScale).toBeCloseTo(1, 6);
+    });
+
+    it('stays opaque while it is still settling', () => {
+        const item = createTestItem();
+        item.applyCollision({ grounded: true, hitWall: null, hitCeiling: false, layer: 2 });
+
+        const halfSteps = Math.floor((FACE_SMASHING.item.settleSeconds / 2) * 60);
+
+        for (let step = 0; step < halfSteps; step++) {
+            item.update(1 / 60);
+        }
+
+        expect(item.state).toBe('landed');
+        expect(item.opacity).toBe(1);
+        expect(item.expired).toBe(false);
+    });
+
+    it('fades out and expires after settling', () => {
+        const item = createTestItem();
+        item.applyCollision({ grounded: true, hitWall: null, hitCeiling: false, layer: 2 });
+
+        const settleSteps = Math.ceil(FACE_SMASHING.item.settleSeconds * 60);
+        for (let step = 0; step < settleSteps; step++) {
+            item.update(1 / 60);
+        }
+
+        expect(item.state).toBe('settled');
+        expect(item.expired).toBe(false);
+
+        const halfFade = Math.floor((FACE_SMASHING.item.fadeSeconds / 2) * 60);
+        for (let step = 0; step < halfFade; step++) {
+            item.update(1 / 60);
+        }
+
+        expect(item.fade).toBeGreaterThan(0);
+        expect(item.fade).toBeLessThan(1);
+        expect(item.opacity).toBeCloseTo(1 - item.fade, 6);
+        expect(item.expired).toBe(false);
+
+        for (let step = 0; step < halfFade + 2; step++) {
+            item.update(1 / 60);
+        }
+
+        expect(item.opacity).toBe(0);
         expect(item.expired).toBe(true);
     });
 

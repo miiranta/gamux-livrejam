@@ -46,8 +46,7 @@ PAIRS = (
         "reaction.invulnerableSeconds",
     ),
     ("item.maxFallSpeed", cfg.ITEM_MAX_FALL, "item.maxFallSpeed"),
-    ("item.spawnMargin", cfg.ITEM_SPAWN_MARGIN, "item.spawnMargin"),
-    ("item.lateralSpeed", cfg.ITEM_LATERAL, "item.lateralSpeed"),
+    ("item.lateralSpeed", cfg.ITEM_LATERAL, "drop.steerSpeed"),
     ("item.groundFriction", cfg.ITEM_GROUND_FRICTION, "item.groundFriction"),
     ("item.restitution", cfg.ITEM_RESTITUTION, "item.restitution"),
     ("item.spinTransfer", cfg.ITEM_SPIN_TRANSFER, "item.spinTransfer"),
@@ -59,13 +58,7 @@ PAIRS = (
     ("drop.baseSpeed", cfg.DROP_BASE_SPEED, "drop.baseSpeed"),
     ("drop.maxSpeed", cfg.DROP_MAX_SPEED, "drop.maxSpeed"),
     ("drop.speedStep", cfg.DROP_SPEED_STEP, "drop.speedStep"),
-    ("drop.baseInterval", cfg.DROP_BASE_INTERVAL, "drop.baseInterval"),
-    ("drop.minInterval", cfg.DROP_MIN_INTERVAL, "drop.minInterval"),
     ("drop.rampSeconds", cfg.DROP_RAMP_SECONDS, "drop.rampSeconds"),
-    ("drop.aimSpeed", cfg.DROP_AIM_SPEED, "drop.aimSpeed"),
-    ("drop.aimJitter", cfg.DROP_AIM_JITTER, "drop.aimJitter"),
-    ("drop.maxLead", cfg.DROP_MAX_LEAD, "drop.maxLead"),
-    ("drop.scatter", cfg.DROP_SCATTER, "drop.scatter"),
     ("round.seconds", cfg.ROUND_SECONDS, "round.seconds"),
     ("ai.observeRadius", cfg.OBSERVE_RADIUS, "ai.observeRadius"),
     ("ai.observationSize", cfg.OBSERVATION_SIZE, "ai.observationSize"),
@@ -117,35 +110,33 @@ def test_config_parity():
 
 
 def test_lateral_speed_is_learnable():
-    """A deriva lateral precisa manter o pouso correlacionado com a mira.
+    """O treino nao pode ver um jogo mais facil que o real.
 
-    O objeto cai de `SPAWN_Y` ate o chao em `SPAWN_Y / DROP_BASE_SPEED`
-    segundos. Uma deriva de `v` desloca o ponto de pouso em `fall * v` px. Se
-    esse deslocamento chega perto da meia-largura da arena, o pouso vira
-    uniforme, a mira do oponente deixa de significar qualquer coisa, ficar
-    parado passa a ser tao bom quanto desviar e o treino converge para uma
-    politica constante que nao faz nada.
+    O item agora nasce no centro e o desviador o empurra lateralmente enquanto
+    ele cai (a deriva aleatoria antiga nao existe mais). Por isso a derivada
+    lateral efetiva e a velocidade de guinada, e nao a deriva antiga.
 
-    Medido com 2048 ambientes (semente 999, 30 s), usando uma heuristica
-    reativa simples como referencia:
-
-    | lateralSpeed | vida parado | vida com heuristica |
-    | --- | --- | --- |
-    | 20  | 3.86 s | 4.84 s |
-    | 60  | 5.41 s | 6.66 s |
-    | 80  | 6.08 s | 7.56 s |
-    | 160 | 8.07 s | 6.18 s (desviar atrapalha) |
+    A queda dura `(FLOOR_TOP - SPAWN_Y) / velocidade`. Nesse tempo, guinar para
+    um lado desloca o ponto de pouso em `queda * steerSpeed` px. Esse
+    deslocamento precisa cobrir a arena: se for pequeno, o jogador nao consegue
+    levar o item nem ate a borda e o jogo fica sem decisao real.
     """
     half_arena = (cfg.PLAY_RIGHT - cfg.PLAY_LEFT) / 2
     fall_seconds = (cfg.FLOOR_TOP - cfg.SPAWN_Y) / cfg.DROP_BASE_SPEED
-    drift = fall_seconds * cfg.ITEM_LATERAL
-    assert drift < half_arena, (
-        f"deriva lateral de {drift:.0f}px por queda >= meia arena {half_arena:.0f}px: "
-        "os objetos pousam ao acaso e o treino fica degenerado"
+    reach = fall_seconds * cfg.DROP_STEER_SPEED
+
+    assert reach > half_arena, (
+        f"guinada de {reach:.0f}px por queda nao cobre a meia arena "
+        f"{half_arena:.0f}px: o item nunca chega a borda e o jogo fica degenerado"
+    )
+
+    assert cfg.DROP_STEER_SPEED >= cfg.ITEM_LATERAL, (
+        "DROP_STEER_SPEED e ITEM_LATERAL precisam ser o mesmo numero: "
+        "a observacao normaliza a velocidade lateral do item por ele"
     )
 
 
 if __name__ == "__main__":
     test_config_parity()
     test_lateral_speed_is_learnable()
-    print(f"config parity OK ({len(PAIRS)} campos; deriva lateral dentro da faixa treinavel)")
+    print(f"config parity OK ({len(PAIRS)} campos; guinada cobre a arena)")

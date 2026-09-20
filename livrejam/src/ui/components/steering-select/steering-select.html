@@ -1,0 +1,37 @@
+<div
+    class="steering"
+    role="radiogroup"
+    [attr.aria-label]="'settings.steering.label' | translate"
+>
+    @for (mode of modes; track mode) {
+        <button
+            type="button"
+            class="steering__option"
+            role="radio"
+            appHoverSound
+            [class.steering__option--active]="settings.steeringMode() === mode"
+            [attr.aria-checked]="settings.steeringMode() === mode"
+            [attr.aria-label]="steeringModeLabelKey(mode) | translate"
+            (click)="select(mode)"
+        >
+            <span class="steering__rim" aria-hidden="true"></span>
+
+            @switch (mode) {
+                @case ('67') {
+                    <span class="steering__icon steering__icon--hands" aria-hidden="true">
+                        <i class="steering__palm steering__palm--left"></i>
+                        <i class="steering__palm steering__palm--right"></i>
+                    </span>
+                }
+                @case ('rizz') {
+                    <span class="steering__icon steering__icon--eyes" aria-hidden="true">
+                        <i class="steering__eye steering__eye--left"></i>
+                        <i class="steering__eye steering__eye--right"></i>
+                    </span>
+                }
+            }
+
+            <span class="steering__label">{{ steeringModeLabelKey(mode) | translate }}</span>
+        </button>
+    }
+</div>

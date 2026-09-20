@@ -23,6 +23,8 @@ export class Item {
     readonly damageRoll: number;
     state: ItemState = 'falling';
     settleTimer = 0;
+    fadeTimer = 0;
+    appearTimer = 0;
 
     constructor(options: ItemOptions) {
         const config = FACE_SMASHING.item;
@@ -120,6 +122,13 @@ export class Item {
     }
 
     update(dt: number): void {
+        this.appearTimer = Math.min(this.appearTimer + dt, FACE_SMASHING.item.appearSeconds);
+
+        if (this.state === 'settled') {
+            this.fadeTimer += dt;
+            return;
+        }
+
         if (this.state !== 'landed') {
             dampAngular(this.physics.body, dt);
             return;
@@ -134,8 +143,27 @@ export class Item {
         }
     }
 
+    /** How far the spawn pop-in has progressed, from 0 to 1. */
+    get appear(): number {
+        return clamp(this.appearTimer / Math.max(FACE_SMASHING.item.appearSeconds, 1e-3), 0, 1);
+    }
+
+    /** How far the ground fade-out has progressed, from 0 to 1. */
+    get fade(): number {
+        return clamp(this.fadeTimer / Math.max(FACE_SMASHING.item.fadeSeconds, 1e-3), 0, 1);
+    }
+
+    get opacity(): number {
+        return this.appear * (1 - this.fade);
+    }
+
+    /** Overshoot that settles back to 1, so the item pops as it appears. */
+    get appearScale(): number {
+        return 1 + (1 - this.appear) * FACE_SMASHING.item.appearScale;
+    }
+
     get expired(): boolean {
-        return this.state === 'settled';
+        return this.fade >= 1;
     }
 }
 

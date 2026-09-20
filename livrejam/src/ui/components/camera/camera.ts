@@ -20,7 +20,12 @@ import {
     type TrackingFrame,
 } from '../../../engine/tracking';
 import { TrackingWorkerClient } from '../../../engine/tracking/workers';
-import { CameraStatusService, DebugModeService, cameraFailureReason } from '../../services';
+import {
+    CameraStatusService,
+    DebugModeService,
+    TrackingFrameService,
+    cameraFailureReason,
+} from '../../services';
 
 type CameraStatus = 'idle' | 'starting' | 'running' | 'error';
 
@@ -50,13 +55,14 @@ export class Camera {
 
     private readonly videoRef = viewChild<ElementRef<HTMLVideoElement>>('video');
     private readonly tracker = new TrackingWorkerClient({
-        onFrame: (frame) => this.frame.set(frame),
+        onFrame: (frame) => this.publishFrame(frame),
         onError: (message) => this.fail(message),
         onReady: (usingGpu) => this.usingGpu.set(usingGpu),
     });
     private readonly destroyRef = inject(DestroyRef);
     private readonly debug = inject(DebugModeService);
     private readonly cameraStatus = inject(CameraStatusService);
+    private readonly trackingFrames = inject(TrackingFrameService);
 
     private stream: MediaStream | null = null;
     private animationFrameId: number | null = null;
@@ -161,6 +167,7 @@ export class Camera {
         this.releaseStream();
         this.tracker.stop();
         this.frame.set(null);
+        this.trackingFrames.clear();
         this.usingGpu.set(false);
         this.status.set('idle');
     }
@@ -286,6 +293,11 @@ export class Camera {
         this.errorMessage.set(message);
         this.cameraStatus.markBlocked('unknown', message);
         this.stop();
+    }
+
+    private publishFrame(frame: TrackingFrame): void {
+        this.frame.set(frame);
+        this.trackingFrames.publish(frame);
     }
 }
 

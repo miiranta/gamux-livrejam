@@ -4,14 +4,14 @@ import { FACE_SMASHING } from '../config';
 import { ScorePopupSystem, hitPoints, scorePopupPose } from './score-popup';
 
 describe('hitPoints', () => {
-    it('pays one point per point of damage by default', () => {
+    it('pays whole points equal to the damage dealt', () => {
         expect(hitPoints(12)).toBe(12);
         expect(hitPoints(4.4)).toBe(4);
+        expect(hitPoints(4.6)).toBe(5);
     });
 
-    it('always pays at least one point for a hit', () => {
-        expect(hitPoints(0.1)).toBe(1);
-        expect(hitPoints(0)).toBe(1);
+    it('pays nothing for a hit that dealt no damage', () => {
+        expect(hitPoints(0)).toBe(0);
     });
 });
 

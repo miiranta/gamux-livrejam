@@ -38,6 +38,12 @@
     }
 }
 
+.settings__hint {
+    margin: 0;
+    color: var(--lj-ink-dim);
+    font-size: 0.85rem;
+}
+
 @keyframes settings-slide {
     from {
         opacity: 0;

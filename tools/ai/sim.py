@@ -158,9 +158,6 @@ class FaceSmashingSim:
             done, torch.maximum(self.damage_worst, self.damage), self.damage_worst
         )
         self.final_level = torch.where(done, self.level.to(self.dtype), self.final_level)
-        self.score = torch.where(
-            done, self.score + cfg.SCORE_SURVIVED_PER_SECOND * cfg.ROUND_SECONDS, self.score
-        )
 
         keep = ~done
         self.obstacle_active = self.obstacle_active & keep[:, None]
@@ -622,6 +619,7 @@ class FaceSmashingSim:
         applied = torch.where(hits, damage, torch.zeros_like(damage))
         round_damage = applied.sum(dim=1)
         self.damage = self.damage + round_damage
+        self.score = self.score + round_damage
         self.hits = self.hits + hits.sum(dim=1).to(self.dtype)
         self.obstacle_hit = self.obstacle_hit | hits
         self.obstacle_vy = torch.where(hits, torch.zeros_like(self.obstacle_vy), self.obstacle_vy)

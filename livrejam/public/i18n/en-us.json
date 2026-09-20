@@ -25,7 +25,13 @@
         },
         "match": "Match",
         "matchTime": "Match time",
-        "matchTimeHint": "How long each match lasts."
+        "matchTimeHint": "How long each match lasts.",
+        "steering": {
+            "label": "Item control",
+            "hint": "Choose the gesture that steers the falling item.",
+            "67": "Hands",
+            "rizz": "Eyes"
+        }
     },
     "credits": {
         "title": "Credits",

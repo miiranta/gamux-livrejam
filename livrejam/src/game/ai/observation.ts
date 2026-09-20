@@ -106,7 +106,7 @@ export function writeObservation(target: Float32Array, context: ObservationConte
         target[base] = 1;
         target[base + 1] = (item.centerX - dodgerX) / radius;
         target[base + 2] = (item.centerY - dodgerTop) / radius;
-        target[base + 3] = item.physics.body.velocity.x / config.item.lateralSpeed;
+        target[base + 3] = item.physics.body.velocity.x / config.drop.steerSpeed;
         target[base + 4] = item.physics.body.velocity.y / config.item.maxFallSpeed;
         target[base + 5] = item.state === 'falling' ? 0 : 1;
         target[base + 6] =
@@ -119,7 +119,7 @@ export function writeObservation(target: Float32Array, context: ObservationConte
 
 function selectThreats(items: readonly Item[], x: number, y: number, limit: number): Item[] {
     const ranked = items
-        .filter((item) => !item.expired)
+        .filter((item) => !item.expired && item.state !== 'settled')
         .map((item) => ({ item, score: itemThreat(item, x, y) }))
         .filter((entry) => entry.score < FACE_SMASHING.ai.observeRadius)
         .sort((a, b) => a.score - b.score);

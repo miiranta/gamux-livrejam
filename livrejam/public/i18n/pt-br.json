@@ -25,7 +25,13 @@
         },
         "match": "Partida",
         "matchTime": "Tempo de partida",
-        "matchTimeHint": "Quanto tempo dura cada partida."
+        "matchTimeHint": "Quanto tempo dura cada partida.",
+        "steering": {
+            "label": "Controle do item",
+            "hint": "Escolha o gesto que guia o item na queda.",
+            "67": "Mãos",
+            "rizz": "Olhos"
+        }
     },
     "credits": {
         "title": "Créditos",

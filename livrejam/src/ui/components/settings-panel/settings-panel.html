@@ -23,6 +23,14 @@
         <app-voice-select />
     </fieldset>
 
+    <fieldset class="settings__group">
+        <legend class="settings__legend">{{ 'settings.steering.label' | translate }}</legend>
+
+        <app-steering-select />
+
+        <p class="settings__hint">{{ 'settings.steering.hint' | translate }}</p>
+    </fieldset>
+
     @if (showMatchTime()) {
         <fieldset class="settings__group">
             <legend class="settings__legend">{{ 'settings.match' | translate }}</legend>
