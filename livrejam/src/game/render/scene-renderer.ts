@@ -1,4 +1,11 @@
-import { CanvasRenderer, applyFx, createFxState, drawSheetSprite, shakeOffset, wobble } from '../../engine/render';
+import {
+    CanvasRenderer,
+    applyFx,
+    createFxState,
+    drawSheetSprite,
+    shakeOffset,
+    wobble,
+} from '../../engine/render';
 import type { Camera, SpriteFxState } from '../../engine/render';
 import { clampFrame } from '../../engine/entities';
 import { clamp } from '../../engine/math';

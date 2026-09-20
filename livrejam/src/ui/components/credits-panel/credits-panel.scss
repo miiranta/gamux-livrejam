@@ -1,0 +1,186 @@
+@use '../../styles/ornaments' as ornaments;
+
+:host {
+    display: block;
+}
+
+.credits {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.credits__list {
+    display: grid;
+    gap: 0.55rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* One row per person: pixel avatar chip + name + role. */
+.credits__entry {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.85rem;
+    background: rgb(8 6 5 / 45%);
+    box-shadow: inset 0 0 0 2px rgb(0 0 0 / 45%);
+
+    @include ornaments.octagon(10px);
+    @include ornaments.fade-in(calc(var(--lj-index, 0) * 0.07s), 0.26s);
+}
+
+/* Initials drawn as a chunky pixel tile, so every row gets a "portrait". */
+.credits__avatar {
+    display: grid;
+    flex: 0 0 auto;
+    place-items: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    color: var(--lj-accent-hi);
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+    background: linear-gradient(180deg, var(--lj-line-hi), var(--lj-line));
+    text-shadow: 0 2px 0 var(--lj-shadow);
+
+    @include ornaments.octagon(7px);
+}
+
+.credits__text {
+    display: grid;
+    gap: 0.1rem;
+    min-width: 0;
+}
+
+/* Name and its profile link sit on one line; the role wraps underneath. */
+.credits__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.credits__name {
+    color: var(--lj-ink);
+    font-size: 1.15rem;
+    letter-spacing: 0.03em;
+}
+
+/* Small pixel chip: GitHub mark + handle, styled like every other control. */
+.credits__github {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.1rem 0.45rem 0.15rem;
+    color: var(--lj-accent);
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    background: rgb(0 0 0 / 35%);
+    box-shadow: inset 0 0 0 2px rgb(0 0 0 / 45%);
+
+    @include ornaments.octagon(6px);
+
+    &:hover {
+        color: var(--lj-accent-hi);
+        background: rgb(0 0 0 / 55%);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--lj-accent-hi);
+        outline-offset: 2px;
+    }
+}
+
+.credits__github-icon {
+    display: inline-grid;
+    place-items: center;
+
+    svg {
+        width: 0.95em;
+        height: 0.95em;
+        fill: currentColor;
+    }
+}
+
+.credits__role {
+    color: var(--lj-ink-dim);
+    font-size: 0.9rem;
+    line-height: 1.35;
+}
+
+/* --- Special participation --------------------------------------------- */
+
+.credits__special {
+    position: relative;
+    margin-top: 0.35rem;
+    padding-top: 1.1rem;
+
+    /* Dashed pixel rule separating the guests from the authors. */
+    &::before {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: min(70%, 16rem);
+        height: 2px;
+        background: repeating-linear-gradient(90deg, var(--lj-accent) 0 5px, transparent 5px 11px);
+        opacity: 0.6;
+        transform: translateX(-50%);
+        content: '';
+    }
+}
+
+.credits__special-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin: 0 0 0.7rem;
+    color: var(--lj-accent);
+    font-size: 0.95rem;
+    font-weight: 400;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+}
+
+/* Warmer tint so the guest row reads as a highlight, not a third author. */
+.credits__entry--special {
+    background: linear-gradient(180deg, rgb(60 40 24 / 45%), rgb(8 6 5 / 45%));
+}
+
+/* --- Glyphs ------------------------------------------------------------- */
+
+.credits__glyph {
+    display: inline-grid;
+    place-items: center;
+
+    svg {
+        width: 0.85em;
+        height: 0.85em;
+        fill: currentColor;
+        shape-rendering: crispEdges;
+    }
+
+    &--star {
+        color: var(--lj-accent-hi);
+    }
+
+    &--heart {
+        color: var(--lj-danger);
+    }
+}
+
+.credits__footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    margin: 1.1rem 0 0;
+    color: var(--lj-ink-dim);
+    font-size: 0.85rem;
+    letter-spacing: 0.06em;
+    text-align: center;
+
+    @include ornaments.fade-in(0.4s, 0.3s);
+}

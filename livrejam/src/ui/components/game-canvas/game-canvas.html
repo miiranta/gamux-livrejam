@@ -65,24 +65,51 @@
                         {{ 'hud.dash' | translate }}
                         <b>{{ formatDash(stats().dashReady) }}</b>
                     </span>
-                    <span
-                        class="game-canvas__chip"
-                        [class.game-canvas__chip--error]="modelStatus() === 'error'"
-                    >
-                        <i
-                            class="game-canvas__dot"
-                            [class.game-canvas__dot--warn]="modelStatus() !== 'ready'"
-                        ></i>
-                        {{ 'hud.ai' | translate }}
-                        <b>
-                            {{
-                                (modelStatus() === 'ready'
-                                    ? 'hud.policy'
-                                    : 'hud.state.' + modelStatus()
-                                ) | translate
-                            }}
-                        </b>
+                    <span class="game-canvas__chip">
+                        <i class="game-canvas__dot game-canvas__dot--accent"></i>
+                        {{ 'hud.mode' | translate }}
+                        <b>{{ 'mode.' + stats().gameMode | translate }}</b>
                     </span>
+                    @if (stats().gameMode === 'two') {
+                        <span
+                            class="game-canvas__chip"
+                            [class.game-canvas__chip--muted]="!stats().gamepadConnected"
+                        >
+                            <i
+                                class="game-canvas__dot"
+                                [class.game-canvas__dot--accent]="stats().gamepadConnected"
+                            ></i>
+                            {{ 'hud.gamepad' | translate }}
+                            <b>
+                                {{
+                                    (stats().gamepadConnected
+                                        ? 'hud.connected'
+                                        : 'hud.disconnected'
+                                    ) | translate
+                                }}
+                            </b>
+                        </span>
+                    }
+                    @if (stats().gameMode === 'single') {
+                        <span
+                            class="game-canvas__chip"
+                            [class.game-canvas__chip--error]="modelStatus() === 'error'"
+                        >
+                            <i
+                                class="game-canvas__dot"
+                                [class.game-canvas__dot--warn]="modelStatus() !== 'ready'"
+                            ></i>
+                            {{ 'hud.ai' | translate }}
+                            <b>
+                                {{
+                                    (modelStatus() === 'ready'
+                                        ? 'hud.policy'
+                                        : 'hud.state.' + modelStatus()
+                                    ) | translate
+                                }}
+                            </b>
+                        </span>
+                    }
                 }
             </div>
 
@@ -132,7 +159,9 @@
         </div>
 
         @if (debugMode()) {
-            <p class="game-canvas__hint">{{ 'hud.hint' | translate }}</p>
+            <p class="game-canvas__hint">
+                {{ controlHintKey() | translate }}
+            </p>
 
             @if (modelStatus() === 'error') {
                 <p class="game-canvas__debug">{{ modelMessage() }}</p>

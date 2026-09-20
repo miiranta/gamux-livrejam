@@ -1,4 +1,4 @@
-<div class="end-game">
+<div class="end-game" appGamepadMenu (back)="exit()">
     <!--
         The shake lives on this inner layer, not on the host: `:host` is
         `position: fixed`, and animating a transform on it would turn it into
@@ -67,7 +67,7 @@
             </div>
 
             <!-- 3) Actions: no tilt, quick fade-in. -->
-            <div class="end-game__actions">
+            <div class="end-game__actions" data-gamepad-first>
                 <app-pixel-button appHoverSound (pressed)="retry()">
                     {{ 'end.retry' | translate }}
                 </app-pixel-button>

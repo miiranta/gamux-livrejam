@@ -98,6 +98,12 @@ export const FACE_SMASHING = {
         invulnerableSeconds: 0.5,
         flashColor: '#ffffff',
     },
+    player: {
+        /** Sprinting speed, as a fraction of the damaged-tier max speed. */
+        runSpeedFactor: 1,
+        /** Tapping a direction moves this fraction of the sprint speed. */
+        walkSpeedFactor: 0.6,
+    },
     effects: {
         impact: { frames: 6, frameDuration: 0.05 },
         slash: { frames: 6, frameDuration: 0.055 },

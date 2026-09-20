@@ -43,6 +43,8 @@ const INITIAL_STATS: MatchStats = {
     dashReady: 1,
     timeLeft: 0,
     matchDuration: FACE_SMASHING.match.defaultDurationSeconds,
+    gameMode: 'single',
+    gamepadConnected: false,
 };
 
 @Component({
@@ -86,6 +88,11 @@ export class GameCanvas {
 
     protected readonly timeLeft = computed(() => formatDuration(this.stats().timeLeft));
 
+    /** The hint that matches whoever currently holds the character. */
+    protected readonly controlHintKey = computed(() =>
+        this.stats().gameMode === 'two' ? 'hud.hintPlayer' : 'hud.hint',
+    );
+
     constructor() {
         afterNextRender(() => void this.start());
 
@@ -122,6 +129,7 @@ export class GameCanvas {
                 canvas,
                 matchDuration: this.settings.matchTimeSeconds(),
                 steeringMode: this.settings.steeringMode(),
+                gameMode: this.settings.gameMode(),
                 callbacks: {
                     onStats: (next) => this.stats.set(next),
                     onMatchEnd: (result) =>
@@ -210,6 +218,9 @@ export class GameCanvas {
 
         if (restarting || startingMatch) {
             game.setMatchDuration(this.settings.matchTimeSeconds());
+            // Mode is chosen on the menu, so it only ever changes between
+            // matches — never under the player's hands mid-match.
+            game.setGameMode(this.settings.gameMode());
         }
 
         game.resume();

@@ -4,7 +4,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { Camera } from '../camera/camera';
 import { PixelButton } from '../pixel-button/pixel-button';
 import { PixelPanel } from '../pixel-panel/pixel-panel';
-import { HoverSound } from '../../directives';
+import { GamepadMenu, HoverSound } from '../../directives';
 import { CameraStatusService, GameFlowService } from '../../services';
 
 /**
@@ -17,7 +17,7 @@ import { CameraStatusService, GameFlowService } from '../../services';
  */
 @Component({
     selector: 'app-camera-gate',
-    imports: [Camera, HoverSound, PixelButton, PixelPanel, TranslatePipe],
+    imports: [Camera, GamepadMenu, HoverSound, PixelButton, PixelPanel, TranslatePipe],
     templateUrl: './camera-gate.html',
     styleUrl: './camera-gate.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,

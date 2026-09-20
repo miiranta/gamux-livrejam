@@ -18,6 +18,10 @@ export const TEST_EN = {
         language: 'Language',
         back: 'Back',
     },
+    mode: {
+        single: '1 Player',
+        two: '2 Players',
+    },
     settings: {
         audio: 'Audio',
         music: 'Music',
@@ -29,7 +33,17 @@ export const TEST_EN = {
         matchTime: 'Match time',
         matchTimeHint: 'How long each match lasts.',
     },
-    credits: { title: 'Credits', empty: 'Nothing here yet.' },
+    credits: {
+        title: 'Credits',
+        special: 'Special participation',
+        footer: 'Made with love for LivreJam 2026',
+        githubLabel: "Open {{handle}}'s GitHub profile",
+        roles: {
+            lucas: 'AI training, face recognition and controls, level design, and much more',
+            angelo: 'Full audio track, UI components and animations, game modes and much more',
+            teresa: 'Backing voice on the end-game song',
+        },
+    },
     language: {
         title: 'Language',
         'en-us': 'English (US)',
@@ -65,6 +79,12 @@ export const TEST_EN = {
         pause: 'Pause',
         loading: 'Loading the dungeon…',
         hint: 'move',
+        hintPlayer: 'move the character',
+        mode: 'Mode',
+        player: 'Player',
+        gamepad: 'Gamepad',
+        connected: 'connected',
+        disconnected: 'none',
         state: { idle: 'idle', loading: 'loading', error: 'error' },
         dev: { reloadAi: 'Reload AI' },
     },

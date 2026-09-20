@@ -1,7 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 
 import { DEFAULT_VOICE_SET, isVoiceSetKey } from '../../game/audio';
-import { FACE_SMASHING } from '../../game/config';
+import { DEFAULT_GAME_MODE, FACE_SMASHING, isGameMode, type GameMode } from '../../game/config';
 import type { SteeringMode } from '../../game/systems';
 
 export interface GameSettings {
@@ -11,6 +11,8 @@ export interface GameSettings {
     voiceSet: string;
     matchTimeSeconds: number;
     steeringMode: SteeringMode;
+    /** Who controls the character: the policy (1P) or the player (2P). */
+    gameMode: GameMode;
 }
 
 export interface GameSettingsLimits {
@@ -49,6 +51,7 @@ function defaultSettings(): GameSettings {
         voiceSet: DEFAULT_VOICE_SET,
         matchTimeSeconds: FACE_SMASHING.match.defaultDurationSeconds,
         steeringMode: DEFAULT_STEERING_MODE,
+        gameMode: DEFAULT_GAME_MODE,
     };
 }
 
@@ -70,6 +73,7 @@ export class GameSettingsService {
     readonly voiceSet = computed(() => this.state().voiceSet);
     readonly matchTimeSeconds = computed(() => this.state().matchTimeSeconds);
     readonly steeringMode = computed(() => this.state().steeringMode);
+    readonly gameMode = computed(() => this.state().gameMode);
     /** Human-friendly match length, e.g. "1:30". */
     readonly matchTimeLabel = computed(() => formatDuration(this.state().matchTimeSeconds));
 
@@ -106,6 +110,14 @@ export class GameSettingsService {
         }
 
         this.patch({ steeringMode: mode });
+    }
+
+    setGameMode(mode: GameMode): void {
+        if (!isGameMode(mode)) {
+            return;
+        }
+
+        this.patch({ gameMode: mode });
     }
 
     reset(): void {
@@ -195,6 +207,7 @@ function loadSettings(): GameSettings {
             steeringMode: isSteeringMode(parsed.steeringMode)
                 ? parsed.steeringMode
                 : fallback.steeringMode,
+            gameMode: isGameMode(parsed.gameMode) ? parsed.gameMode : fallback.gameMode,
         };
     } catch {
         return fallback;

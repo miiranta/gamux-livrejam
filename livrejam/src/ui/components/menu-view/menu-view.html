@@ -1,4 +1,4 @@
-<div class="menu-view">
+<div class="menu-view" appGamepadMenu (back)="back()">
     <span class="menu-view__backdrop" aria-hidden="true"></span>
     <app-particle-field class="menu-view__particles" />
     <span class="menu-view__corner menu-view__corner--tl" aria-hidden="true"></span>
@@ -15,18 +15,41 @@
                 <p class="menu-view__subtitle">{{ 'app.subtitle' | translate }}</p>
             </header>
 
-            <nav class="menu-view__actions">
-                <app-pixel-button block appHoverSound (pressed)="primary.emit()">
-                    {{ primaryKey() | translate }}
-                </app-pixel-button>
+            <nav class="menu-view__actions" data-gamepad-first>
+                @if (primaryKey(); as key) {
+                    <app-pixel-button block appHoverSound (pressed)="primary.emit()">
+                        {{ key | translate }}
+                    </app-pixel-button>
+                } @else {
+                    <!--
+                        The main menu starts a match directly, so it offers one
+                        button per mode instead of a generic "Play" that would
+                        not say who controls the character.
+                    -->
+                    @for (mode of modes; track mode) {
+                        <app-pixel-button block appHoverSound (pressed)="startMode(mode)">
+                            {{ modeLabelKey(mode) | translate }}
+                        </app-pixel-button>
+                    }
+                }
 
                 @if (isPause()) {
-                    <app-pixel-button block variant="ghost" appHoverSound (pressed)="restart.emit()">
+                    <app-pixel-button
+                        block
+                        variant="ghost"
+                        appHoverSound
+                        (pressed)="restart.emit()"
+                    >
                         {{ 'menu.restart' | translate }}
                     </app-pixel-button>
                 }
 
-                <app-pixel-button block variant="ghost" appHoverSound (pressed)="open('configuration')">
+                <app-pixel-button
+                    block
+                    variant="ghost"
+                    appHoverSound
+                    (pressed)="open('configuration')"
+                >
                     {{ 'menu.configuration' | translate }}
                 </app-pixel-button>
 
@@ -68,7 +91,7 @@
                             <app-language-select />
                         }
                         @case ('credits') {
-                            <p class="menu-view__empty">{{ 'credits.empty' | translate }}</p>
+                            <app-credits-panel />
                         }
                     }
 

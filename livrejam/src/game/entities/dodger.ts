@@ -23,6 +23,8 @@ export class Dodger extends Character {
     dashTimer = 0;
     dashCooldown = 0;
     dashGlow = 0;
+    /** Fraction of the sprint speed the player asked for (1 while policy-driven). */
+    speedFactor = 1;
     readonly dashTrail: TrailPoint[] = [];
     private tierSpeed: number;
 
@@ -116,7 +118,7 @@ export class Dodger extends Character {
         }
 
         this.applyGroundFriction();
-        super.move(axis, dt);
+        super.move(axis, dt, this.speedFactor);
     }
 
     applyGroundFriction(): void {

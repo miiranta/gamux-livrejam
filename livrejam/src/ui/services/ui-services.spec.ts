@@ -3,6 +3,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_VOICE_SET } from '../../game/audio';
+import { DEFAULT_GAME_MODE } from '../../game/config';
 import { useReadyCamera } from '../testing/camera-testing';
 import { CameraStatusService, cameraFailureReason } from './camera-status.service';
 import { DebugModeService } from './debug-mode.service';
@@ -109,6 +110,29 @@ describe('GameSettingsService', () => {
         for (const mode of STEERING_MODES) {
             expect(steeringModeLabelKey(mode)).toBe(`settings.steering.${mode}`);
         }
+    });
+
+    it('defaults to 1-player mode and stores the chosen mode', () => {
+        TestBed.configureTestingModule({});
+        const settings = TestBed.inject(GameSettingsService);
+
+        expect(settings.gameMode()).toBe(DEFAULT_GAME_MODE);
+
+        settings.setGameMode('two');
+        expect(settings.gameMode()).toBe('two');
+
+        settings.setGameMode('single');
+        expect(settings.gameMode()).toBe('single');
+    });
+
+    it('ignores an unknown game mode', () => {
+        TestBed.configureTestingModule({});
+        const settings = TestBed.inject(GameSettingsService);
+        settings.setGameMode('two');
+
+        settings.setGameMode('three' as never);
+
+        expect(settings.gameMode()).toBe('two');
     });
 });
 

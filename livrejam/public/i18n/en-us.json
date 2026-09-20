@@ -13,6 +13,10 @@
         "language": "Language",
         "back": "Back"
     },
+    "mode": {
+        "single": "1 Player",
+        "two": "2 Players"
+    },
     "settings": {
         "audio": "Audio",
         "music": "Music",
@@ -35,7 +39,14 @@
     },
     "credits": {
         "title": "Credits",
-        "empty": "Nothing here yet."
+        "special": "Special participation",
+        "footer": "Made with love for LivreJam 2026",
+        "githubLabel": "Open {{handle}}'s GitHub profile",
+        "roles": {
+            "lucas": "AI training, face recognition and controls, level design, and much more",
+            "angelo": "Full audio track, UI components and animations, game modes and much more",
+            "teresa": "Backing voice on the end-game song"
+        }
     },
     "language": {
         "title": "Language",
@@ -87,7 +98,13 @@
         },
         "damage": "Damage",
         "tier": "Tier",
-        "dash": "Dash"
+        "dash": "Dash",
+        "mode": "Mode",
+        "player": "Player",
+        "gamepad": "Gamepad",
+        "connected": "connected",
+        "disconnected": "none",
+        "hintPlayer": "Arrows or A/D move · Ctrl run · Up / W / Space jump · Shift dash · Enter drop"
     },
     "end": {
         "title": "It's over...",

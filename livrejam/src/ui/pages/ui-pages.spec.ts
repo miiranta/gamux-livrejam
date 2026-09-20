@@ -8,7 +8,7 @@ import { PixelSlider } from '../components/pixel-slider/pixel-slider';
 import { PixelStepper } from '../components/pixel-stepper/pixel-stepper';
 import { provideTestTranslate, useTestTranslations } from '../testing/i18n-testing';
 import { useReadyCamera } from '../testing/camera-testing';
-import { AudioService, GameFlowService, SOUND_EFFECTS } from '../services';
+import { AudioService, GameFlowService, GameSettingsService, SOUND_EFFECTS } from '../services';
 import { EndGame } from './end-game/end-game';
 import { MainMenu } from './main-menu/main-menu';
 import { PauseMenu } from './pause-menu/pause-menu';
@@ -209,13 +209,16 @@ describe('MainMenu', () => {
         fixture.detectChanges();
     });
 
-    it('renders every entry from the brief', () => {
-        const content = text(fixture);
+    it('offers one button per game mode instead of a generic Play', () => {
+        const labels = buttonLabels(fixture);
 
-        expect(content).toContain('Play');
-        expect(content).toContain('Configuration');
-        expect(content).toContain('Credits');
-        expect(content).toContain('Language');
+        expect(labels).toContain('1 Player');
+        expect(labels).toContain('2 Players');
+        // A bare "Play" would not say who controls the character.
+        expect(labels).not.toContain('Play');
+        expect(labels).toContain('Configuration');
+        expect(labels).toContain('Credits');
+        expect(labels).toContain('Language');
     });
 
     it('renders the fullscreen toggle in the top-right', () => {
@@ -231,12 +234,24 @@ describe('MainMenu', () => {
         expect(text(fixture)).not.toContain('Abandon');
     });
 
-    it('starts the match when Play is pressed', () => {
+    it('starts a 1-player match from the first mode button', () => {
         const flow = TestBed.inject(GameFlowService);
+        const settings = TestBed.inject(GameSettingsService);
 
-        clickButton(fixture, 'Play');
+        clickButton(fixture, '1 Player');
 
         expect(flow.isPlaying()).toBe(true);
+        expect(settings.gameMode()).toBe('single');
+    });
+
+    it('starts a 2-player match from the second mode button', () => {
+        const flow = TestBed.inject(GameFlowService);
+        const settings = TestBed.inject(GameSettingsService);
+
+        clickButton(fixture, '2 Players');
+
+        expect(flow.isPlaying()).toBe(true);
+        expect(settings.gameMode()).toBe('two');
     });
 
     it('opens the configuration panel with every audio slider and the match time', () => {
@@ -250,10 +265,45 @@ describe('MainMenu', () => {
         expect(content).toContain('Back');
     });
 
-    it('opens the credits panel, which is intentionally empty', () => {
+    it('does not offer the game mode in the configuration panel', () => {
+        clickButton(fixture, 'Configuration');
+
+        const content = text(fixture);
+        expect(content).not.toContain('1 Player');
+        expect(content).not.toContain('2 Players');
+    });
+
+    it('opens the credits panel with both authors and the guest', () => {
         clickButton(fixture, 'Credits');
 
-        expect(text(fixture)).toContain('Nothing here yet.');
+        const content = text(fixture);
+        expect(content).toContain('Lucas Miranda');
+        expect(content).toContain('Ângelo Pilotto');
+        expect(content).toContain('Special participation');
+        expect(content).toContain('Teresa Pilotto');
+        expect(content).toContain('Backing voice on the end-game song');
+    });
+
+    it('links each author to GitHub by handle, opening in a new tab', () => {
+        clickButton(fixture, 'Credits');
+
+        const links = Array.from(
+            (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLAnchorElement>(
+                '.credits__github',
+            ),
+        );
+
+        expect(links.map((link) => link.textContent?.trim())).toEqual(['miiranta', 'angelopra']);
+        expect(links.map((link) => link.href)).toEqual([
+            'https://github.com/miiranta',
+            'https://github.com/angelopra',
+        ]);
+
+        for (const link of links) {
+            expect(link.target).toBe('_blank');
+            // `noopener` keeps the opened tab from touching this window.
+            expect(link.rel).toContain('noopener');
+        }
     });
 
     it('opens the language panel with both languages', () => {
@@ -424,4 +474,11 @@ function clickButton(fixture: ComponentFixture<unknown>, label: string): void {
 
     match.click();
     fixture.detectChanges();
+}
+
+/** Trimmed labels of every button in the fixture. */
+function buttonLabels(fixture: ComponentFixture<unknown>): string[] {
+    return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')).map(
+        (button) => (button.textContent ?? '').trim(),
+    );
 }

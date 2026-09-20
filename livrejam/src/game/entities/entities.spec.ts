@@ -47,6 +47,20 @@ describe('Dodger', () => {
         expect(dodger.facing).toBe('right');
     });
 
+    it('caps a walk below the sprint speed', () => {
+        const dodger = createTestDodger();
+        dodger.speedFactor = FACE_SMASHING.player.walkSpeedFactor;
+
+        for (let step = 0; step < 120; step++) {
+            dodger.move(1, 1 / 60);
+        }
+
+        expect(dodger.physics.body.velocity.x).toBeCloseTo(
+            dodger.maxSpeedX * FACE_SMASHING.player.walkSpeedFactor,
+            4,
+        );
+    });
+
     it('coasts to a stop when the axis intent is neutral', () => {
         const dodger = createTestDodger();
         dodger.physics.body.velocity.x = 150;
@@ -169,7 +183,11 @@ describe('damage tiers', () => {
 
     it('scales stats monotonically', () => {
         const speeds = Array.from({ length: 8 }, (_, level) =>
-            damageScale(level, FACE_SMASHING.dodger.maxSpeedStart, FACE_SMASHING.dodger.maxSpeedEnd),
+            damageScale(
+                level,
+                FACE_SMASHING.dodger.maxSpeedStart,
+                FACE_SMASHING.dodger.maxSpeedEnd,
+            ),
         );
 
         for (let index = 1; index < speeds.length; index++) {

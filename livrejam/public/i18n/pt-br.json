@@ -13,6 +13,10 @@
         "language": "Idioma",
         "back": "Voltar"
     },
+    "mode": {
+        "single": "1 Jogador",
+        "two": "2 Jogadores"
+    },
     "settings": {
         "audio": "Áudio",
         "music": "Música",
@@ -35,7 +39,14 @@
     },
     "credits": {
         "title": "Créditos",
-        "empty": "Nada por aqui ainda."
+        "special": "Participação especial",
+        "footer": "Feito com carinho para a LivreJam 2026",
+        "githubLabel": "Abrir o perfil de {{handle}} no GitHub",
+        "roles": {
+            "lucas": "Treinamento de IA, reconhecimento facial e controles, level design e muito mais",
+            "angelo": "Trilha e efeitos sonoros, componentes e animações de UI, modos de jogo e muito mais",
+            "teresa": "Voz de apoio na música de fim de jogo"
+        }
     },
     "language": {
         "title": "Idioma",
@@ -87,7 +98,13 @@
         },
         "damage": "Dano",
         "tier": "Nivel",
-        "dash": "Avanco"
+        "dash": "Avanco",
+        "mode": "Modo",
+        "player": "Jogador",
+        "gamepad": "Controle",
+        "connected": "conectado",
+        "disconnected": "nenhum",
+        "hintPlayer": "Setas ou A/D mover · Ctrl correr · Cima / W / Espaço pular · Shift avanço · Enter soltar"
     },
     "end": {
         "title": "It's over...",

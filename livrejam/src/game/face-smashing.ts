@@ -1,12 +1,22 @@
 import { GameLoop } from '../engine/loop';
-import { KeyboardActionMap, readAxisIntent } from '../engine/input';
-import { clamp } from '../engine/math';
+import { Gamepads, KeyboardActionMap } from '../engine/input';
+import type { GamepadProvider } from '../engine/input';
 import { Camera, CanvasRenderer } from '../engine/render';
 import { PhysicsWorld } from '../engine/physics';
 import { CHARACTER_CLIPS, loadDungeonSprites } from './assets';
 import type { ActionIntent, PolicyLike } from './ai';
 import { IdlePolicy, createObservationBuffer, decodeAction, writeObservation } from './ai';
 import { FACE_SMASHING } from './config';
+import {
+    PLAYER_BINDINGS,
+    PLAYER_GAMEPAD_BINDINGS,
+    PLAYER_ENTITY_BY_MODE,
+    readPlayerIntent,
+    speedFactorFor,
+    type GameMode,
+    type PlayerAction,
+    type PlayerIntent,
+} from './config';
 import { Dodger, Item } from './entities';
 import type { DungeonLevel } from './level';
 import { createDungeonLevel } from './level';
@@ -22,9 +32,6 @@ import {
 import type { ImpactOutcome, SteeringMode } from './systems';
 import type { TrackingFrame } from '../engine/tracking';
 
-/** Keyboard actions that only aim and trigger the dodger's dash. */
-export type DashAction = 'left' | 'right' | 'dash';
-
 export interface MatchStats {
     score: number;
     best: number;
@@ -38,6 +45,10 @@ export interface MatchStats {
     dashReady: number;
     timeLeft: number;
     matchDuration: number;
+    /** Who is driving the character in this match. */
+    gameMode: GameMode;
+    /** True when a gamepad is plugged in and will move the character. */
+    gamepadConnected: boolean;
 }
 
 export interface FaceSmashingCallbacks {
@@ -55,23 +66,20 @@ export interface FaceSmashingOptions {
     policy?: PolicyLike;
     /** Defaults to the hand gesture (`67`). */
     steeringMode?: SteeringMode;
+    /** Which mode the match starts in; `setGameMode` can switch it later. */
+    gameMode?: GameMode;
+    /** Overrides the pad source, so tests can drive a fake controller. */
+    gamepadProvider?: GamepadProvider;
 }
-
-const KEY_BINDINGS: Record<string, DashAction> = {
-    ArrowLeft: 'left',
-    KeyA: 'left',
-    ArrowRight: 'right',
-    KeyD: 'right',
-    ShiftLeft: 'dash',
-    ShiftRight: 'dash',
-};
 
 const DODGER_ANIMATIONS = CHARACTER_CLIPS;
 
 export class FaceSmashing {
     private readonly level: DungeonLevel;
     private readonly world = new PhysicsWorld();
-    private readonly input: KeyboardActionMap<DashAction>;
+    /** The keys and pads that drive the character; only read in 2-player mode. */
+    private readonly playerInput: KeyboardActionMap<PlayerAction>;
+    private readonly gamepads: Gamepads<PlayerAction>;
     private readonly spawner: ItemSpawner;
     private readonly impacts = new ImpactSystem();
     private readonly effects = new EffectSystem(FACE_SMASHING.effects);
@@ -85,9 +93,14 @@ export class FaceSmashing {
     private scene: SceneRenderer | null = null;
     private dodger: Dodger | null = null;
     private items: Item[] = [];
+    /** The item currently being steered; a new one is released once it lands. */
     private active: Item | null = null;
     private policy: PolicyLike;
     private action: ActionIntent = { axis: 0, jump: false, dash: false, facing: 0 };
+    private playerAction: PlayerIntent = { axis: 0, jump: false, dash: false, run: false };
+    /** Edge detection for the player's held jump/dash, so holds are one-shot. */
+    private jumpLatch = false;
+    private playerDashLatch = false;
     private dashLatch = false;
     private restartTimer = 0;
     private survived = 0;
@@ -98,6 +111,7 @@ export class FaceSmashing {
     private showColliders = false;
     private frameDelta = 1 / 60;
     private running = true;
+    private gameMode: GameMode;
     private matchDuration: number;
     private steeringMode: SteeringMode;
 
@@ -105,11 +119,16 @@ export class FaceSmashing {
         this.random = options.random ?? Math.random;
         this.callbacks = options.callbacks;
         this.policy = options.policy ?? new IdlePolicy();
+        this.gameMode = options.gameMode ?? 'single';
         this.matchDuration = options.matchDuration ?? FACE_SMASHING.match.defaultDurationSeconds;
         this.steeringMode = options.steeringMode ?? '67';
         this.level = createDungeonLevel();
         this.world.addBlockers(this.level.colliders);
-        this.input = new KeyboardActionMap<DashAction>(KEY_BINDINGS);
+        this.playerInput = new KeyboardActionMap<PlayerAction>(PLAYER_BINDINGS);
+        this.gamepads = new Gamepads<PlayerAction>(
+            PLAYER_GAMEPAD_BINDINGS,
+            options.gamepadProvider,
+        );
         this.spawner = new ItemSpawner({ level: this.level, random: this.random });
         this.steering = new SteeringSystem(this.level);
         this.loop = new GameLoop({
@@ -164,7 +183,8 @@ export class FaceSmashing {
 
     stop(): void {
         this.loop.stop();
-        this.input.dispose();
+        this.playerInput.dispose();
+        this.gamepads.clear();
     }
 
     setPolicy(policy: PolicyLike): void {
@@ -180,16 +200,46 @@ export class FaceSmashing {
         this.steering.update(frame);
     }
 
+    /**
+     * Switches who drives the character. The policy keeps running in
+     * 2-player mode (the observation is still written), it is simply ignored,
+     * so the switch costs nothing and the AI can take over again on demand.
+     */
+    setGameMode(mode: GameMode): void {
+        if (mode === this.gameMode) {
+            return;
+        }
+
+        this.gameMode = mode;
+        this.clearInput();
+    }
+
+    get mode(): GameMode {
+        return this.gameMode;
+    }
+
+    /** True while the human, not the policy, is driving the character. */
+    get playerControlled(): boolean {
+        return PLAYER_ENTITY_BY_MODE[this.gameMode] === 'character';
+    }
+
     get paused(): boolean {
         return !this.running;
     }
 
     pause(): void {
         this.running = false;
+        // Held keys would otherwise stay "stuck" and fire on resume.
+        this.clearInput();
     }
 
     resume(): void {
         this.running = true;
+    }
+
+    private clearInput(): void {
+        this.playerInput.clear();
+        this.gamepads.clear();
     }
 
     setMatchDuration(seconds: number): void {
@@ -214,6 +264,11 @@ export class FaceSmashing {
         this.nearMisses = 0;
         this.score = 0;
         this.running = true;
+        this.dashLatch = false;
+        this.jumpLatch = false;
+        this.playerDashLatch = false;
+        this.playerAction = { axis: 0, jump: false, dash: false, run: false };
+        this.clearInput();
         this.spawner.reset();
         this.impacts.reset();
         this.effects.clear();
@@ -238,6 +293,8 @@ export class FaceSmashing {
         }
 
         this.frameDelta = dt;
+        // Pads are sampled once per frame, like the browser exposes them.
+        this.gamepads.sample();
         this.updateSteering(dt);
         this.updateDodger(dt);
         this.updateItems(dt);
@@ -290,26 +347,28 @@ export class FaceSmashing {
             return;
         }
 
-        const dashHeld = this.input.isDown('dash');
+        const playerControlled = this.playerControlled;
+        // In 1-player mode the character belongs to the policy, so no key
+        // reaches it: the dropper bindings are gone on purpose.
+        const dashHeld =
+            playerControlled && (this.playerInput.isDown('dash') || this.gamepads.isDown('dash'));
         const dashPressed = dashHeld && !this.dashLatch;
         this.dashLatch = dashHeld;
 
-        this.action =
-            this.policy.ready && !dodger.stunned
-                ? decodeAction(this.policy.decide(this.observation))
-                : { axis: 0, jump: false, dash: false, facing: 0 };
+        if (playerControlled) {
+            this.readPlayerAction(dodger);
+        } else {
+            this.readPolicyAction(dodger);
+        }
 
+        dodger.speedFactor = playerControlled ? speedFactorFor(this.playerAction.run) : 1;
         dodger.advanceReaction(dt);
         dodger.move(this.action.axis, dt);
 
         const dashDirection = this.action.dash
             ? this.action.facing || dodger.facingDirection
             : dashPressed
-              ? readAxisIntent(this.input, {
-                    negative: 'left',
-                    positive: 'right',
-                    fast: 'dash',
-                }).axis || dodger.facingDirection
+              ? this.heldAxis() || dodger.facingDirection
               : 0;
 
         if (dashDirection !== 0) {
@@ -325,6 +384,44 @@ export class FaceSmashing {
         dodger.sampleDashTrail();
         dodger.resolveAnimation();
         dodger.advanceAnimation(dt, DODGER_ANIMATIONS);
+    }
+
+    /** Fills `action` (and the walk/run intent) from the human's controllers. */
+    private readPlayerAction(dodger: Dodger): void {
+        this.playerAction = readPlayerIntent([this.playerInput, this.gamepads]);
+
+        // Jump and dash are edge-triggered, so holding them does not
+        // machine-gun hops or burn the dash cooldown.
+        const jumped = this.playerAction.jump && !this.jumpLatch;
+        const dashed = this.playerAction.dash && !this.playerDashLatch;
+        this.jumpLatch = this.playerAction.jump;
+        this.playerDashLatch = this.playerAction.dash;
+
+        // A stunned character is out of the player's hands, exactly as it is
+        // out of the policy's — but it must not fall back to the policy either.
+        const stunned = dodger.stunned;
+        this.action = {
+            axis: stunned ? 0 : this.playerAction.axis,
+            jump: !stunned && jumped,
+            dash: !stunned && dashed,
+            facing: this.playerAction.axis !== 0 ? this.playerAction.axis : dodger.facingDirection,
+        };
+    }
+
+    /** Asks the trained policy for the character's next move. */
+    private readPolicyAction(dodger: Dodger): void {
+        this.playerAction = { axis: 0, jump: false, dash: false, run: false };
+        this.jumpLatch = false;
+        this.playerDashLatch = false;
+
+        this.action =
+            this.policy.ready && !dodger.stunned
+                ? decodeAction(this.policy.decide(this.observation))
+                : { axis: 0, jump: false, dash: false, facing: 0 };
+    }
+
+    private heldAxis(): number {
+        return this.playerControlled ? this.action.axis : 0;
     }
 
     private tryDash(dodger: Dodger, direction: number): boolean {
@@ -478,6 +575,8 @@ export class FaceSmashing {
             dashReady: dodger ? 1 - dodger.dashCooldownRatio : 1,
             timeLeft: Math.max(this.matchDuration - this.survived, 0),
             matchDuration: this.matchDuration,
+            gameMode: this.gameMode,
+            gamepadConnected: this.gamepads.connected,
         };
     }
 

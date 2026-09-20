@@ -19,16 +19,43 @@ npx ng serve
 O `--legacy-peer-deps` e necessario por um bug do arborist com uma peer
 dependency opcional do `jsdom`.
 
-## Controles
+## Modos de jogo
 
-| tecla | acao |
-| --- | --- |
-| A / ← | mover o objeto que cai para a esquerda |
-| D / → | mover o objeto que cai para a direita |
-| S / ↓ | acelerar a queda |
-| Espaco | soltar o objeto |
+O modo e escolhido na **tela inicial**: em vez de um "Jogar" generico, cada
+modo tem seu proprio botao, porque e ele que decide quem controla o
+personagem. A escolha vale para a partida que comeca em seguida.
 
-O personagem no chao e pilotado pela IA — nao ha controle manual dele.
+### 1 Jogador
+
+O modo original da jam: a politica neural pilota o personagem e o humano cuida
+dos objetos que caem. O teclado nao controla o personagem.
+
+### 2 Jogadores
+
+O jogador 2 pilota o personagem no teclado **ou** num controle (os dois podem
+ser usados ao mesmo tempo, inclusive por duas pessoas).
+
+| acao | teclado | controle (layout padrao) |
+| --- | --- | --- |
+| esquerda / direita | `<-` `->` ou `A` `D` | analógico esquerdo (so horizontal), d-pad |
+| pular | `^`, `W` ou `Espaco` | botao de baixo ("A" no Xbox), botao de cima ("Y") |
+| correr | `Ctrl` (qualquer) ou `E` | botao da esquerda ("X" no Xbox) |
+| avanco (dash) | `Shift` (qualquer) | botao da direita ("B" no Xbox) |
+| queda rapida | `S` ou `v` | d-pad para baixo |
+| soltar | `Enter` | Start, Back, gatilhos |
+
+Soltar uma direcao da um passo; segurar `Ctrl` (ou "X") corre na velocidade
+maxima. Os botoes do controle sao lidos pela **posicao** (padrao W3C), entao
+funcionam igual em controles de Xbox, PlayStation e Nintendo.
+
+O analógico esquerdo so move na horizontal: empurrar para cima **nao** pula,
+senao um analógico gasto (que nao volta ao centro) pularia sozinho.
+
+## Menus no controle
+
+Os menus tambem funcionam no controle: o d-pad (ou o analógico esquerdo) anda
+pelo foco, o botao de baixo ("A") confirma e o botao da direita ("B") volta
+(fecha um painel, sai da pausa, sai da tela de fim de jogo).
 
 ## Testes
 

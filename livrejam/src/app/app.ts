@@ -41,6 +41,12 @@ export class App {
         if (this.flow.isPlaying() || this.flow.isPaused()) {
             event.preventDefault();
             this.flow.togglePause();
+            return;
+        }
+
+        if (this.flow.isGameOver()) {
+            event.preventDefault();
+            this.flow.abandon();
         }
     };
 }
