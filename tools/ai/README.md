@@ -44,14 +44,33 @@ Para CUDA:
 
 Saidas:
 
-- `livrejam/public/models/dodger-policy.json` — pesos carregados pelo jogo.
+- `livrejam/public/models/dodger-policy.json` — pesos carregados pelo jogo,
+  reescritos **a cada geracao** (junto com o grafico).
+- `livrejam/public/models/dodger-policy.best.json` — o mesmo modelo, mas so a
+  geracao de melhor fitness vista ate agora.
 - `livrejam/public/models/dodger-policy.train.json` — historico do treino.
 - `livrejam/public/models/dodger-policy.graph.png` — grafico, reescrito a cada
   geracao (veja abaixo).
 
-O checkpoint e escrito a cada `--checkpoint-every` geracoes, entao o jogo tem
-sempre um modelo valido para carregar durante o treino. O `--seed` fixa a
-alatoriedade: troque-o para reproduzir ou variar a rodada.
+Os dois modelos sao escritos no mesmo ponto do loop, logo depois do grafico: o
+jogo nunca fica sem um modelo valido e nunca carrega um arquivo pela metade.
+`dodger-policy.json` e sempre a **ultima** geracao, mesmo que ela seja pior que a
+anterior — e o modelo que evolui, entao e ele que interessa durante o treino.
+`dodger-policy.best.json` guarda a melhor, para comparar depois.
+
+O `--seed` fixa a alatoriedade: troque-o para reproduzir ou variar a rodada.
+
+### Cuidado com "melhor fitness"
+
+`best_fitness` **nao** e comparavel entre geracoes quando o curriculo esta ligado.
+O fitness e medido contra o `drop_cap` daquela geracao, entao a geracao 1 (teto de
+140 px/s) marca um fitness alto que nenhuma geracao posterior alcanca, e o
+`best.json` acaba congelado na primeira geracao — o pior modelo do treino.
+
+O log mostra a geracao do melhor (`melhor: geracao N`) para isso ficar visivel.
+Se ela parar de avancar, nao confie no `best.json`: use a **avaliacao limpa**
+(coluna `held` no log), que roda com o teto cheio em sementes novas e por isso e
+comparavel entre geracoes.
 
 ### Grafico ao vivo
 
@@ -62,7 +81,7 @@ dependencia dos scripts de asset.
 
 | serie | o que e |
 | --- | --- |
-| melhor candidato (media) | dano medio do candidato de melhor fitness; e ele que vira checkpoint |
+| melhor candidato (media) | dano medio do candidato de melhor fitness daquela geracao; e ele que vira `dodger-policy.json` |
 | avaliacao limpa (semente nova) | o mesmo candidato medido em sementes que o treino nunca viu |
 | pior ambiente do candidato | o pior ambiente dele, o caso que o `--worst-weight` pune |
 | media da populacao | media de todos os candidatos, para ver a populacao como um todo |

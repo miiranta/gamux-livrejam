@@ -30,11 +30,14 @@ export interface TerrainSprites {
 }
 
 export interface DungeonSprites extends TerrainSprites {
+    backdrop: HTMLImageElement;
     props: Map<PropSpriteKey, HTMLImageElement>;
     items: Map<string, HTMLImageElement>;
     character: CharacterTierSprites[];
     effects: Record<EffectKey, LoadedSpriteSheet>;
 }
+
+const BACKDROP_PATH = 'assets/background/background.png';
 
 const CHARACTER_ANIMATIONS: Record<CharacterAnimationKey, number> = {
     walk: 9,
@@ -155,13 +158,15 @@ function loadProps(): Promise<Map<PropSpriteKey, HTMLImageElement>> {
     ).then((loaded) => new Map(loaded));
 }
 
-function loadTerrain(): Promise<TerrainSprites> {
+function loadTerrain(): Promise<TerrainSprites & { backdrop: HTMLImageElement }> {
     return Promise.all([
         loadImage(TREASURE_HUNTERS_SHEET),
         loadImage(TREASURE_HUNTERS_PLATFORMS),
-    ]).then(([autotile, platforms]) => ({
+        loadImage(BACKDROP_PATH),
+    ]).then(([autotile, platforms, backdrop]) => ({
         autotile,
         platforms,
+        backdrop,
         tileSize: TREASURE_HUNTERS_TILE,
     }));
 }

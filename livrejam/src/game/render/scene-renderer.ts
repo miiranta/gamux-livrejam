@@ -9,6 +9,7 @@ import type { DungeonLevel } from '../level';
 import type { Effect, ScorePopup } from '../systems';
 import { scorePopupPose } from '../systems';
 import { FACE_SMASHING } from '../config';
+import { BackdropPainter } from './backdrop-painter';
 import { ParticleSystem } from './particle-system';
 import { PropPainter } from './prop-painter';
 import { TerrainRenderer } from './terrain-renderer';
@@ -29,6 +30,7 @@ export interface SceneFrame {
 
 export class SceneRenderer {
     private readonly terrain: TerrainRenderer;
+    private readonly backdrop: BackdropPainter;
     private readonly props: PropPainter;
     private readonly particles: ParticleSystem;
     private worldLayer: HTMLCanvasElement | null = null;
@@ -40,6 +42,7 @@ export class SceneRenderer {
         private readonly sprites: DungeonSprites,
     ) {
         this.terrain = new TerrainRenderer(sprites);
+        this.backdrop = new BackdropPainter(sprites.backdrop);
         this.props = new PropPainter(sprites);
         this.particles = new ParticleSystem(sprites);
     }
@@ -64,6 +67,7 @@ export class SceneRenderer {
         ctx.fillStyle = VOID_COLOR;
         ctx.fillRect(0, 0, this.camera.viewportWidth, this.camera.viewportHeight);
 
+        this.backdrop.paint(ctx, level, this.camera);
         this.props.paint(ctx, level, this.camera, this.elapsed, 0);
         ctx.drawImage(
             this.ensureWorldLayer(level),

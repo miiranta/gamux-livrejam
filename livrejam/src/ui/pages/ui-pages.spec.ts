@@ -7,12 +7,8 @@ import { PixelButton } from '../components/pixel-button/pixel-button';
 import { PixelSlider } from '../components/pixel-slider/pixel-slider';
 import { PixelStepper } from '../components/pixel-stepper/pixel-stepper';
 import { provideTestTranslate, useTestTranslations } from '../testing/i18n-testing';
-<<<<<<< HEAD
-import { AudioService, GameFlowService, SOUND_EFFECTS } from '../services';
-=======
 import { useReadyCamera } from '../testing/camera-testing';
-import { GameFlowService } from '../services';
->>>>>>> d4a0d0b (A bunch of stuff)
+import { AudioService, GameFlowService, SOUND_EFFECTS } from '../services';
 import { EndGame } from './end-game/end-game';
 import { MainMenu } from './main-menu/main-menu';
 import { PauseMenu } from './pause-menu/pause-menu';

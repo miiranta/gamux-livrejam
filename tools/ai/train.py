@@ -42,6 +42,7 @@ def parse_args():
     parser.add_argument("--dodge-weight", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--out", default="livrejam/public/models/dodger-policy.json")
+    parser.add_argument("--best-out", default="livrejam/public/models/dodger-policy.best.json")
     parser.add_argument("--graph", default="livrejam/public/models/dodger-policy.graph.png")
     parser.add_argument("--checkpoint-every", type=int, default=10)
     parser.add_argument("--curriculum", type=int, default=1, choices=(0, 1))
@@ -153,18 +154,37 @@ def held_out(theta, args, seed):
     }
 
 
-def save(theta, sizes, path, extra):
+def save_model(theta, sizes, path):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    payload = export_json(to_layers(theta, sizes), path, sizes)
+    return export_json(to_layers(theta, sizes), path, sizes)
 
-    report = dict(extra)
-    report["weights"] = len(payload["weights"])
-    report["biases"] = len(payload["biases"])
+
+def write_report(path, extra, payload):
+    record = dict(extra)
+    record["weights"] = len(payload["weights"])
+    record["biases"] = len(payload["biases"])
 
     with open(os.path.splitext(path)[0] + ".train.json", "w", encoding="utf-8") as handle:
-        json.dump(report, handle, indent=2)
+        json.dump(record, handle, indent=2)
 
-    return payload
+
+def report_payload(args, best_fitness, best_generation, parameters, history, checkpoint):
+    return {
+        "checkpoint": checkpoint,
+        "generation": history[-1]["generation"] if history else 0,
+        "best_fitness": best_fitness,
+        "best_generation": best_generation,
+        "generations": args.generations,
+        "population": args.population,
+        "envs": args.envs,
+        "episode_steps": args.episode_steps,
+        "sigma": args.sigma,
+        "learning_rate": args.learning_rate,
+        "worst_weight": args.worst_weight,
+        "seed": args.seed,
+        "parameters": parameters,
+        "history": history,
+    }
 
 
 def main():
@@ -180,6 +200,7 @@ def main():
 
     best_theta = theta.clone()
     best_fitness = float("-inf")
+    best_generation = 0
     history = []
 
     print(
@@ -216,6 +237,7 @@ def main():
         if top > best_fitness:
             best_fitness = top
             best_theta = theta.clone()
+            best_generation = generation
 
         promoted = False
         if (
@@ -253,6 +275,12 @@ def main():
             "max_drop": cfg.DROP_MAX_SPEED,
         })
 
+        live = save_model(theta, sizes, args.out)
+        save_model(best_theta, sizes, args.best_out)
+        write_report(args.out, report_payload(
+            args, best_fitness, best_generation, parameters, history, True
+        ), live)
+
         if generation % 5 == 0 or generation == 1:
             held = f" held {probe['damage']:7.1f}" if probe else ""
             print(
@@ -267,50 +295,19 @@ def main():
             print(f"  curriculo: teto agora {drop_cap:.0f} px/s", flush=True)
 
         if args.checkpoint_every > 0 and generation % args.checkpoint_every == 0:
-            save(
-                best_theta,
-                sizes,
-                args.out,
-                {
-                    "checkpoint": True,
-                    "generation": generation,
-                    "best_fitness": best_fitness,
-                    "generations": args.generations,
-                    "population": args.population,
-                    "envs": args.envs,
-                    "episode_steps": args.episode_steps,
-                    "sigma": args.sigma,
-                    "learning_rate": args.learning_rate,
-                    "worst_weight": args.worst_weight,
-                    "seed": args.seed,
-                    "parameters": parameters,
-                    "history": history,
-                },
+            print(
+                f"  checkpoint saved at generation {generation} "
+                f"(melhor: geracao {best_generation})",
+                flush=True,
             )
-            print(f"  checkpoint saved at generation {generation}", flush=True)
 
-    save(
-        best_theta,
-        sizes,
-        args.out,
-        {
-            "checkpoint": False,
-            "generation": args.generations,
-            "best_fitness": best_fitness,
-            "generations": args.generations,
-            "population": args.population,
-            "envs": args.envs,
-            "episode_steps": args.episode_steps,
-            "sigma": args.sigma,
-            "learning_rate": args.learning_rate,
-            "worst_weight": args.worst_weight,
-            "seed": args.seed,
-            "parameters": parameters,
-            "history": history,
-        },
-    )
+    final = save_model(theta, sizes, args.out)
+    save_model(best_theta, sizes, args.best_out)
+    write_report(args.out, report_payload(
+        args, best_fitness, best_generation, parameters, history, False
+    ), final)
 
-    print(f"saved {args.out}")
+    print(f"saved {args.out} (ultima geracao) e {args.best_out} (melhor fitness)")
 
 
 if __name__ == "__main__":
