@@ -33,7 +33,8 @@ def parse_args():
     parser.add_argument("--generations", type=int, default=300)
     parser.add_argument("--population", type=int, default=64)
     parser.add_argument("--envs", type=int, default=512)
-    parser.add_argument("--episode-steps", type=int, default=3660)
+    parser.add_argument("--episode-steps", type=int, default=0)
+    parser.add_argument("--round-seconds", type=float, default=cfg.ROUND_SECONDS)
     parser.add_argument("--sigma", type=float, default=0.05)
     parser.add_argument("--learning-rate", type=float, default=0.06)
     parser.add_argument("--worst-weight", type=float, default=0.5)
@@ -52,6 +53,10 @@ def parse_args():
     parser.add_argument("--eval-envs", type=int, default=2048)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     return parser.parse_args()
+
+
+def round_steps(seconds):
+    return int(seconds / cfg.DT) + 60
 
 
 def rank_weights(fitness):
@@ -90,7 +95,12 @@ def evaluate(theta, perturbations, args, generation, drop_cap=None):
     candidates = theta[None, :] + args.sigma * perturbations
 
     stacked = stack_policies(expand_candidates(candidates, sizes))
-    sim = FaceSmashingSim(total, device=args.device, seed=args.seed + 1000 + generation * 7919)
+    sim = FaceSmashingSim(
+        total,
+        device=args.device,
+        seed=args.seed + 1000 + generation * 7919,
+        round_seconds=args.round_seconds,
+    )
     if drop_cap is not None:
         sim.set_drop_cap(drop_cap)
     observation = sim.reset()
@@ -115,7 +125,7 @@ def evaluate(theta, perturbations, args, generation, drop_cap=None):
         1.0
         - by_env / ceiling
         - args.worst_weight * worst_env / ceiling
-        + args.dodge_weight * (dodges.mean(dim=1) / (cfg.ROUND_SECONDS * 2))
+        + args.dodge_weight * (dodges.mean(dim=1) / (args.round_seconds * 2))
     )
 
     champion = int(torch.argmax(fitness).item())
@@ -140,7 +150,7 @@ def held_out(theta, args, seed):
     stacked = stack_policies([unflatten_policy(theta, sizes)])
     observation = sim.reset()
 
-    for _ in range(args.episode_steps):
+    for _ in range(round_steps(cfg.ROUND_SECONDS)):
         with torch.no_grad():
             scores = batched_forward(observation, stacked, sizes, 1, args.eval_envs)
             observation = sim.step(torch.argmax(scores, dim=1))
@@ -189,6 +199,17 @@ def report_payload(args, best_fitness, best_generation, parameters, history, che
 def main():
     args = parse_args()
     torch.manual_seed(args.seed)
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
+
+    if args.episode_steps <= 0:
+        args.episode_steps = round_steps(args.round_seconds)
+    elif args.episode_steps < round_steps(args.round_seconds) - 59:
+        raise SystemExit(
+            f"--episode-steps {args.episode_steps} nao cobre uma rodada de "
+            f"{args.round_seconds:.0f}s ({round_steps(args.round_seconds)} passos): "
+            "nenhuma rodada termina e o dano medio sai zerado"
+        )
 
     if args.mirrored and args.population % 2 != 0:
         raise SystemExit("--population precisa ser par quando --mirrored 1")

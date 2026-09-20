@@ -161,7 +161,7 @@
         "gamepad": "Gamepad",
         "connected": "connected",
         "disconnected": "none",
-        "hintPlayer": "Arrows or A/D move · Ctrl run · Up / W / Space jump · Shift dash · Enter drop",
+        "hintPlayer": "Arrows or A/D move · Up / W / Space jump · S fast fall · Shift dash · Enter drop",
         "players": {
             "p1": "Player 1",
             "p2": "Player 2",
@@ -171,7 +171,6 @@
             "move": "Move",
             "jump": "Jump",
             "dash": "Dash",
-            "run": "Run",
             "fastFall": "Fast fall"
         }
     },

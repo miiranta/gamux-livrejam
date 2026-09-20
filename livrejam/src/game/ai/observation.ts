@@ -14,6 +14,9 @@ export const DODGER_ACTIONS = {
     jumpRight: 5,
     dashLeft: 6,
     dashRight: 7,
+    fall: 8,
+    fallLeft: 9,
+    fallRight: 10,
 } as const;
 
 export type DodgerAction = (typeof DODGER_ACTIONS)[keyof typeof DODGER_ACTIONS];
@@ -22,27 +25,34 @@ export interface ActionIntent {
     axis: number;
     jump: boolean;
     dash: boolean;
+    fastFall: boolean;
     facing: number;
 }
 
 export function decodeAction(action: number): ActionIntent {
     switch (action) {
         case DODGER_ACTIONS.left:
-            return { axis: -1, jump: false, dash: false, facing: -1 };
+            return { axis: -1, jump: false, dash: false, fastFall: false, facing: -1 };
         case DODGER_ACTIONS.right:
-            return { axis: 1, jump: false, dash: false, facing: 1 };
+            return { axis: 1, jump: false, dash: false, fastFall: false, facing: 1 };
         case DODGER_ACTIONS.jump:
-            return { axis: 0, jump: true, dash: false, facing: 0 };
+            return { axis: 0, jump: true, dash: false, fastFall: false, facing: 0 };
         case DODGER_ACTIONS.jumpLeft:
-            return { axis: -1, jump: true, dash: false, facing: -1 };
+            return { axis: -1, jump: true, dash: false, fastFall: false, facing: -1 };
         case DODGER_ACTIONS.jumpRight:
-            return { axis: 1, jump: true, dash: false, facing: 1 };
+            return { axis: 1, jump: true, dash: false, fastFall: false, facing: 1 };
         case DODGER_ACTIONS.dashLeft:
-            return { axis: -1, jump: false, dash: true, facing: -1 };
+            return { axis: -1, jump: false, dash: true, fastFall: false, facing: -1 };
         case DODGER_ACTIONS.dashRight:
-            return { axis: 1, jump: false, dash: true, facing: 1 };
+            return { axis: 1, jump: false, dash: true, fastFall: false, facing: 1 };
+        case DODGER_ACTIONS.fall:
+            return { axis: 0, jump: false, dash: false, fastFall: true, facing: 0 };
+        case DODGER_ACTIONS.fallLeft:
+            return { axis: -1, jump: false, dash: false, fastFall: true, facing: -1 };
+        case DODGER_ACTIONS.fallRight:
+            return { axis: 1, jump: false, dash: false, fastFall: true, facing: 1 };
         default:
-            return { axis: 0, jump: false, dash: false, facing: 0 };
+            return { axis: 0, jump: false, dash: false, fastFall: false, facing: 0 };
     }
 }
 

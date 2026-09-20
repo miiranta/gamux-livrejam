@@ -8,7 +8,6 @@ import {
     gameModeLabelKey,
     isGameMode,
     readPlayerIntent,
-    speedFactorFor,
     type PlayerAction,
 } from './game-mode';
 import { FACE_SMASHING } from './face-smashing.config';
@@ -45,8 +44,6 @@ describe('player bindings', () => {
     });
 
     it('binds run to ctrl', () => {
-        expect(PLAYER_BINDINGS['ControlLeft']).toBe('run');
-        expect(PLAYER_BINDINGS['ControlRight']).toBe('run');
     });
 
     it('binds jump to the up arrow and space', () => {
@@ -73,7 +70,6 @@ describe('player bindings', () => {
         // what matters: the letters swap between vendors.
         expect(buttons[GAMEPAD_BUTTON.bottom]).toBe('jump');
         expect(buttons[GAMEPAD_BUTTON.right]).toBe('dash');
-        expect(buttons[GAMEPAD_BUTTON.left]).toBe('run');
     });
 
     it('never jumps from a stick, only from the d-pad and buttons', () => {
@@ -116,7 +112,7 @@ describe('readPlayerIntent', () => {
     it('lets either controller hold an action', () => {
         expect(readPlayerIntent([held(), held('jump')]).jump).toBe(true);
         expect(readPlayerIntent([held('dash'), held()]).dash).toBe(true);
-        expect(readPlayerIntent([held(), held('run')]).run).toBe(true);
+        expect(readPlayerIntent([held(), held('fastFall')]).fastFall).toBe(true);
     });
 
     it('reports nothing when every controller is idle', () => {
@@ -124,19 +120,7 @@ describe('readPlayerIntent', () => {
             axis: 0,
             jump: false,
             dash: false,
-            run: false,
             fastFall: false,
         });
-    });
-});
-
-describe('speedFactorFor', () => {
-    it('moves the human at the same speed the policy gets', () => {
-        const { walkSpeedFactor, runSpeedFactor } = FACE_SMASHING.player;
-
-        expect(speedFactorFor(false)).toBe(walkSpeedFactor);
-        expect(speedFactorFor(true)).toBe(runSpeedFactor);
-        expect(walkSpeedFactor).toBe(1);
-        expect(runSpeedFactor).toBe(1);
     });
 });

@@ -36,13 +36,14 @@ def tensor_minimum(values):
 
 
 class FaceSmashingSim:
-    def __init__(self, envs, device="cpu", seed=0):
+    def __init__(self, envs, device="cpu", seed=0, round_seconds=cfg.ROUND_SECONDS):
         self.envs = envs
         self.device = torch.device(device)
         self.seed = seed
+        self.round_seconds = float(round_seconds)
         self.dtype = torch.float32
         self.slots = cfg.MAX_ITEM_SLOTS
-        self.generator = torch.Generator(device="cpu").manual_seed(seed)
+        self.generator = torch.Generator(device=self.device).manual_seed(seed)
         self.item_generator = None
         self.drop_cap = cfg.DROP_MAX_SPEED
 
@@ -76,7 +77,7 @@ class FaceSmashingSim:
         return torch.tensor(values, dtype=self.dtype, device=self.device)
 
     def draw(self, shape):
-        return torch.rand(shape, generator=self.generator).to(self.device)
+        return torch.rand(shape, generator=self.generator, device=self.device)
 
     def sample_spawn_x(self, count):
         span = cfg.PLAY_RIGHT - cfg.PLAY_LEFT
@@ -123,6 +124,7 @@ class FaceSmashingSim:
         self.vel_y = torch.zeros(envs, dtype=self.dtype, device=device)
         self.grounded = torch.ones(envs, dtype=torch.bool, device=device)
         self.jump_latch = torch.zeros(envs, dtype=torch.bool, device=device)
+        self.jump_cut_armed = torch.zeros(envs, dtype=torch.bool, device=device)
         self.stun = torch.zeros(envs, dtype=self.dtype, device=device)
         self.invulnerable = torch.zeros(envs, dtype=self.dtype, device=device)
         self.dash_timer = torch.zeros(envs, dtype=self.dtype, device=device)
@@ -181,6 +183,9 @@ class FaceSmashingSim:
         )
         for field in ("obstacle_scored", "obstacle_hit"):
             setattr(self, field, getattr(self, field) & keep[:, None])
+
+        self.jump_latch = self.jump_latch & keep
+        self.jump_cut_armed = self.jump_cut_armed & keep
 
         self.pos_x = torch.where(done, self.sample_spawn_x(envs), self.pos_x)
         self.pos_y = torch.where(
@@ -363,12 +368,19 @@ class FaceSmashingSim:
         axis = torch.where(actions == cfg.ACTION_JUMP_RIGHT, torch.full_like(axis, 1.0), axis)
         axis = torch.where(actions == cfg.ACTION_DASH_LEFT, torch.full_like(axis, -1.0), axis)
         axis = torch.where(actions == cfg.ACTION_DASH_RIGHT, torch.full_like(axis, 1.0), axis)
+        axis = torch.where(actions == cfg.ACTION_FALL_LEFT, torch.full_like(axis, -1.0), axis)
+        axis = torch.where(actions == cfg.ACTION_FALL_RIGHT, torch.full_like(axis, 1.0), axis)
         jumping = (
             (actions == cfg.ACTION_JUMP)
             | (actions == cfg.ACTION_JUMP_LEFT)
             | (actions == cfg.ACTION_JUMP_RIGHT)
         )
         dashing = (actions == cfg.ACTION_DASH_LEFT) | (actions == cfg.ACTION_DASH_RIGHT)
+        diving = (
+            (actions == cfg.ACTION_FALL)
+            | (actions == cfg.ACTION_FALL_LEFT)
+            | (actions == cfg.ACTION_FALL_RIGHT)
+        )
 
         max_speed = self.current_max_speed()
         moving = axis != 0
@@ -411,13 +423,33 @@ class FaceSmashingSim:
         self.pos_x = self.pos_x + self.vel_x * cfg.DT
         self.resolve_axis(0)
 
-        self.vel_y = torch.clamp(self.vel_y, -cfg.DODGER_MAX_FALL, cfg.DODGER_MAX_FALL)
+        dive_now = diving & control & ~was_grounded & ~(dashing_now | dash_now)
+        self.jump_cut_armed = self.jump_cut_armed & ~dive_now
+        self.vel_y = torch.where(
+            dive_now,
+            torch.clamp(self.vel_y + cfg.FAST_FALL_BOOST * cfg.DT, max=cfg.FAST_FALL_SPEED),
+            self.vel_y,
+        )
+
+        fall_cap = torch.where(
+            dive_now,
+            torch.full_like(self.vel_y, cfg.FAST_FALL_SPEED),
+            torch.full_like(self.vel_y, cfg.DODGER_MAX_FALL),
+        )
+        self.vel_y = torch.clamp(self.vel_y, -fall_cap, fall_cap)
         self.vel_y = self.vel_y + self.gravity_step
         self.pos_y = self.pos_y + self.vel_y * cfg.DT
         self.resolve_axis(1)
 
         jump_now = jumping & ~self.jump_latch & was_grounded
         self.vel_y = torch.where(jump_now, -self.current_jump(), self.vel_y)
+        self.jump_cut_armed = self.jump_cut_armed | jump_now
+
+        cutting = self.jump_cut_armed & ~jumping
+        self.vel_y = torch.where(
+            cutting & (self.vel_y < 0.0), self.vel_y * cfg.JUMP_CUT_MULTIPLIER, self.vel_y
+        )
+        self.jump_cut_armed = self.jump_cut_armed & ~cutting
         self.jump_latch = jumping
         self.pos_x = torch.clamp(self.pos_x, 0.0, cfg.WIDTH - cfg.DODGER_BOX[0])
 
@@ -659,9 +691,6 @@ class FaceSmashingSim:
         onde o contato de maior dano define o empurrao.
         """
         hit_any = round_damage > 0
-        if not bool(hit_any.any()):
-            self.stun = torch.clamp(self.stun - cfg.DT, min=0.0)
-            return
 
         half_width = self.item_half_width[self.obstacle_item]
         item_center_x = self.obstacle_x + half_width
@@ -677,6 +706,7 @@ class FaceSmashingSim:
             max=cfg.REACTION_KNOCKBACK_MAX,
         )
 
+        self.jump_cut_armed = self.jump_cut_armed & ~hit_any
         self.apply_knockback(direction, magnitude, hit_any)
         self.stun = torch.where(
             hit_any,
@@ -718,7 +748,7 @@ class FaceSmashingSim:
         self.dodges = self.dodges + dodge.to(self.dtype)
         self.near_misses = self.near_misses + near.to(self.dtype)
         self.step_dropper()
-        self.finish_rounds(self.round_elapsed >= cfg.ROUND_SECONDS)
+        self.finish_rounds(self.round_elapsed >= self.round_seconds)
         return self.observation()
 
     def metrics(self):

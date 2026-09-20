@@ -100,17 +100,11 @@ export class Character {
         return 0;
     }
 
-    move(axis: number, dt: number, speedScale = 1): void {
+    move(axis: number, dt: number): void {
         if (axis === 0) {
             dampVelocity(this.physics.body, 'x', this.dragX, dt);
         } else {
-            accelerate(
-                this.physics.body,
-                'x',
-                axis * this.accelerationX,
-                this.maxSpeedX * speedScale,
-                dt,
-            );
+            accelerate(this.physics.body, 'x', axis * this.accelerationX, this.maxSpeedX, dt);
         }
 
         if (axis !== 0) {

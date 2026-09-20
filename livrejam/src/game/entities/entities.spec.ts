@@ -48,18 +48,14 @@ describe('Dodger', () => {
         expect(dodger.facing).toBe('right');
     });
 
-    it('caps a walk below the sprint speed', () => {
+    it('has one walking speed, with no sprint to exceed it', () => {
         const dodger = createTestDodger();
-        dodger.speedFactor = FACE_SMASHING.player.walkSpeedFactor;
 
         for (let step = 0; step < 120; step++) {
             dodger.move(1, 1 / 60);
         }
 
-        expect(dodger.physics.body.velocity.x).toBeCloseTo(
-            dodger.maxSpeedX * FACE_SMASHING.player.walkSpeedFactor,
-            4,
-        );
+        expect(dodger.physics.body.velocity.x).toBeCloseTo(dodger.maxSpeedX, 4);
     });
 
     it('coasts to a stop when the axis intent is neutral', () => {

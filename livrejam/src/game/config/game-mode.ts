@@ -36,7 +36,7 @@ export const PLAYER_ENTITY_BY_MODE: Record<GameMode, 'none' | 'character'> = {
  * are read as an axis so opposite inputs cancel instead of fighting; every
  * other action is a plain hold.
  */
-export type PlayerAction = 'left' | 'right' | 'fastFall' | 'jump' | 'dash' | 'run' | 'drop';
+export type PlayerAction = 'left' | 'right' | 'fastFall' | 'jump' | 'dash' | 'drop';
 
 /**
  * Player 2 keyboard bindings (`KeyboardEvent.code`, layout-independent).
@@ -50,7 +50,6 @@ export type PlayerAction = 'left' | 'right' | 'fastFall' | 'jump' | 'dash' | 'ru
  * | left / right | left/right arrows or A D | left stick (horizontal), d-pad |
  * | jump | up arrow, W, Space | bottom face button ("A"), top face button ("Y") |
  * | dash | Shift (either) | right face button ("B") |
- * | run | Ctrl (either), E | left face button ("X") |
  * | fast fall | down arrow, S | d-pad down |
  * | drop | Enter | Start, Back, triggers |
  *
@@ -66,9 +65,6 @@ export const PLAYER_BINDINGS: Record<string, PlayerAction> = {
     Space: 'jump',
     ShiftLeft: 'dash',
     ShiftRight: 'dash',
-    ControlLeft: 'run',
-    ControlRight: 'run',
-    KeyE: 'run',
     ArrowDown: 'fastFall',
     KeyS: 'fastFall',
     Enter: 'drop',
@@ -108,7 +104,6 @@ export const PLAYER_GAMEPAD_BINDINGS: GamepadBindings<PlayerAction> = {
     buttons: {
         [GAMEPAD_BUTTON.bottom]: 'jump',
         [GAMEPAD_BUTTON.right]: 'dash',
-        [GAMEPAD_BUTTON.left]: 'run',
         [GAMEPAD_BUTTON.top]: 'jump',
         [GAMEPAD_BUTTON.start]: 'drop',
         [GAMEPAD_BUTTON.back]: 'drop',
@@ -127,8 +122,6 @@ export interface PlayerIntent {
     axis: number;
     jump: boolean;
     dash: boolean;
-    /** Hold to sprint; tapping a direction moves at walking speed instead. */
-    run: boolean;
     fastFall: boolean;
 }
 
@@ -144,22 +137,14 @@ export function readPlayerIntent(sources: readonly ActionSource<PlayerAction>[])
     let axis = 0;
     let jump = false;
     let dash = false;
-    let run = false;
     let fastFall = false;
 
     for (const source of sources) {
         axis += Number(source.isDown('right')) - Number(source.isDown('left'));
         jump = jump || source.isDown('jump');
         dash = dash || source.isDown('dash');
-        run = run || source.isDown('run');
         fastFall = fastFall || source.isDown('fastFall');
     }
 
-    return { axis: Math.sign(axis), jump, dash, run, fastFall };
-}
-
-/** Movement speed as a fraction of the character's damaged-tier maximum. */
-export function speedFactorFor(run: boolean): number {
-    const config = FACE_SMASHING.player;
-    return run ? config.runSpeedFactor : config.walkSpeedFactor;
+    return { axis: Math.sign(axis), jump, dash, fastFall };
 }
