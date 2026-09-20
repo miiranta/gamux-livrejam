@@ -1,6 +1,6 @@
 {
   "checkpoint": true,
-  "generation": 21,
+  "generation": 22,
   "best_fitness": 0.8530381917953491,
   "best_generation": 1,
   "generations": 600,
@@ -348,6 +348,22 @@
       "held_out_damage": null,
       "held_out_p90": null,
       "elapsed": 1075.4666533470154
+    },
+    {
+      "generation": 22,
+      "mean_fitness": 0.07913850992918015,
+      "top_fitness": 0.48577067255973816,
+      "mean_damage": 2215.7548828125,
+      "worst_damage": 3160.769775390625,
+      "best_damage": 4039.7451171875,
+      "hits": 60.49152755737305,
+      "dodges": 33.808135986328125,
+      "champion_damage": 1172.4466552734375,
+      "champion_worst_damage": 2048.229248046875,
+      "drop_cap": 260.0,
+      "held_out_damage": null,
+      "held_out_p90": null,
+      "elapsed": 1115.798087835312
     }
   ],
   "weights": 17376,
