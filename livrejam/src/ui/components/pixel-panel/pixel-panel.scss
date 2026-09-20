@@ -1,0 +1,109 @@
+@use '../../styles/ornaments' as ornaments;
+
+:host {
+    display: block;
+    /* Never taller than whatever box the popup gave us: the overflow then
+       belongs to the body below, not to the page. */
+    max-height: 100%;
+    --lj-notch: 16px;
+
+    @include ornaments.pixel-drop(5px);
+}
+
+.pixel-panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    max-height: 100%;
+    min-width: 20rem;
+    max-width: min(90vw, 34rem);
+    padding: 1.6rem 1.75rem 1.75rem;
+    background: linear-gradient(180deg, var(--lj-line-hi), var(--lj-line));
+
+    @include ornaments.octagon();
+    @include ornaments.studs(var(--lj-accent), 9px, 6px);
+
+    /* Inner face: a second octagon inset by 4px, which builds the double
+       frame without an extra element. */
+    &::before {
+        position: absolute;
+        inset: 4px;
+        background:
+            linear-gradient(180deg, rgb(255 255 255 / 5%), transparent 42%),
+            linear-gradient(180deg, var(--lj-panel-hi), var(--lj-panel));
+        content: '';
+        pointer-events: none;
+
+        @include ornaments.octagon(13px);
+    }
+
+    &--bare {
+        min-width: 0;
+        max-width: none;
+        padding: 0;
+        background: none;
+        clip-path: none;
+
+        /* Callers supply their own frame in `bare` mode. */
+        &::before,
+        &::after {
+            display: none;
+        }
+
+        .pixel-panel__trim {
+            display: none;
+        }
+    }
+}
+
+.pixel-panel__trim {
+    position: absolute;
+    left: 50%;
+    z-index: 1;
+    width: min(65%, 22rem);
+    height: 2px;
+    background: repeating-linear-gradient(90deg, var(--lj-accent) 0 5px, transparent 5px 11px);
+    opacity: 0.75;
+    transform: translateX(-50%);
+    pointer-events: none;
+
+    &--top {
+        top: 12px;
+    }
+
+    &--bottom {
+        bottom: 12px;
+    }
+}
+
+.pixel-panel__title {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    margin: 0 0 1.25rem;
+    color: var(--lj-accent-hi);
+    font-size: 1.5rem;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-shadow: 0 2px 0 rgb(0 0 0 / 60%);
+}
+
+.pixel-panel__flourish {
+    flex: 0 0 1.25rem;
+    height: 2px;
+    background: var(--lj-accent);
+    box-shadow: 0 4px 0 rgb(224 164 74 / 35%);
+}
+
+.pixel-panel__body {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    /* A flex item refuses to shrink past its content unless told to; without
+       this the body would grow and push the frame past the viewport. */
+    min-height: 0;
+}

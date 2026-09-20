@@ -1,0 +1,70 @@
+/* ---------------------------------------------------------------------------
+   LivreJam — global pixel-art theme
+   Font: Pixelify Sans (Google Fonts).
+   Ornaments ("notches") come from layered clip-paths so panels and buttons
+   never show a plain, straight border.
+--------------------------------------------------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap');
+
+:root {
+    /* Palette */
+    --lj-ink: #f4ecd8;
+    --lj-ink-dim: #b9ab8e;
+    --lj-bg: #0a0908;
+    --lj-panel: #211a16;
+    --lj-panel-hi: #33271f;
+    --lj-line: #6b5844;
+    --lj-line-hi: #a98a63;
+    --lj-accent: #e0a44a;
+    --lj-accent-hi: #ffd27d;
+    --lj-danger: #c85a4a;
+    --lj-shadow: #070605;
+
+    /* Shared pixel drawing */
+    --lj-notch: 9px;
+    --lj-pixel-shadow: 0 3px 0 var(--lj-shadow), 0 0 0 2px var(--lj-shadow);
+    --lj-font: 'Pixelify Sans', 'Segoe UI', system-ui, sans-serif;
+
+    /* Motion */
+    --lj-punch: cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    display: grid;
+    place-items: center;
+    min-height: 100dvh;
+    margin: 0;
+    color: var(--lj-ink);
+    font-family: var(--lj-font);
+    font-size: 18px;
+    letter-spacing: 0.02em;
+    background: radial-gradient(circle at 50% 35%, #1a1411 0%, var(--lj-bg) 70%);
+}
+
+button,
+input,
+select {
+    font-family: inherit;
+}
+
+/* Accessibility: never animate when the user asked us not to. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+    }
+}

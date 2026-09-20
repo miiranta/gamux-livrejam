@@ -1,0 +1,83 @@
+@use '../../styles/ornaments' as ornaments;
+
+:host {
+    display: block;
+}
+
+.steering {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.steering__option {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.5rem 0.75rem;
+    color: var(--lj-ink);
+    font: inherit;
+    font-size: 1rem;
+    text-align: left;
+    background: linear-gradient(180deg, var(--lj-line-hi), var(--lj-line));
+    border: 0;
+    cursor: pointer;
+
+    @include ornaments.octagon(8px);
+    @include ornaments.studs(transparent, 5px, 3px);
+
+    &:hover {
+        filter: brightness(1.15);
+    }
+
+    @include ornaments.focus-ring;
+
+    &:active {
+        transform: translateY(1px);
+    }
+}
+
+.steering__rim {
+    position: absolute;
+    inset: 3px;
+    background: linear-gradient(180deg, var(--lj-panel-hi), var(--lj-panel));
+    pointer-events: none;
+
+    @include ornaments.octagon(6px);
+}
+
+.steering__option--active {
+    .steering__rim {
+        background: linear-gradient(180deg, #3c2d1c, #2a1f14);
+    }
+
+    .steering__label {
+        color: var(--lj-accent-hi);
+    }
+
+    .steering__icon {
+        filter: drop-shadow(0 0 4px var(--lj-accent));
+    }
+}
+
+.steering__label {
+    position: relative;
+    color: var(--lj-ink-dim);
+    letter-spacing: 0.06em;
+}
+
+.steering__icon {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 1.4rem;
+    height: 1.4rem;
+    color: var(--lj-ink);
+}
+
+.steering__glyph {
+    width: 1.4rem;
+    height: 1.4rem;
+    shape-rendering: crispEdges;
+}

@@ -1,0 +1,14 @@
+<span class="particle-field" aria-hidden="true">
+    @for (particle of particles(); track $index) {
+        <span
+            class="particle-field__mote"
+            [class]="'particle-field__mote--tone-' + particle.tone"
+            [style.left.%]="particle.left"
+            [style.top.%]="particle.top"
+            [style.--lj-size]="particle.size + 'em'"
+            [style.--lj-drift]="particle.drift + 'em'"
+            [style.animation-delay]="particle.delay + 's'"
+            [style.animation-duration]="particle.duration + 's'"
+        ></span>
+    }
+</span>

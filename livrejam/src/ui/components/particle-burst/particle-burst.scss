@@ -1,0 +1,124 @@
+:host {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: block;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.particle-burst {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: block;
+    width: 0;
+    height: 0;
+}
+
+.particle-burst__shard {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--lj-size, 0.2em);
+    height: var(--lj-size, 0.2em);
+    background: var(--lj-accent-hi);
+    /* Start collapsed at the centre, then fly outwards. */
+    transform: rotate(var(--lj-angle, 0deg)) translateX(0) scale(0);
+    animation-name: particle-burst-fly;
+    animation-timing-function: cubic-bezier(0.12, 0.9, 0.25, 1);
+    animation-fill-mode: both;
+
+    &--tone-0 {
+        background: var(--lj-accent-hi);
+    }
+
+    &--tone-1 {
+        background: var(--lj-accent);
+    }
+
+    &--tone-2 {
+        background: var(--lj-ink);
+    }
+
+    &--tone-3 {
+        background: var(--lj-danger);
+    }
+}
+
+/* Thin streaks that lead the blast. */
+.particle-burst__spark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--lj-length, 2em);
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--lj-accent-hi));
+    transform: rotate(var(--lj-angle, 0deg)) translateX(0) scaleX(0);
+    transform-origin: 0 50%;
+    animation-name: particle-burst-spark;
+    animation-timing-function: cubic-bezier(0.1, 0.9, 0.2, 1);
+    animation-fill-mode: both;
+
+    &--tone-1 {
+        background: linear-gradient(90deg, transparent, var(--lj-accent));
+    }
+
+    &--tone-2 {
+        background: linear-gradient(90deg, transparent, var(--lj-ink));
+    }
+
+    &--tone-3 {
+        background: linear-gradient(90deg, transparent, var(--lj-danger));
+    }
+}
+
+@keyframes particle-burst-fly {
+    0% {
+        opacity: 0;
+        transform: rotate(var(--lj-angle, 0deg)) translateX(0) scale(0);
+    }
+
+    /* Snappy launch: most of the distance is covered in the first moments. */
+    12% {
+        opacity: 1;
+        transform: rotate(var(--lj-angle, 0deg))
+            translateX(calc(var(--lj-distance, 1) * 0.45 * var(--lj-burst-spread, 9em))) scale(1.25)
+            scaleY(var(--lj-stretch, 1));
+    }
+
+    /* Tumble while slowing down. */
+    60% {
+        opacity: 1;
+        transform: rotate(calc(var(--lj-angle, 0deg) + var(--lj-spin, 0deg) * 0.6))
+            translateX(calc(var(--lj-distance, 1) * 0.82 * var(--lj-burst-spread, 9em))) scale(0.85)
+            scaleY(calc(var(--lj-stretch, 1) * 0.7));
+    }
+
+    100% {
+        opacity: 0;
+        transform: rotate(calc(var(--lj-angle, 0deg) + var(--lj-spin, 0deg)))
+            translateX(calc(var(--lj-distance, 1) * var(--lj-burst-spread, 9em))) scale(0.25)
+            scaleY(0.5);
+    }
+}
+
+@keyframes particle-burst-spark {
+    0% {
+        opacity: 0;
+        transform: rotate(var(--lj-angle, 0deg)) translateX(0) scaleX(0);
+    }
+
+    15% {
+        opacity: 1;
+        transform: rotate(var(--lj-angle, 0deg))
+            translateX(calc(var(--lj-distance, 1) * 0.5 * var(--lj-burst-spread, 9em))) scaleX(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: rotate(var(--lj-angle, 0deg))
+            translateX(calc(var(--lj-distance, 1) * 1.15 * var(--lj-burst-spread, 9em))) scaleX(0.2);
+    }
+}

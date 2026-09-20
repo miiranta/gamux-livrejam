@@ -1,0 +1,36 @@
+<div class="welcome" appGamepadMenu (back)="close()">
+    <span class="welcome__backdrop" aria-hidden="true"></span>
+
+    <div class="welcome__scroll">
+        <app-pixel-panel class="welcome__panel" titleKey="welcome.title">
+            <div class="welcome__body">
+                @for (key of introKeys; track key) {
+                    <p class="welcome__paragraph">{{ key | translate }}</p>
+                }
+
+                <ul class="welcome__achievements">
+                    @for (id of achievements; track id; let index = $index) {
+                        <li class="welcome__achievement" [style.--lj-index]="index">
+                            <h3 class="welcome__achievement-title">
+                                <span class="welcome__glyph" aria-hidden="true">
+                                    <svg viewBox="0 0 7 7">
+                                        <path d="M3 0h1l3 3v1l-3 3H3L0 4V3z" />
+                                    </svg>
+                                </span>
+                                {{ titleKey(id) | translate }}
+                            </h3>
+                            <p class="welcome__achievement-body">{{ bodyKey(id) | translate }}</p>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </app-pixel-panel>
+    </div>
+
+    <!-- Pinned to the bottom of the viewport: the way out is always in reach. -->
+    <footer class="welcome__footer" data-gamepad-first>
+        <app-pixel-button appHoverSound (pressed)="close()">
+            {{ 'welcome.start' | translate }}
+        </app-pixel-button>
+    </footer>
+</div>

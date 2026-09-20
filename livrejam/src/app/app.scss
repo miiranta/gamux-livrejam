@@ -1,0 +1,51 @@
+:host {
+    display: block;
+}
+
+/* Owns the viewport and the camera-above-canvas layout for every screen. */
+.app-shell {
+    --shell-pad: 1rem;
+    --shell-gap: 1rem;
+    --lj-camera-size: min(
+        33.333vw,
+        calc((100dvh - 2 * var(--shell-pad) - var(--shell-gap)) / 3)
+    );
+    --lj-stage-height: calc(
+        100dvh - 2 * var(--shell-pad) - var(--shell-gap) - var(--lj-camera-size)
+    );
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--shell-gap);
+    height: 100dvh;
+    padding: var(--shell-pad);
+}
+
+.app-shell__match {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--shell-gap);
+    width: 100%;
+    min-height: 0;
+}
+
+/* Hidden rather than removed: the canvas must stay measurable so it never
+   has to re-layout when a menu takes over the screen. */
+.app-shell__match--hidden {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.app-shell__stage {
+    display: grid;
+    place-items: center;
+    height: var(--lj-stage-height);
+    min-height: 0;
+}
+
+.app-shell__camera {
+    display: block;
+    width: var(--lj-camera-size);
+}

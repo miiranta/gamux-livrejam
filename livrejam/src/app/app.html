@@ -1,1 +1,29 @@
-<router-outlet></router-outlet>
+<div class="app-shell">
+    <div class="app-shell__match" [class.app-shell__match--hidden]="flow.isMenu()">
+        <app-camera class="app-shell__camera" />
+
+        <div class="app-shell__stage">
+            <app-game-canvas />
+        </div>
+    </div>
+
+    @if (flow.isMenu()) {
+        <app-main-menu />
+    }
+
+    @if (flow.isPaused()) {
+        <app-pause-menu />
+    }
+
+    @if (flow.isGameOver()) {
+        <app-end-game />
+    }
+
+    @if (flow.cameraGate()) {
+        <app-camera-gate />
+    }
+
+    @if (welcome.isOpen()) {
+        <app-welcome-screen />
+    }
+</div>

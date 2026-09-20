@@ -1,0 +1,173 @@
+{
+    "app": {
+        "title": "Quebrando a Cara",
+        "subtitle": "LivreJam 2026"
+    },
+    "menu": {
+        "play": "Jogar",
+        "resume": "Continuar",
+        "restart": "Reiniciar",
+        "abandon": "Abandonar",
+        "configuration": "Configuração",
+        "credits": "Créditos",
+        "language": "Idioma",
+        "back": "Voltar"
+    },
+    "mode": {
+        "single": "1 Jogador",
+        "two": "2 Jogadores"
+    },
+    "settings": {
+        "audio": "Áudio",
+        "music": "Música",
+        "sfx": "Efeitos sonoros",
+        "voice": "Voz",
+        "voicePreview": "Ouvir uma amostra",
+        "voiceSet": {
+            "set_a": "Normal",
+            "set_b": "Rouco"
+        },
+        "match": "Partida",
+        "matchTime": "Tempo de partida",
+        "matchTimeHint": "Quanto tempo dura cada partida.",
+        "steering": {
+            "label": "Controle do item",
+            "hint": "Escolha o gesto que guia o item na queda.",
+            "67": "67",
+            "rizz": "Rizz"
+        }
+    },
+    "credits": {
+        "title": "Créditos",
+        "special": "Participação especial",
+        "footer": "Feito com carinho para a LivreJam 2026",
+        "githubLabel": "Abrir o perfil de {{handle}} no GitHub",
+        "roles": {
+            "lucas": "Treinamento de IA, reconhecimento facial e controles, level design e muito mais",
+            "angelo": "Trilha e efeitos sonoros, componentes e animações de UI, modos de jogo e muito mais",
+            "teresa": "Voz de apoio na música de fim de jogo"
+        }
+    },
+    "welcome": {
+        "title": "Boas-vindas!",
+        "open": "Sobre o jogo",
+        "start": "Vamos lá!",
+        "intro": {
+            "p1": "Boas vindas ao projeto Quebrando a Cara da LivreJam 2026!",
+            "p2": "O jogo que você está prestes a jogar é uma aberração criada pela dupla Lucas Miranda e Ângelo Pilotto. A ideia do jogo naturalmente se originou a partir do tema “Quebrando a Cara”, e enquanto a primeira coisa que veio à mente perturbada do Miranda foi “67”, o Ângelo pensou em uma mistura de Happy Wheels e Skate 3, cujo intuito é maximizar o quão “quebrado” está seu personagem. Por conta da complexidade disso, a ideia evoluiu para ser algo mais próximo de jogos como Kick the Buddy. Então, ao invés de você controlar o personagem que será “quebrado”, você é o que quebra a cara do personagem, arremessando todo tipo de objetos cortantes e perigosos em direção a ele.",
+            "p3": "Porém, o Miranda, fissurado em redes neurais, resolveu treinar uma IA para colocar no personagem, para que ele fuja das suas tentativas de violência. O seu objetivo então é “quebrar” ao máximo esse personagem, usando uma maneira não-convencional de controle — aquilo que o Miranda mais desejava… Fazendo o 67. Ao iniciar o jogo, habilite sua câmera e mostre o que sabe fazer! E essa ideia também não veio do nada. Você também pode fazer algumas caretas para “quebrar a cara” e ter uma outra maneira de controlar o jogo (e descobrir outras coisas).",
+            "p4": "No mais, nosso objetivo foi concluir a maior quantidade de achievements possível. Segue a lista de cada achievement que acreditamos ter atingido, e como foi atingido:"
+        },
+        "achievements": {
+            "tony": {
+                "title": "Tony fez isso numa caverna",
+                "body": "Tivemos que escolher: fazer o jogo com uma engine (que não conhecemos nenhuma), ou usar IA generativa para fazer o código. Fomos com a segunda opção, então nosso jogo é feito completamente em Angular, sem engine."
+            },
+            "speedruim": {
+                "title": "Speedruim",
+                "body": "A ideia de quebrar o personagem funciona perfeito com o objetivo do jogo. Você pontua quanto mais você acerta ele, e quanto mais você acerta ele, mais machucado ele fica. E quanto mais machucado, mais lento. E quanto mais lento mais fácil acertar, e assim por diante…"
+            },
+            "kompetitivo": {
+                "title": "Kompetitivo",
+                "body": "Tem primariamente duas maneiras de competir nesse jogo. O mais direto é: quem pontuar mais, contra a IA. Porém, pode ser mais divertido ver quem consegue sobreviver recebendo a menor quantidade de pontos, também. Para isso, o modo de dois jogadores permite que um segundo jogador controle o personagem (também com controle remoto!) ao invés da IA. Nesse caso, o segundo jogador tem o objetivo de fazer o primeiro jogador ter a menor pontuação possível."
+            },
+            "oneUp": {
+                "title": "1 Up!",
+                "body": "Acreditamos que a morte do boneco ser o objetivo final do jogador, atingida ao final do temporizador, seja algo inusitado. Apesar de termos nos inspirado nos jogos mencionados, nenhum deles possui a mesma mecânica que o nosso."
+            },
+            "youCanPlay": {
+                "title": "Você também pode jogar!",
+                "body": "Você não precisa de nada além do seu próprio corpo para jogar o jogo! Se não puder usar seus braços, use seus olhos!"
+            },
+            "helpOther": {
+                "title": "Aquele que você ajuda outro grupo",
+                "body": "Se tudo ocorrer bem, um colega nosso terá um easter egg do nosso jogo no dele…"
+            },
+            "oneManBand": {
+                "title": "Banda de um Gamuto só",
+                "body": "Agora, esse achievement sim é o sonho do Ângelo. Ele AMA fazer sons com a boca, e músicas escrachadas estilo acapella, mas de péssima qualidade. Fazer esse achievement foi a parte preferida dele."
+            },
+            "altControl": {
+                "title": "Controle Alternativo",
+                "body": "Bem alternativo ;)"
+            },
+            "onesAndZeros": {
+                "title": "Uns e zeros",
+                "body": "Auto-explicativo"
+            },
+            "libre": {
+                "title": "Livre",
+                "body": "Mesmo usando IA generativa, o modelo que usamos foi o DeepSeek. Fora isso, VSCode, Linux (Ubuntu), Angular, Audacity…"
+            },
+            "joymaxxing": {
+                "title": "Joymaxxing",
+                "body": "Não temos dúvida que nos divertimos bastante! Espero que você também se divirta com essa obra maluca que construímos. Obrigado por jogar!"
+            }
+        }
+    },
+    "language": {
+        "title": "Idioma",
+        "en-us": "English (US)",
+        "pt-br": "Português (BR)"
+    },
+    "fullscreen": {
+        "enter": "Entrar em tela cheia",
+        "exit": "Sair da tela cheia"
+    },
+    "camera": {
+        "gate": {
+            "title": "Câmera necessária",
+            "hint": "Quebrando a Cara controla o personagem com o seu rosto. Permita o acesso à câmera para jogar.",
+            "retry": "Verificar de novo",
+            "checking": "Verificando…",
+            "back": "Voltar ao menu",
+            "reason": {
+                "blocked": "O acesso à câmera está bloqueado. Permita nas configurações do site no navegador e verifique de novo.",
+                "missing": "Nenhuma câmera foi encontrada neste dispositivo. Conecte uma e verifique de novo.",
+                "busy": "A câmera está em uso por outro app ou aba. Feche-o e verifique de novo.",
+                "unsupported": "A câmera não suporta as configurações que o jogo precisa.",
+                "unknown": "Não foi possível iniciar a câmera."
+            }
+        }
+    },
+    "hud": {
+        "score": "Pontos",
+        "best": "Recorde",
+        "survived": "Sobreviveu",
+        "dodges": "Desvios",
+        "nearMisses": "Quase",
+        "maxSpeed": "Vel. máxima",
+        "dropSpeed": "Queda",
+        "ai": "IA",
+        "policy": "política",
+        "pause": "Pausar",
+        "loading": "Carregando a masmorra…",
+        "hint": "A / D mover · S acelerar queda · Espaço soltar · a IA pilota o personagem",
+        "state": {
+            "idle": "ociosa",
+            "loading": "carregando",
+            "error": "erro"
+        },
+        "dev": {
+            "reloadAi": "Recarregar IA",
+            "faster": "Rapido",
+            "colliders": "Colisores"
+        },
+        "damage": "Dano",
+        "tier": "Nivel",
+        "dash": "Avanco",
+        "mode": "Modo",
+        "player": "Jogador",
+        "gamepad": "Controle",
+        "connected": "conectado",
+        "disconnected": "nenhum",
+        "hintPlayer": "Setas ou A/D mover · Ctrl correr · Cima / W / Espaço pular · Shift avanço · Enter soltar"
+    },
+    "end": {
+        "title": "It's over...",
+        "subtitle": "Não sobra nada",
+        "score": "Pontos",
+        "retry": "Tentar de novo",
+        "exit": "Sair"
+    }
+}

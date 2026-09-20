@@ -1,0 +1,216 @@
+{
+  "source": "Universal LPC Spritesheet Character Generator",
+  "source_url": "https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator",
+  "generator_url": "https://liberatedpixelcup.github.io/Universal-LPC-Spritesheet-Character-Generator/",
+  "body_type": "male",
+  "frame_size": 64,
+  "row_order": [
+    "up",
+    "left",
+    "down",
+    "right"
+  ],
+  "character": {
+    "animations": {
+      "walk": {
+        "columns": 9,
+        "rows": 4,
+        "width": 576,
+        "height": 256
+      },
+      "run": {
+        "columns": 8,
+        "rows": 4,
+        "width": 512,
+        "height": 256
+      },
+      "hurt": {
+        "columns": 6,
+        "rows": 1,
+        "width": 384,
+        "height": 64
+      },
+      "jump": {
+        "columns": 5,
+        "rows": 4,
+        "width": 320,
+        "height": 256
+      }
+    },
+    "tiers": [
+      {
+        "key": "damage_0",
+        "label": "Intacto",
+        "layers": [
+          "body",
+          "legs",
+          "boots",
+          "shirt",
+          "head",
+          "hair"
+        ],
+        "animations": [
+          "walk",
+          "run",
+          "hurt",
+          "jump"
+        ],
+        "path": "damage_0"
+      },
+      {
+        "key": "damage_1",
+        "label": "Boca sangrando",
+        "layers": [
+          "body",
+          "legs",
+          "boots",
+          "shirt",
+          "head",
+          "hair",
+          "mouth"
+        ],
+        "animations": [
+          "walk",
+          "run",
+          "hurt",
+          "jump"
+        ],
+        "path": "damage_1"
+      },
+      {
+        "key": "damage_2",
+        "label": "+ olho direito sangrando",
+        "layers": [
+          "body",
+          "legs",
+          "boots",
+          "shirt",
+          "head",
+          "hair",
+          "mouth",
+          "eye_right"
+        ],
+        "animations": [
+          "walk",
+          "run",
+          "hurt",
+          "jump"
+        ],
+        "path": "damage_2"
+      },
+      {
+        "key": "damage_3",
+        "label": "+ braco ferido",
+        "layers": [
+          "body",
+          "legs",
+          "boots",
+          "shirt",
+          "head",
+          "hair",
+          "mouth",
+          "eye_right",
+          "arm"
+        ],
+        "animations": [
+          "walk",
+          "run",
+          "hurt",
+          "jump"
+        ],
+        "path": "damage_3"
+      },
+      {
+        "key": "damage_4",
+        "label": "+ torso enfaixado",
+        "layers": [
+          "body",
+          "legs",
+          "boots",
+          "shirt",
+          "head",
+          "hair",
+          "mouth",
+          "eye_right",
+          "arm",
+          "bandages"
+        ],
+        "animations": [
+          "walk",
+          "hurt"
+        ],
+        "path": "damage_4"
+      },
+      {
+        "key": "damage_5",
+        "label": "+ olho esquerdo",
+        "layers": [
+          "body",
+          "legs",
+          "boots",
+          "shirt",
+          "head",
+          "hair",
+          "mouth",
+          "eye_right",
+          "eye_left",
+          "arm",
+          "bandages"
+        ],
+        "animations": [
+          "walk",
+          "hurt"
+        ],
+        "path": "damage_5"
+      },
+      {
+        "key": "damage_6",
+        "label": "+ costelas expostas",
+        "layers": [
+          "body",
+          "legs",
+          "boots",
+          "shirt",
+          "head",
+          "hair",
+          "mouth",
+          "eye_right",
+          "eye_left",
+          "arm",
+          "bandages",
+          "ribs"
+        ],
+        "animations": [
+          "walk",
+          "hurt"
+        ],
+        "path": "damage_6"
+      },
+      {
+        "key": "damage_7",
+        "label": "+ cranio aberto",
+        "layers": [
+          "body",
+          "legs",
+          "boots",
+          "shirt",
+          "head",
+          "hair",
+          "mouth",
+          "eye_right",
+          "eye_left",
+          "arm",
+          "bandages",
+          "ribs",
+          "brain"
+        ],
+        "animations": [
+          "walk",
+          "hurt"
+        ],
+        "path": "damage_7"
+      }
+    ],
+    "preview": "preview.png"
+  }
+}

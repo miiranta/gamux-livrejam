@@ -1,0 +1,80 @@
+<div class="end-game" appGamepadMenu (back)="exit()">
+    <!--
+        The shake lives on this inner layer, not on the host: `:host` is
+        `position: fixed`, and animating a transform on it would turn it into
+        the containing block for the absolutely-positioned corners below.
+    -->
+    <div class="end-game__shake">
+        <span class="end-game__backdrop" aria-hidden="true"></span>
+        <span class="end-game__corner end-game__corner--tl" aria-hidden="true"></span>
+        <span class="end-game__corner end-game__corner--tr" aria-hidden="true"></span>
+        <span class="end-game__corner end-game__corner--bl" aria-hidden="true"></span>
+        <span class="end-game__corner end-game__corner--br" aria-hidden="true"></span>
+
+        <div class="end-game__stack">
+            <!-- 1) Title + subtitle: slams in, then explodes. -->
+            <header class="end-game__header">
+                <h1 class="end-game__title">{{ 'end.title' | translate }}</h1>
+                <p class="end-game__subtitle">{{ 'end.subtitle' | translate }}</p>
+                <app-particle-burst
+                    class="end-game__burst"
+                    [count]="54"
+                    [sparks]="16"
+                    [seed]="11"
+                    [delay]="0.4"
+                    [spread]="15"
+                />
+                <app-particle-burst
+                    class="end-game__burst end-game__burst--echo"
+                    [count]="26"
+                    [seed]="13"
+                    [delay]="0.52"
+                    [spread]="22"
+                />
+            </header>
+
+            <!-- 2) Score card: slams in, cracks the backdrop and explodes. -->
+            <div class="end-game__score-wrap">
+                <app-crack-overlay
+                    class="end-game__cracks"
+                    [branches]="12"
+                    [seed]="23"
+                    [delay]="0.9"
+                />
+
+                <app-pixel-panel bare class="end-game__score-panel">
+                    <div class="end-game__score">
+                        <span class="end-game__score-label">{{ 'end.score' | translate }}</span>
+                        <span class="end-game__score-value">{{ score() }}</span>
+                    </div>
+                </app-pixel-panel>
+
+                <app-particle-burst
+                    class="end-game__burst"
+                    [count]="70"
+                    [sparks]="22"
+                    [seed]="29"
+                    [delay]="0.9"
+                    [spread]="19"
+                />
+                <app-particle-burst
+                    class="end-game__burst end-game__burst--echo"
+                    [count]="34"
+                    [seed]="31"
+                    [delay]="1.03"
+                    [spread]="28"
+                />
+            </div>
+
+            <!-- 3) Actions: no tilt, quick fade-in. -->
+            <div class="end-game__actions" data-gamepad-first>
+                <app-pixel-button appHoverSound (pressed)="retry()">
+                    {{ 'end.retry' | translate }}
+                </app-pixel-button>
+                <app-pixel-button variant="ghost" appHoverSound (pressed)="exit()">
+                    {{ 'end.exit' | translate }}
+                </app-pixel-button>
+            </div>
+        </div>
+    </div>
+</div>

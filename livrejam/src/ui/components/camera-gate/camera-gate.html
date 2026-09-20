@@ -1,0 +1,29 @@
+<div class="camera-gate" appGamepadMenu (back)="back()">
+    <span class="camera-gate__backdrop" aria-hidden="true"></span>
+
+    <app-pixel-panel class="camera-gate__panel" titleKey="camera.gate.title">
+        <div class="camera-gate__body">
+            <app-camera class="camera-gate__preview" [embedded]="true" />
+
+            <div class="camera-gate__copy">
+                <p class="camera-gate__reason">{{ reasonKey() | translate }}</p>
+
+                <p class="camera-gate__hint">{{ 'camera.gate.hint' | translate }}</p>
+
+                @if (showDetail()) {
+                    <p class="camera-gate__detail">{{ camera.failure()?.detail }}</p>
+                }
+            </div>
+        </div>
+
+        <div class="camera-gate__actions">
+            <app-pixel-button appHoverSound [disabled]="retrying()" (pressed)="retry()">
+                {{ (retrying() ? 'camera.gate.checking' : 'camera.gate.retry') | translate }}
+            </app-pixel-button>
+
+            <app-pixel-button variant="ghost" appHoverSound (pressed)="back()">
+                {{ 'camera.gate.back' | translate }}
+            </app-pixel-button>
+        </div>
+    </app-pixel-panel>
+</div>

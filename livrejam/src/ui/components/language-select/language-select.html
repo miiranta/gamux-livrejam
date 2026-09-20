@@ -1,0 +1,16 @@
+<div class="language-select" role="radiogroup" [attr.aria-label]="'language.title' | translate">
+    @for (option of language.options; track option.code) {
+        <button
+            type="button"
+            class="language-select__option"
+            role="radio"
+            appHoverSound
+            [class.language-select__option--active]="language.lang() === option.code"
+            [attr.aria-checked]="language.lang() === option.code"
+            (click)="select(option.code)"
+        >
+            <span class="language-select__rim" aria-hidden="true"></span>
+            <span class="language-select__label">{{ option.labelKey | translate }}</span>
+        </button>
+    }
+</div>

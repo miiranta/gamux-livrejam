@@ -1,0 +1,57 @@
+:host {
+    position: absolute;
+    inset: 0;
+    display: block;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.particle-field {
+    position: absolute;
+    inset: 0;
+    display: block;
+}
+
+.particle-field__mote {
+    position: absolute;
+    width: var(--lj-size, 0.2em);
+    height: var(--lj-size, 0.2em);
+    background: var(--lj-accent);
+    opacity: 0;
+    animation-name: particle-field-drift;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+
+    &--tone-0 {
+        background: var(--lj-accent);
+    }
+
+    &--tone-1 {
+        background: var(--lj-line-hi);
+    }
+
+    &--tone-2 {
+        background: var(--lj-ink-dim);
+    }
+}
+
+@keyframes particle-field-drift {
+    0% {
+        opacity: 0;
+        transform: translate(0, 1.5em);
+    }
+
+    /* Fade in quickly once a mote's delay elapses. */
+    6% {
+        opacity: 0.75;
+    }
+
+    85% {
+        opacity: 0.75;
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(var(--lj-drift, 0), -3.5em);
+    }
+}

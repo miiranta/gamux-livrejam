@@ -1,0 +1,62 @@
+<div class="voice-select">
+    <button
+        type="button"
+        class="voice-select__head"
+        appHoverSound
+        [attr.aria-expanded]="expanded()"
+        aria-controls="voice-select-list"
+        (click)="toggle()"
+    >
+        <span class="voice-select__rim" aria-hidden="true"></span>
+        <span class="voice-select__head-label">{{ 'settings.voice' | translate }}</span>
+        <span class="voice-select__head-value">{{ currentLabelKey() | translate }}</span>
+        <span
+            class="voice-select__chevron"
+            [class.voice-select__chevron--open]="expanded()"
+            aria-hidden="true"
+        ></span>
+    </button>
+
+    @if (expanded()) {
+        <div
+            id="voice-select-list"
+            class="voice-select__list"
+            role="radiogroup"
+            [attr.aria-label]="'settings.voice' | translate"
+        >
+            @for (option of options(); track option.key; let index = $index) {
+                <div
+                    class="voice-select__option"
+                    [class.voice-select__option--active]="settings.voiceSet() === option.key"
+                    [style.--lj-index]="index"
+                >
+                    <button
+                        type="button"
+                        class="voice-select__pick"
+                        role="radio"
+                        appHoverSound
+                        [attr.aria-checked]="settings.voiceSet() === option.key"
+                        (click)="select(option.key)"
+                    >
+                        <span class="voice-select__rim" aria-hidden="true"></span>
+                        <span class="voice-select__label">
+                            {{ voiceSetLabelKey(option.key) | translate }}
+                        </span>
+                    </button>
+
+                    <button
+                        type="button"
+                        class="voice-select__play"
+                        appHoverSound
+                        [attr.aria-label]="'settings.voicePreview' | translate"
+                        [attr.title]="'settings.voicePreview' | translate"
+                        (click)="preview($event, option.key)"
+                    >
+                        <span class="voice-select__rim" aria-hidden="true"></span>
+                        <span class="voice-select__play-glyph" aria-hidden="true"></span>
+                    </button>
+                </div>
+            }
+        </div>
+    }
+</div>

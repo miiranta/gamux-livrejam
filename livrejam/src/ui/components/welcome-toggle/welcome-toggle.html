@@ -1,0 +1,16 @@
+<button
+    type="button"
+    class="welcome-toggle"
+    appHoverSound
+    [attr.aria-label]="'welcome.open' | translate"
+    [attr.title]="'welcome.open' | translate"
+    (click)="open()"
+>
+    <span class="welcome-toggle__rim" aria-hidden="true"></span>
+    <span class="welcome-toggle__glyph" aria-hidden="true">
+        <!-- Chunky pixel "i": a dot and a stem, drawn on a 16px grid. -->
+        <svg viewBox="0 0 16 16" class="welcome-toggle__icon">
+            <path d="M6 1h4v3H6zM5 6h5v6h2v3H4v-3h2V9H5z" fill="currentColor" />
+        </svg>
+    </span>
+</button>

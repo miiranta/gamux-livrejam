@@ -1,0 +1,116 @@
+@use '../../styles/ornaments' as ornaments;
+
+:host {
+    display: inline-flex;
+    --lj-notch: 7px;
+
+    @include ornaments.pixel-drop(4px);
+}
+
+:host(.pixel-button-host--block) {
+    display: flex;
+    width: 100%;
+}
+
+.pixel-button {
+    position: relative;
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4em;
+    min-height: 2.9em;
+    padding: 0.6em 1.5em;
+    color: var(--lj-ink);
+    font: inherit;
+    font-size: 1.05rem;
+    letter-spacing: 0.04em;
+    background: linear-gradient(180deg, var(--lj-line-hi), var(--lj-line));
+    border: 0;
+    cursor: pointer;
+
+    @include ornaments.octagon();
+    @include ornaments.studs(var(--lj-accent), 5px, 4px);
+
+    &:disabled {
+        cursor: not-allowed;
+        filter: saturate(0.35) brightness(0.75);
+    }
+
+    /* The lit frame below is the ring, so the UA outline stays off. Both
+       `:focus` and `:focus-visible` are matched because a gamepad focuses
+       programmatically, which never matches `:focus-visible`. */
+    &:is(:focus, :focus-visible) {
+        outline: none;
+    }
+}
+
+/* Inner face: sits on top of the gradient to draw the frame line. */
+.pixel-button__rim {
+    position: absolute;
+    inset: 3px;
+    background: linear-gradient(180deg, var(--lj-panel-hi), var(--lj-panel));
+    pointer-events: none;
+
+    @include ornaments.octagon(5px);
+}
+
+.pixel-button__label {
+    position: relative;
+    text-shadow: 0 2px 0 rgb(0 0 0 / 55%);
+}
+
+/* --- Variants ----------------------------------------------------------- */
+
+/* Primary action: warmer frame and lit label so it reads as the default choice. */
+:host(:not(.pixel-button-host--ghost):not(.pixel-button-host--danger)) .pixel-button {
+    background: linear-gradient(180deg, #9a7647, #7a5a37);
+
+    .pixel-button__rim {
+        background: linear-gradient(180deg, #4c381f, #33261a);
+    }
+
+    .pixel-button__label {
+        color: var(--lj-accent-hi);
+    }
+}
+
+:host(.pixel-button-host--ghost) .pixel-button {
+    background: linear-gradient(180deg, var(--lj-line), #4a3b2c);
+}
+
+:host(.pixel-button-host--ghost) .pixel-button__rim {
+    background: linear-gradient(180deg, #241d18, #191411);
+}
+
+:host(.pixel-button-host--danger) .pixel-button {
+    background: linear-gradient(180deg, #d98b6f, var(--lj-danger));
+}
+
+:host(.pixel-button-host--danger) .pixel-button__rim {
+    background: linear-gradient(180deg, #3a1d18, #291410);
+}
+
+/* --- Interaction -------------------------------------------------------- */
+
+.pixel-button:not(:disabled) {
+    transition:
+        transform 0.06s steps(2),
+        filter 0.12s ease-out;
+
+    &:hover {
+        filter: brightness(1.18);
+
+        .pixel-button__label {
+            color: var(--lj-accent-hi);
+        }
+    }
+
+    &:active {
+        transform: translateY(2px);
+    }
+
+    &:is(:focus, :focus-visible) {
+        filter: brightness(1.18) drop-shadow(0 0 0 var(--lj-accent));
+    }
+}

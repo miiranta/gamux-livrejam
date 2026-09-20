@@ -1,0 +1,173 @@
+// ---------------------------------------------------------------------------
+// Shared pixel-art ornaments.
+//
+// Panels and buttons are never plain rectangles: every frame gets octagonal
+// cut corners, dashed inner trim and small corner studs. Import with
+// `@use '../../styles/ornaments' as *;`
+// ---------------------------------------------------------------------------
+
+/// Octagon silhouette: each corner is "bitten" by $notch pixels, which is what
+/// gives the frames their hand-made pixel look instead of a straight border.
+@mixin octagon($notch: var(--lj-notch)) {
+    clip-path: polygon(
+        #{$notch} 0,
+        calc(100% - #{$notch}) 0,
+        100% #{$notch},
+        100% calc(100% - #{$notch}),
+        calc(100% - #{$notch}) 100%,
+        #{$notch} 100%,
+        0 calc(100% - #{$notch}),
+        0 #{$notch}
+    );
+}
+
+/// Four little square studs, one per corner, drawn as an `::after` overlay so
+/// they never clash with the element's own `background-image` (setting the
+/// studs directly would replace the frame gradient).
+@mixin studs($color: var(--lj-accent), $inset: 6px, $size: 4px) {
+    &::after {
+        position: absolute;
+        inset: 0;
+        background-image:
+            linear-gradient(#{$color}, #{$color}), linear-gradient(#{$color}, #{$color}),
+            linear-gradient(#{$color}, #{$color}), linear-gradient(#{$color}, #{$color});
+        background-repeat: no-repeat;
+        background-size: #{$size} #{$size};
+        background-position:
+            #{$inset} #{$inset},
+            calc(100% - #{$inset}) #{$inset},
+            #{$inset} calc(100% - #{$inset}),
+            calc(100% - #{$inset}) calc(100% - #{$inset});
+        content: '';
+        pointer-events: none;
+    }
+}
+
+/// Hard offset shadow, applied to the host so `clip-path` on the child does
+/// not swallow it.
+@mixin pixel-drop($offset: 4px, $color: var(--lj-shadow)) {
+    filter: drop-shadow(0 #{$offset} 0 #{$color});
+}
+
+/// Ring around the focused control.
+///
+/// `:focus` and `:focus-visible` are matched together on purpose: browsers only
+/// set `:focus-visible` after keyboard or pointer input, and a gamepad moves
+/// focus programmatically — so a `:focus-visible`-only ring is invisible while
+/// navigating with a controller.
+///
+/// `:is()` keeps it to one selector: several components `@extend` a shared
+/// placeholder, and a second selector would be duplicated per `@extend`.
+@mixin focus-ring($offset: 2px) {
+    &:is(:focus, :focus-visible) {
+        outline: 2px solid var(--lj-accent-hi);
+        outline-offset: $offset;
+    }
+}
+
+/// Scroll area that keeps the overflow inside the panel it belongs to.
+///
+/// A popup taller than the viewport used to hand its overflow to the page, so
+/// the browser's own scrollbar appeared next to the pixel frames. This keeps
+/// the scrolling where the content is and dresses the bar like the rest of the
+/// game: a chunky accent block on a dark track, with no rounded corners.
+///
+/// Firefox only exposes `scrollbar-width`/`scrollbar-color`, so it gets the
+/// thin themed bar; WebKit/Blink get the full pixel treatment.
+@mixin pixel-scroll($track: rgb(8 6 5 / 55%)) {
+    overflow-y: auto;
+    /* The page behind a popup must never scroll once the popup hits its end. */
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--lj-line-hi) #{$track};
+
+    &::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: #{$track};
+        box-shadow: inset 0 0 0 2px rgb(0 0 0 / 45%);
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, var(--lj-line-hi), var(--lj-line));
+        box-shadow:
+            inset 0 0 0 2px var(--lj-shadow),
+            inset 0 2px 0 rgb(255 255 255 / 12%);
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(180deg, var(--lj-accent-hi), var(--lj-accent));
+    }
+}
+
+/// "Punches" the element into view: it snaps in from a larger, rotated state
+/// with a springy overshoot. A tilt can be kept once it settles through the
+/// `--lj-tilt` custom property (e.g. `--lj-tilt: -1.2deg`).
+@mixin punch-in($delay: 0s) {
+    animation: lj-punch-in 0.42s var(--lj-punch) #{$delay} both;
+}
+
+/// Quick, plain fade used for follow-up elements (buttons, hints).
+@mixin fade-in($delay: 0s, $duration: 0.22s) {
+    animation: lj-fade-in #{$duration} ease-out #{$delay} both;
+}
+
+/// Heavier version of {@link punch-in}: the element flies in from much
+/// further away and overshoots harder, so the impact is clearly readable.
+/// `--lj-tilt` is the resting angle.
+@mixin impact-in($delay: 0s, $duration: 0.85s) {
+    animation: lj-impact-in #{$duration} cubic-bezier(0.16, 1.5, 0.36, 1) #{$delay} both;
+}
+
+@keyframes lj-punch-in {
+    0% {
+        opacity: 0;
+        transform: scale(1.7) rotate(calc(var(--lj-tilt, 0deg) + 7deg));
+    }
+
+    60% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1) rotate(var(--lj-tilt, 0deg));
+    }
+}
+
+@keyframes lj-impact-in {
+    0% {
+        opacity: 0;
+        transform: scale(3.4) rotate(calc(var(--lj-tilt, 0deg) + 16deg));
+    }
+
+    18% {
+        opacity: 1;
+    }
+
+    /* Overshoot past the resting size, then settle back. */
+    55% {
+        transform: scale(0.9) rotate(calc(var(--lj-tilt, 0deg) - 2.5deg));
+    }
+
+    75% {
+        transform: scale(1.06) rotate(calc(var(--lj-tilt, 0deg) + 1deg));
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1) rotate(var(--lj-tilt, 0deg));
+    }
+}
+
+@keyframes lj-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}

@@ -1,0 +1,215 @@
+:host {
+    display: block;
+}
+
+.game-canvas {
+    position: relative;
+    display: grid;
+    place-items: center;
+}
+
+.game-canvas__surface {
+    display: block;
+    max-width: 100%;
+    max-height: var(--lj-stage-height, 60dvh);
+    background: #0b0d12;
+    border-radius: 0.5rem;
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 8%);
+    image-rendering: pixelated;
+}
+
+.game-canvas__topbar {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    left: 0.5rem;
+    z-index: 2;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: flex-start;
+    justify-content: space-between;
+    pointer-events: none;
+}
+
+.game-canvas__hud {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: flex-start;
+    min-width: 0;
+}
+
+.game-canvas__chip {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    color: #cdd6e6;
+    font-size: 0.7rem;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    background: rgb(10 13 20 / 78%);
+    border: 1px solid rgb(255 255 255 / 10%);
+    border-radius: 999px;
+
+    b {
+        color: #fff;
+    }
+
+    &--error {
+        color: #ff9c9c;
+        border-color: rgb(255 156 156 / 45%);
+    }
+
+    &--danger {
+        color: #ff9c9c;
+        border-color: rgb(255 138 138 / 45%);
+    }
+
+    &--muted {
+        color: #8b95a6;
+    }
+}
+
+.game-canvas__dot {
+    width: 6px;
+    height: 6px;
+    background: #7dffb0;
+    border-radius: 50%;
+
+    &--warn {
+        background: #ffd25a;
+    }
+
+    &--danger {
+        background: #ff8a8a;
+    }
+
+    &--accent {
+        background: #7dc8ff;
+    }
+
+    &--clock {
+        background: #ffe9a8;
+    }
+}
+
+.game-canvas__chip--clock {
+    color: var(--lj-accent-hi, #7dc8ff);
+
+    b {
+        color: var(--lj-accent-hi, #7dc8ff);
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+.game-canvas__controls {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 0.35rem;
+    pointer-events: auto;
+}
+
+.game-canvas__button {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 1.6rem;
+    padding: 0.25rem 0.6rem;
+    color: #cdd6e6;
+    font: inherit;
+    font-size: 0.7rem;
+    background: rgb(10 13 20 / 85%);
+    border: 1px solid rgb(255 255 255 / 14%);
+    border-radius: 999px;
+    cursor: pointer;
+
+    &:hover {
+        color: #fff;
+        border-color: rgb(125 200 255 / 55%);
+    }
+
+    &--pause {
+        width: 1.6rem;
+        padding: 0;
+    }
+}
+
+.game-canvas__pause-rim {
+    position: absolute;
+    inset: 3px;
+    border: 1px solid rgb(255 255 255 / 18%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.game-canvas__pause-glyph {
+    position: relative;
+    width: 0.6rem;
+    height: 0.62rem;
+    background: linear-gradient(
+        90deg,
+        #cdd6e6 0 30%,
+        transparent 30% 70%,
+        #cdd6e6 70% 100%
+    );
+}
+
+.game-canvas__hint {
+    position: absolute;
+    bottom: 0.5rem;
+    left: 50%;
+    margin: 0;
+    padding: 0.2rem 0.6rem;
+    color: #9aa6ba;
+    font-size: 0.7rem;
+    background: rgb(10 13 20 / 78%);
+    border-radius: 999px;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.game-canvas__debug {
+    position: absolute;
+    right: 0.5rem;
+    bottom: 0.5rem;
+    max-width: 22rem;
+    margin: 0;
+    padding: 0.3rem 0.5rem;
+    color: #ff9c9c;
+    font-family: ui-monospace, monospace;
+    font-size: 0.65rem;
+    background: rgb(10 13 20 / 88%);
+    border-radius: 0.3rem;
+    pointer-events: none;
+}
+
+.game-canvas__veil {
+    display: grid;
+    justify-items: center;
+    gap: 0.75rem;
+    padding: 2rem 3rem;
+    color: #cdd6e6;
+
+    &--error {
+        color: #ff9c9c;
+    }
+}
+
+.game-canvas__spinner {
+    width: 22px;
+    height: 22px;
+    border: 2px solid rgb(255 255 255 / 18%);
+    border-top-color: #7dc8ff;
+    border-radius: 50%;
+    animation: game-canvas-spin 0.8s linear infinite;
+}
+
+@keyframes game-canvas-spin {
+    to {
+        transform: rotate(1turn);
+    }
+}

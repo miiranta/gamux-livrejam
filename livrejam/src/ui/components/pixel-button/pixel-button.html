@@ -1,0 +1,6 @@
+<button type="button" class="pixel-button" [disabled]="disabled()" (click)="handleClick($event)">
+    <span class="pixel-button__rim" aria-hidden="true"></span>
+    <span class="pixel-button__label">
+        <ng-content />
+    </span>
+</button>

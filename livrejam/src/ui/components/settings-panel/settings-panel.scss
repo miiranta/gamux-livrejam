@@ -1,0 +1,57 @@
+@use '../../styles/ornaments' as ornaments;
+
+:host {
+    display: block;
+    animation: settings-slide 0.22s ease-out both;
+}
+
+.settings {
+    display: grid;
+    gap: 1rem;
+}
+
+.settings__group {
+    display: grid;
+    gap: 0.85rem;
+    padding: 0.85rem 1rem 1rem;
+    background: rgb(8 6 5 / 45%);
+    box-shadow: inset 0 0 0 2px rgb(0 0 0 / 45%);
+
+    @include ornaments.octagon(10px);
+}
+
+.settings__legend {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0;
+    color: var(--lj-accent);
+    font-size: 0.95rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+
+    &::after {
+        flex: 1;
+        height: 2px;
+        background: repeating-linear-gradient(90deg, var(--lj-line-hi) 0 4px, transparent 4px 8px);
+        content: '';
+    }
+}
+
+.settings__hint {
+    margin: 0;
+    color: var(--lj-ink-dim);
+    font-size: 0.85rem;
+}
+
+@keyframes settings-slide {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

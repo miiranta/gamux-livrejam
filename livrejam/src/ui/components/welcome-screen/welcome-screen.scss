@@ -1,0 +1,142 @@
+@use '../../styles/ornaments' as ornaments;
+
+:host {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+}
+
+/* Rows: the scrolling story, then the footer pinned to the viewport bottom. */
+.welcome {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.welcome__backdrop {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 50% 30%, rgb(28 22 16 / 45%) 0%, transparent 65%),
+        rgb(4 3 3 / 96%);
+    animation: welcome-fade 0.25s ease-out both;
+}
+
+.welcome__scroll {
+    position: relative;
+    display: grid;
+    padding: 1.5rem 1.5rem 0.5rem;
+    /* Centred while the story fits on screen, scrolled from the top once it
+       does not: `safe` is what stops a tall panel from having its first lines
+       cut off above the scroll area. */
+    justify-items: center;
+    align-content: safe center;
+
+    @include ornaments.pixel-scroll(transparent);
+}
+
+.welcome__panel {
+    display: block;
+    margin: 0 auto;
+    animation: welcome-in 0.3s var(--lj-punch) both;
+}
+
+.welcome__body {
+    display: grid;
+    gap: 1rem;
+}
+
+.welcome__paragraph {
+    margin: 0;
+    color: var(--lj-ink-dim);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    text-align: left;
+}
+
+/* --- Achievements -------------------------------------------------------- */
+
+.welcome__achievements {
+    display: grid;
+    gap: 0.6rem;
+    margin: 0.35rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.welcome__achievement {
+    display: grid;
+    gap: 0.35rem;
+    padding: 0.75rem 0.9rem;
+    background: rgb(8 6 5 / 45%);
+    box-shadow: inset 0 0 0 2px rgb(0 0 0 / 45%);
+
+    @include ornaments.octagon(10px);
+    @include ornaments.fade-in(calc(var(--lj-index, 0) * 0.04s), 0.26s);
+}
+
+.welcome__achievement-title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    color: var(--lj-accent-hi);
+    font-size: 1rem;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+}
+
+.welcome__achievement-body {
+    margin: 0;
+    color: var(--lj-ink-dim);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.welcome__glyph {
+    display: inline-grid;
+    flex: 0 0 auto;
+    place-items: center;
+
+    svg {
+        width: 0.8em;
+        height: 0.8em;
+        fill: currentColor;
+        shape-rendering: crispEdges;
+    }
+}
+
+/* --- Footer -------------------------------------------------------------- */
+
+.welcome__footer {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    padding: 1rem 1.5rem calc(1rem + env(safe-area-inset-bottom));
+    /* Fades the scrolling text out behind the button instead of cutting it. */
+    background: linear-gradient(180deg, transparent, rgb(4 3 3 / 92%) 45%);
+    animation: welcome-fade 0.3s ease-out 0.15s both;
+}
+
+@keyframes welcome-fade {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes welcome-in {
+    from {
+        opacity: 0;
+        transform: translateY(1rem) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}

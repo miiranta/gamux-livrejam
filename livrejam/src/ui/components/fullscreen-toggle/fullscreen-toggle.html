@@ -1,0 +1,33 @@
+<button
+    type="button"
+    class="fullscreen-toggle"
+    appHoverSound
+    [disabled]="!fullscreen.isSupported()"
+    [attr.aria-pressed]="fullscreen.isFullscreen()"
+    [attr.aria-label]="labelKey() | translate"
+    [attr.title]="labelKey() | translate"
+    (click)="toggle()"
+>
+    <span class="fullscreen-toggle__rim" aria-hidden="true"></span>
+    <span class="fullscreen-toggle__glyph" aria-hidden="true">
+        @if (fullscreen.isFullscreen()) {
+            <svg viewBox="0 0 16 16" class="fullscreen-toggle__icon">
+                <path
+                    d="M6 1v5H1M10 1v5h5M6 15v-5H1M10 15v-5h5"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                />
+            </svg>
+        } @else {
+            <svg viewBox="0 0 16 16" class="fullscreen-toggle__icon">
+                <path
+                    d="M1 6V1h5M15 6V1h-5M1 10v5h5M15 10v5h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                />
+            </svg>
+        }
+    </span>
+</button>

@@ -1,0 +1,51 @@
+<div class="settings">
+    <fieldset class="settings__group">
+        <legend class="settings__legend">{{ 'settings.audio' | translate }}</legend>
+
+        <app-pixel-slider
+            labelKey="settings.music"
+            [value]="settings.musicVolume()"
+            (valueChange)="settings.setMusicVolume($event)"
+        />
+
+        <app-pixel-slider
+            labelKey="settings.sfx"
+            [value]="settings.sfxVolume()"
+            (valueChange)="settings.setSfxVolume($event)"
+        />
+
+        <app-pixel-slider
+            labelKey="settings.voice"
+            [value]="settings.voiceVolume()"
+            (valueChange)="settings.setVoiceVolume($event)"
+        />
+
+        <app-voice-select />
+    </fieldset>
+
+    <fieldset class="settings__group">
+        <legend class="settings__legend">{{ 'settings.steering.label' | translate }}</legend>
+
+        <app-steering-select />
+
+        <p class="settings__hint">{{ 'settings.steering.hint' | translate }}</p>
+    </fieldset>
+
+    @if (showMatchTime()) {
+        <fieldset class="settings__group">
+            <legend class="settings__legend">{{ 'settings.match' | translate }}</legend>
+
+            <app-pixel-stepper
+                labelKey="settings.matchTime"
+                hintKey="settings.matchTimeHint"
+                [value]="settings.matchTimeSeconds()"
+                [min]="settings.limits().minMatchTimeSeconds"
+                [max]="settings.limits().maxMatchTimeSeconds"
+                [step]="settings.limits().matchTimeStepSeconds"
+                [formatter]="formatDuration"
+                [parser]="parseDuration"
+                (valueChange)="settings.setMatchTimeSeconds($event)"
+            />
+        </fieldset>
+    }
+</div>

@@ -1,0 +1,114 @@
+<div class="menu-view" appGamepadMenu (back)="back()">
+    <span class="menu-view__backdrop" aria-hidden="true"></span>
+    <app-particle-field class="menu-view__particles" />
+    <span class="menu-view__corner menu-view__corner--tl" aria-hidden="true"></span>
+    <span class="menu-view__corner menu-view__corner--tr" aria-hidden="true"></span>
+    <span class="menu-view__corner menu-view__corner--bl" aria-hidden="true"></span>
+    <span class="menu-view__corner menu-view__corner--br" aria-hidden="true"></span>
+
+    <app-welcome-toggle class="menu-view__welcome" />
+    <app-fullscreen-toggle class="menu-view__fullscreen" />
+
+    <div class="menu-view__stack">
+        @if (panel() === 'none') {
+            <header class="menu-view__brand">
+                <h1 class="menu-view__title">{{ 'app.title' | translate }}</h1>
+                <p class="menu-view__subtitle">{{ 'app.subtitle' | translate }}</p>
+            </header>
+
+            <nav class="menu-view__actions" data-gamepad-first>
+                @if (primaryKey(); as key) {
+                    <app-pixel-button block appHoverSound (pressed)="primary.emit()">
+                        {{ key | translate }}
+                    </app-pixel-button>
+                } @else {
+                    <!--
+                        The main menu starts a match directly, so it offers one
+                        button per mode instead of a generic "Play" that would
+                        not say who controls the character.
+                    -->
+                    @for (mode of modes; track mode) {
+                        <app-pixel-button block appHoverSound (pressed)="startMode(mode)">
+                            {{ modeLabelKey(mode) | translate }}
+                        </app-pixel-button>
+                    }
+                }
+
+                @if (isPause()) {
+                    <app-pixel-button
+                        block
+                        variant="ghost"
+                        appHoverSound
+                        (pressed)="restart.emit()"
+                    >
+                        {{ 'menu.restart' | translate }}
+                    </app-pixel-button>
+                }
+
+                <app-pixel-button
+                    block
+                    variant="ghost"
+                    appHoverSound
+                    (pressed)="open('configuration')"
+                >
+                    {{ 'menu.configuration' | translate }}
+                </app-pixel-button>
+
+                <app-pixel-button block variant="ghost" appHoverSound (pressed)="open('credits')">
+                    {{ 'menu.credits' | translate }}
+                </app-pixel-button>
+
+                <app-pixel-button block variant="ghost" appHoverSound (pressed)="open('language')">
+                    <span class="menu-view__button-icon" aria-hidden="true">
+                        <svg viewBox="0 0 16 16" class="menu-view__icon">
+                            <circle cx="8" cy="8" r="6" />
+                            <path d="M2 8h12" />
+                            <ellipse cx="8" cy="8" rx="2.6" ry="6" />
+                        </svg>
+                    </span>
+                    {{ 'menu.language' | translate }}
+                </app-pixel-button>
+
+                @if (isPause()) {
+                    <app-pixel-button
+                        class="menu-view__abandon"
+                        block
+                        variant="danger"
+                        appHoverSound
+                        (pressed)="abandon.emit()"
+                    >
+                        {{ 'menu.abandon' | translate }}
+                    </app-pixel-button>
+                }
+            </nav>
+        } @else {
+            <div class="menu-view__panel">
+                <app-pixel-panel [titleKey]="panelTitleKey()">
+                    <!--
+                        Only the contents scroll: the frame, the title and the
+                        way back stay put, however long the panel gets.
+                    -->
+                    <div class="menu-view__panel-scroll">
+                        @switch (panel()) {
+                            @case ('configuration') {
+                                <app-settings-panel [showMatchTime]="!isPause()" />
+                            }
+                            @case ('language') {
+                                <app-language-select />
+                            }
+                            @case ('credits') {
+                                <app-credits-panel />
+                            }
+                        }
+                    </div>
+
+                    <div class="menu-view__panel-footer">
+                        <app-pixel-button block variant="ghost" appHoverSound (pressed)="close()">
+                            {{ 'menu.back' | translate }}
+                        </app-pixel-button>
+                    </div>
+                </app-pixel-panel>
+            </div>
+        }
+    </div>
+</div>

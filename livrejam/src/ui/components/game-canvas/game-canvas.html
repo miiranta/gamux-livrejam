@@ -1,0 +1,184 @@
+<div class="game-canvas">
+    <canvas #canvas class="game-canvas__surface"></canvas>
+
+    @if (showHud()) {
+        <div class="game-canvas__topbar">
+            <div class="game-canvas__hud">
+                <span class="game-canvas__chip game-canvas__chip--clock">
+                    <i class="game-canvas__dot game-canvas__dot--clock"></i>
+                    <b>{{ timeLeft() }}</b>
+                </span>
+                <span class="game-canvas__chip">
+                    <i class="game-canvas__dot"></i>
+                    {{ 'hud.score' | translate }} <b>{{ stats().score }}</b>
+                </span>
+
+                @if (debugMode()) {
+                    <span class="game-canvas__chip">
+                        <i class="game-canvas__dot"></i>
+                        {{ 'hud.best' | translate }} <b>{{ stats().best }}</b>
+                    </span>
+                    <span class="game-canvas__chip">
+                        <i class="game-canvas__dot"></i>
+                        {{ 'hud.survived' | translate }}
+                        <b>{{ formatSeconds(stats().survived) }}s</b>
+                    </span>
+                    <span class="game-canvas__chip">
+                        <i class="game-canvas__dot"></i>
+                        {{ 'hud.dodges' | translate }} <b>{{ stats().dodges }}</b>
+                    </span>
+                    <span class="game-canvas__chip">
+                        <i class="game-canvas__dot"></i>
+                        {{ 'hud.nearMisses' | translate }} <b>{{ stats().nearMisses }}</b>
+                    </span>
+                    <span
+                        class="game-canvas__chip"
+                        [class.game-canvas__chip--danger]="stats().level >= 4"
+                    >
+                        <i class="game-canvas__dot game-canvas__dot--danger"></i>
+                        {{ 'hud.damage' | translate }} <b>{{ formatDamage(stats().damage) }}</b>
+                    </span>
+                    <span class="game-canvas__chip">
+                        <i
+                            class="game-canvas__dot"
+                            [class.game-canvas__dot--danger]="stats().level >= 4"
+                            [class.game-canvas__dot--warn]="stats().level > 0 && stats().level < 4"
+                        ></i>
+                        {{ 'hud.tier' | translate }} <b>{{ stats().level }}</b>
+                    </span>
+                    <span class="game-canvas__chip">
+                        <i class="game-canvas__dot game-canvas__dot--warn"></i>
+                        {{ 'hud.maxSpeed' | translate }} <b>{{ stats().dodgerSpeed }}</b>
+                    </span>
+                    <span class="game-canvas__chip">
+                        <i class="game-canvas__dot game-canvas__dot--danger"></i>
+                        {{ 'hud.dropSpeed' | translate }} <b>{{ stats().dropSpeed }}</b>
+                    </span>
+                    <span
+                        class="game-canvas__chip"
+                        [class.game-canvas__chip--muted]="stats().dashReady < 1"
+                    >
+                        <i
+                            class="game-canvas__dot"
+                            [class.game-canvas__dot--accent]="stats().dashReady >= 1"
+                        ></i>
+                        {{ 'hud.dash' | translate }}
+                        <b>{{ formatDash(stats().dashReady) }}</b>
+                    </span>
+                    <span class="game-canvas__chip">
+                        <i class="game-canvas__dot game-canvas__dot--accent"></i>
+                        {{ 'hud.mode' | translate }}
+                        <b>{{ 'mode.' + stats().gameMode | translate }}</b>
+                    </span>
+                    @if (stats().gameMode === 'two') {
+                        <span
+                            class="game-canvas__chip"
+                            [class.game-canvas__chip--muted]="!stats().gamepadConnected"
+                        >
+                            <i
+                                class="game-canvas__dot"
+                                [class.game-canvas__dot--accent]="stats().gamepadConnected"
+                            ></i>
+                            {{ 'hud.gamepad' | translate }}
+                            <b>
+                                {{
+                                    (stats().gamepadConnected
+                                        ? 'hud.connected'
+                                        : 'hud.disconnected'
+                                    ) | translate
+                                }}
+                            </b>
+                        </span>
+                    }
+                    @if (stats().gameMode === 'single') {
+                        <span
+                            class="game-canvas__chip"
+                            [class.game-canvas__chip--error]="modelStatus() === 'error'"
+                        >
+                            <i
+                                class="game-canvas__dot"
+                                [class.game-canvas__dot--warn]="modelStatus() !== 'ready'"
+                            ></i>
+                            {{ 'hud.ai' | translate }}
+                            <b>
+                                {{
+                                    (modelStatus() === 'ready'
+                                        ? 'hud.policy'
+                                        : 'hud.state.' + modelStatus()
+                                    ) | translate
+                                }}
+                            </b>
+                        </span>
+                    }
+                }
+            </div>
+
+            <div class="game-canvas__controls">
+                @if (debugMode()) {
+                    <button
+                        type="button"
+                        class="game-canvas__button"
+                        appHoverSound
+                        (click)="accelerate()"
+                    >
+                        {{ 'hud.dev.faster' | translate }}
+                    </button>
+                    <button
+                        type="button"
+                        class="game-canvas__button"
+                        appHoverSound
+                        (click)="toggleColliders()"
+                    >
+                        {{ 'hud.dev.colliders' | translate }}
+                    </button>
+
+                    @if (modelStatus() === 'error') {
+                        <button
+                            type="button"
+                            class="game-canvas__button"
+                            appHoverSound
+                            (click)="reloadModel()"
+                        >
+                            {{ 'hud.dev.reloadAi' | translate }}
+                        </button>
+                    }
+                }
+
+                <button
+                    type="button"
+                    class="game-canvas__button game-canvas__button--pause"
+                    appHoverSound
+                    [attr.aria-label]="'hud.pause' | translate"
+                    [attr.title]="'hud.pause' | translate"
+                    (click)="pause()"
+                >
+                    <span class="game-canvas__pause-rim" aria-hidden="true"></span>
+                    <span class="game-canvas__pause-glyph" aria-hidden="true"></span>
+                </button>
+            </div>
+        </div>
+
+        @if (debugMode()) {
+            <p class="game-canvas__hint">
+                {{ controlHintKey() | translate }}
+            </p>
+
+            @if (modelStatus() === 'error') {
+                <p class="game-canvas__debug">{{ modelMessage() }}</p>
+            }
+        }
+    }
+
+    @if (status() === 'loading') {
+        <div class="game-canvas__veil">
+            <span class="game-canvas__spinner"></span>
+            <p>{{ 'hud.loading' | translate }}</p>
+        </div>
+    }
+
+    @if (status() === 'error') {
+        <div class="game-canvas__veil game-canvas__veil--error">
+            <p>{{ errorMessage() }}</p>
+        </div>
+    }
+</div>
