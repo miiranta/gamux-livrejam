@@ -100,8 +100,12 @@
                 "body": "Even though we used generative AI, the model we picked was DeepSeek. Other than that: VSCode, Linux (Ubuntu), Angular, Audacity…"
             },
             "libreSquared": {
-                "title": "Livre² e Livr3",
-                "body": "Check out our code on <a href=\"https://github.com/miiranta/gamux-livrejam\" target=\"_blank\" rel=\"noopener noreferrer\">github</a>! The whole project is open and licensed under the GPL 3.0."
+                "title": "Livre²",
+                "body": "Check out our code on <a href=\"https://github.com/miiranta/gamux-livrejam\" target=\"_blank\" rel=\"noopener noreferrer\">github</a>!"
+            },
+            "libreCubed": {
+                "title": "Livr3",
+                "body": "The whole project is open and licensed under the GPL 3.0."
             },
             "joymaxxing": {
                 "title": "Joymaxxing",

@@ -30,6 +30,7 @@ const ACHIEVEMENT_IDS: readonly string[] = [
     'onesAndZeros',
     'libre',
     'libreSquared',
+    'libreCubed',
     'joymaxxing',
 ];
 
