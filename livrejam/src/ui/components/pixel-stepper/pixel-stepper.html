@@ -1,7 +1,7 @@
 <div class="pixel-stepper">
     <span class="pixel-stepper__head">
         <span class="pixel-stepper__label">{{ labelKey() | translate }}</span>
-        <span class="pixel-stepper__value">{{ display() }}</span>
+        <span class="pixel-stepper__value">{{ stepLabel() }}</span>
     </span>
 
     <div class="pixel-stepper__row">
@@ -17,7 +17,21 @@
             <span class="pixel-stepper__glyph">-</span>
         </button>
 
-        <span class="pixel-stepper__readout">{{ display() }}</span>
+        <input
+            #readout
+            class="pixel-stepper__readout"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            spellcheck="false"
+            [value]="display()"
+            [attr.aria-label]="labelKey() | translate"
+            (focus)="beginEdit(readout)"
+            (input)="updateDraft($event)"
+            (blur)="commit(readout)"
+            (keydown.enter)="readout.blur()"
+            (keydown.escape)="cancel(readout); readout.blur()"
+        />
 
         <button
             type="button"

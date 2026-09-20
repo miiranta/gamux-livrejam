@@ -20,6 +20,14 @@ const CATALOG = {
                 key: SOUND_EFFECTS.buttonHover,
                 files: ['assets/audio/sound_effects/button_hover/1.wav'],
             },
+            {
+                key: SOUND_EFFECTS.strongExplosion,
+                files: [
+                    'assets/audio/sound_effects/strong_explosions/explosion1.wav',
+                    'assets/audio/sound_effects/strong_explosions/explosion2.wav',
+                    'assets/audio/sound_effects/strong_explosions/explosion3.wav',
+                ],
+            },
         ],
     },
 };
@@ -171,5 +179,75 @@ describe('AudioService', () => {
 
         expect(service.playButtonHover()).toBe(false);
         expect(service.playVoicePreview('set_a')).toBe(false);
+    });
+
+    it('plays two different explosions, each at its own impact time', () => {
+        const play = vi.spyOn(AudioEngine.prototype, 'play').mockReturnValue(true);
+
+        expect(
+            service.playSoundEffectSequence(SOUND_EFFECTS.strongExplosion, 2, [0.42, 0.95]),
+        ).toBe(true);
+
+        const calls = play.mock.calls as [string, string, { delay: number }][];
+        expect(calls).toHaveLength(2);
+
+        const [firstUrl, secondUrl] = calls.map(([, url]) => url);
+        expect(firstUrl).not.toBe(secondUrl);
+        expect(calls.map(([, , options]) => options.delay)).toEqual([0.42, 0.95]);
+        expect(calls.every(([channel]) => channel === 'soundEffect')).toBe(true);
+
+        play.mockRestore();
+    });
+
+    it('never repeats an explosion sample, whatever the random draw', () => {
+        const play = vi.spyOn(AudioEngine.prototype, 'play').mockReturnValue(true);
+
+        for (let step = 0; step <= 20; step++) {
+            play.mockClear();
+            service.playSoundEffectSequence(
+                SOUND_EFFECTS.strongExplosion,
+                2,
+                [0, 0],
+                () => step / 20,
+            );
+
+            const urls = (play.mock.calls as [string, string][]).map(([, url]) => url);
+            expect(new Set(urls).size).toBe(2);
+        }
+
+        play.mockRestore();
+    });
+
+    it('plays a single explosion when the pool has only one sample', () => {
+        service.useCatalog({
+            soundtrack: { tracks: [] },
+            voices: { sets: [] },
+            soundEffects: {
+                groups: [
+                    {
+                        key: SOUND_EFFECTS.strongExplosion,
+                        files: ['assets/audio/sound_effects/strong_explosions/only.wav'],
+                    },
+                ],
+            },
+        });
+        const play = vi.spyOn(AudioEngine.prototype, 'play').mockReturnValue(true);
+
+        service.playSoundEffectSequence(SOUND_EFFECTS.strongExplosion, 2, [0.42, 0.95]);
+
+        expect(play).toHaveBeenCalledTimes(1);
+        play.mockRestore();
+    });
+
+    it('returns false when the explosion group is missing', () => {
+        service.useCatalog({
+            soundtrack: { tracks: [] },
+            voices: { sets: [] },
+            soundEffects: { groups: [] },
+        });
+
+        expect(service.playSoundEffectSequence(SOUND_EFFECTS.strongExplosion, 2, [0, 1])).toBe(
+            false,
+        );
     });
 });

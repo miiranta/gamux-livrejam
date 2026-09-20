@@ -11,7 +11,7 @@ import { Dodger, Item } from './entities';
 import type { DungeonLevel } from './level';
 import { createDungeonLevel } from './level';
 import { SceneRenderer } from './render';
-import { ItemSpawner, ImpactSystem, EffectSystem } from './systems';
+import { ItemSpawner, ImpactSystem, EffectSystem, ScorePopupSystem, hitPoints } from './systems';
 import type { ImpactOutcome } from './systems';
 
 export type DropAction = 'left' | 'right' | 'fastFall' | 'drop' | 'dash';
@@ -81,6 +81,7 @@ export class FaceSmashing {
     private readonly spawner: ItemSpawner;
     private readonly impacts = new ImpactSystem();
     private readonly effects = new EffectSystem(FACE_SMASHING.effects);
+    private readonly scorePopups = new ScorePopupSystem();
     private readonly loop: GameLoop;
     private readonly observation = createObservationBuffer();
     private readonly random: () => number;
@@ -211,6 +212,7 @@ export class FaceSmashing {
         this.spawner.reset();
         this.impacts.reset();
         this.effects.clear();
+        this.scorePopups.clear();
         this.respawn();
         this.publishStats();
     }
@@ -233,6 +235,7 @@ export class FaceSmashing {
         this.updateItems(dt);
         this.updateRound(dt);
         this.effects.update(dt);
+        this.scorePopups.update(dt);
         this.observe();
     }
 
@@ -445,6 +448,7 @@ export class FaceSmashing {
             dodger.setAnimation('hurt');
         }
 
+        this.awardHitScore(outcome);
         this.callbacks.onHit?.(outcome.damage, outcome.tierChange);
 
         const scale = dodger.size.width;
@@ -467,6 +471,15 @@ export class FaceSmashing {
             y: dodger.feet.y - 4,
             size: scale * 1.6,
         });
+    }
+
+    /** Landing a hit is what the player is after, so it pays points. */
+    private awardHitScore(outcome: ImpactOutcome): void {
+        for (const contact of outcome.contacts) {
+            const points = hitPoints(contact.damage);
+            this.score += points;
+            this.scorePopups.spawn(contact.x, contact.y, points);
+        }
     }
 
     private finishRound(): void {
@@ -527,6 +540,7 @@ export class FaceSmashing {
             {
                 colliders: this.showColliders,
                 effects: this.effects.active,
+                scorePopups: this.scorePopups.active,
             },
             { deltaSeconds: this.frameDelta },
         );

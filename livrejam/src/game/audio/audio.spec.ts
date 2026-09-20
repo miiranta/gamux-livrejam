@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AudioEngine } from './audio-engine';
 import {
@@ -11,6 +11,7 @@ import {
 import {
     DEFAULT_VOICE_SET,
     pickRandom,
+    pickRandomDistinct,
     resolveVoiceSet,
     voiceSetLabelKey,
 } from './audio-selection';
@@ -104,6 +105,41 @@ describe('audio selection', () => {
     });
 });
 
+describe('pickRandomDistinct', () => {
+    const items = ['a', 'b', 'c'];
+
+    it('never repeats a sample', () => {
+        // Sweep the whole random range: the two picks must always differ.
+        for (let step = 0; step <= 20; step++) {
+            const random = () => step / 20;
+            const picked = pickRandomDistinct(items, 2, random);
+
+            expect(picked).toHaveLength(2);
+            expect(new Set(picked).size).toBe(2);
+        }
+    });
+
+    it('returns every entry when asked for the whole pool', () => {
+        const picked = pickRandomDistinct(items, 3, () => 0.5);
+
+        expect([...picked].sort()).toEqual(['a', 'b', 'c']);
+    });
+
+    it('caps the result at the pool size', () => {
+        expect(pickRandomDistinct(items, 99, () => 0.5)).toHaveLength(3);
+        expect(pickRandomDistinct([], 2, () => 0.5)).toEqual([]);
+        expect(pickRandomDistinct(items, 0, () => 0.5)).toEqual([]);
+    });
+
+    it('does not mutate the source list', () => {
+        const source = [...items];
+
+        pickRandomDistinct(source, 2, () => 0.5);
+
+        expect(source).toEqual(items);
+    });
+});
+
 describe('AudioEngine', () => {
     it('reports nothing as ready before any load', () => {
         const engine = new AudioEngine();
@@ -129,5 +165,140 @@ describe('AudioEngine', () => {
         expect(fetchSpy).toHaveBeenCalledTimes(1);
         fetchSpy.mockRestore();
         engine.dispose();
+    });
+});
+
+/**
+ * Minimal stand-in for the Web Audio API, enough to observe what the engine
+ * schedules. jsdom has no `AudioContext` at all, so this is the only way to
+ * assert on start times.
+ */
+class FakeAudioContext {
+    static instances: FakeAudioContext[] = [];
+
+    readonly started: { when: number; offset: number; loop: boolean }[] = [];
+    readonly gains: number[] = [];
+    currentTime = 10;
+    state: AudioContextState = 'running';
+    destination = {};
+
+    constructor() {
+        FakeAudioContext.instances.push(this);
+    }
+
+    createGain() {
+        const context = this;
+        const node = {
+            gain: {
+                value: 1,
+                cancelScheduledValues: () => undefined,
+                setValueAtTime: () => undefined,
+                linearRampToValueAtTime: (value: number) => {
+                    context.gains.push(value);
+                },
+            },
+            connect: () => node,
+            disconnect: () => undefined,
+        };
+
+        return node;
+    }
+
+    createBufferSource() {
+        const context = this;
+        const node = {
+            buffer: null as unknown,
+            loop: false,
+            playbackRate: { value: 1 },
+            onended: null as (() => void) | null,
+            connect: () => node,
+            disconnect: () => undefined,
+            start: (when: number, offset: number) => {
+                context.started.push({ when, offset, loop: node.loop });
+            },
+            stop: () => undefined,
+        };
+
+        return node;
+    }
+
+    decodeAudioData() {
+        return Promise.resolve({ duration: 1 });
+    }
+
+    resume() {
+        return Promise.resolve();
+    }
+
+    close() {
+        this.state = 'closed';
+        return Promise.resolve();
+    }
+}
+
+describe('AudioEngine scheduling', () => {
+    const original = (globalThis as { AudioContext?: unknown }).AudioContext;
+
+    beforeEach(() => {
+        FakeAudioContext.instances = [];
+        (globalThis as { AudioContext?: unknown }).AudioContext = FakeAudioContext;
+    });
+
+    afterEach(() => {
+        (globalThis as { AudioContext?: unknown }).AudioContext = original;
+    });
+
+    /** Loads one file into the engine so it can be played. */
+    async function engineWith(url: string): Promise<AudioEngine> {
+        const fetchSpy = vi
+            .spyOn(globalThis, 'fetch')
+            .mockResolvedValue({
+                ok: true,
+                arrayBuffer: async () => new ArrayBuffer(8),
+            } as Response);
+
+        const engine = new AudioEngine();
+        await engine.load(url);
+        fetchSpy.mockRestore();
+        return engine;
+    }
+
+    it('starts a sound immediately by default', async () => {
+        const engine = await engineWith('assets/audio/a.wav');
+
+        expect(engine.play('soundEffect', 'assets/audio/a.wav')).toBe(true);
+
+        const context = FakeAudioContext.instances[0];
+        expect(context.started).toHaveLength(1);
+        expect(context.started[0].when).toBe(context.currentTime);
+    });
+
+    it('schedules a delayed sound on the audio clock, not with a timer', async () => {
+        const engine = await engineWith('assets/audio/a.wav');
+
+        engine.play('soundEffect', 'assets/audio/a.wav', { delay: 0.95 });
+
+        const context = FakeAudioContext.instances[0];
+        // 10 (currentTime) + 0.95: sample-accurate, independent of the main thread.
+        expect(context.started[0].when).toBeCloseTo(10.95, 5);
+    });
+
+    it('treats a negative delay as "now"', async () => {
+        const engine = await engineWith('assets/audio/a.wav');
+
+        engine.play('soundEffect', 'assets/audio/a.wav', { delay: -5 });
+
+        const context = FakeAudioContext.instances[0];
+        expect(context.started[0].when).toBe(context.currentTime);
+    });
+
+    it('schedules two impacts at their own times', async () => {
+        const engine = await engineWith('assets/audio/a.wav');
+
+        engine.play('soundEffect', 'assets/audio/a.wav', { delay: 0.42 });
+        engine.play('soundEffect', 'assets/audio/a.wav', { delay: 0.95 });
+
+        const context = FakeAudioContext.instances[0];
+        expect(context.started.map((entry) => entry.when)).toEqual([10.42, 10.95]);
     });
 });

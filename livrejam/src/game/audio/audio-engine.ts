@@ -29,6 +29,12 @@ export interface PlayOptions {
     playbackRate?: number;
     /** Seconds into the buffer to start at. */
     offset?: number;
+    /**
+     * Seconds to wait before the sound starts. Scheduled on the audio thread,
+     * so it stays sample-accurate even if the main thread is busy — used to
+     * land a sound exactly on the animation it belongs to.
+     */
+    delay?: number;
 }
 
 export interface MusicOptions {
@@ -191,7 +197,7 @@ export class AudioEngine {
         };
 
         source.onended = release;
-        source.start(context.currentTime, options.offset ?? 0);
+        source.start(context.currentTime + Math.max(options.delay ?? 0, 0), options.offset ?? 0);
         return true;
     }
 

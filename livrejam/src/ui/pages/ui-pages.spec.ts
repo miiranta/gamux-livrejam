@@ -1,13 +1,13 @@
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TranslateService } from '@ngx-translate/core';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PixelButton } from '../components/pixel-button/pixel-button';
 import { PixelSlider } from '../components/pixel-slider/pixel-slider';
 import { PixelStepper } from '../components/pixel-stepper/pixel-stepper';
 import { provideTestTranslate, useTestTranslations } from '../testing/i18n-testing';
-import { GameFlowService } from '../services';
+import { AudioService, GameFlowService, SOUND_EFFECTS } from '../services';
 import { EndGame } from './end-game/end-game';
 import { MainMenu } from './main-menu/main-menu';
 import { PauseMenu } from './pause-menu/pause-menu';
@@ -133,6 +133,39 @@ describe('PixelStepper', () => {
 
         expect(fixture.componentInstance.value()).toBe(30);
         expect((minus as HTMLButtonElement).disabled).toBe(true);
+    });
+
+    it('shows the step size, not the current value', () => {
+        const head = (fixture.nativeElement as HTMLElement).querySelector('.pixel-stepper__value');
+
+        expect(head?.textContent?.trim()).toBe('+15');
+    });
+
+    it('accepts a typed value and clamps it to the range', () => {
+        const readout = (fixture.nativeElement as HTMLElement).querySelector(
+            '.pixel-stepper__readout',
+        ) as HTMLInputElement;
+
+        readout.value = '50';
+        readout.dispatchEvent(new Event('input'));
+        readout.dispatchEvent(new Event('blur'));
+        fixture.detectChanges();
+
+        expect(fixture.componentInstance.value()).toBe(50);
+    });
+
+    it('ignores unparseable text and restores the display', () => {
+        const readout = (fixture.nativeElement as HTMLElement).querySelector(
+            '.pixel-stepper__readout',
+        ) as HTMLInputElement;
+
+        readout.value = 'nonsense';
+        readout.dispatchEvent(new Event('input'));
+        readout.dispatchEvent(new Event('blur'));
+        fixture.detectChanges();
+
+        expect(fixture.componentInstance.value()).toBe(30);
+        expect(readout.value).toBe('30');
     });
 });
 
@@ -339,6 +372,23 @@ describe('EndGame', () => {
         clickButton(fixture, 'Exit');
 
         expect(TestBed.inject(GameFlowService).isMenu()).toBe(true);
+    });
+
+    it('fires two different explosions, one per impact', () => {
+        const audio = TestBed.inject(AudioService);
+        const sequence = vi.spyOn(audio, 'playSoundEffectSequence').mockReturnValue(true);
+
+        TestBed.createComponent(EndGame).detectChanges();
+
+        expect(sequence).toHaveBeenCalledTimes(1);
+        const [name, count, delays] = sequence.mock.calls[0] as [string, number, number[]];
+        expect(name).toBe(SOUND_EFFECTS.strongExplosion);
+        expect(count).toBe(2);
+        // One explosion per card, at the moment each one hits the screen.
+        expect(delays).toHaveLength(2);
+        expect(delays[0]).toBeLessThan(delays[1]);
+
+        sequence.mockRestore();
     });
 });
 

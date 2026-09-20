@@ -27,14 +27,23 @@
 }
 
 /* The visible track: a chunky groove with a hard-shadowed handle. */
-.pixel-slider__track {
+.pixel-slider__control {
     position: relative;
+    display: block;
+    height: 1.6rem;
+}
+
+.pixel-slider__track {
+    position: absolute;
+    inset: 50% 0 auto;
     display: block;
     height: 1.1rem;
     background: #14100d;
     box-shadow:
         inset 0 0 0 2px var(--lj-shadow),
         inset 0 0 0 3px var(--lj-line);
+    transform: translateY(-50%);
+    pointer-events: none;
 }
 
 .pixel-slider__fill {
@@ -58,10 +67,14 @@
     transform: translate(-50%, -50%);
 }
 
-/* The real input is transparent but keeps native keyboard/a11y behaviour. */
+/* The real input sits on top of the track (transparent) so the whole groove
+   is clickable/draggable while keeping native keyboard/a11y behaviour. */
 .pixel-slider__input {
+    position: absolute;
+    inset: 0;
     width: 100%;
-    margin: 0.4rem 0 0;
+    height: 100%;
+    margin: 0;
     opacity: 0;
     cursor: pointer;
 }

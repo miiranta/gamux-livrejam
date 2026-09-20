@@ -19,6 +19,29 @@ export function pickRandom<T>(items: readonly T[], random: () => number): T | nu
     return items[index] ?? null;
 }
 
+/**
+ * Picks `count` **different** entries (random without replacement), so two
+ * sounds fired close together never repeat the same sample. Returns fewer
+ * entries when the pool is smaller than `count`.
+ */
+export function pickRandomDistinct<T>(
+    items: readonly T[],
+    count: number,
+    random: () => number,
+): T[] {
+    const pool = [...items];
+    const wanted = Math.min(Math.max(Math.floor(count), 0), pool.length);
+    const picked: T[] = [];
+
+    for (let index = 0; index < wanted; index++) {
+        const slot = Math.min(pool.length - 1, Math.floor(random() * pool.length));
+        picked.push(pool[slot]);
+        pool.splice(slot, 1);
+    }
+
+    return picked;
+}
+
 /** Translation key of a voice set label; the folder name is the key. */
 export function voiceSetLabelKey(key: string): string {
     return `settings.voiceSet.${key}`;

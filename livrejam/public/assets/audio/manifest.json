@@ -44,6 +44,14 @@
           "sound_effects/button_hover/estalo5.wav",
           "sound_effects/button_hover/estalo6.wav"
         ]
+      },
+      {
+        "key": "strong_explosions",
+        "files": [
+          "sound_effects/strong_explosions/explosion1.wav",
+          "sound_effects/strong_explosions/explosion2.wav",
+          "sound_effects/strong_explosions/explosion3.wav"
+        ]
       }
     ]
   }

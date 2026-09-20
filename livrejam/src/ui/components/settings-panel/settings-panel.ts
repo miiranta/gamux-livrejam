@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, booleanAttribute, inject, input } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 
-import { GameSettingsService, formatDuration } from '../../services';
+import { GameSettingsService, formatDuration, parseDuration } from '../../services';
 import { PixelSlider } from '../pixel-slider/pixel-slider';
 import { PixelStepper } from '../pixel-stepper/pixel-stepper';
 import { VoiceSelect } from '../voice-select/voice-select';
@@ -24,4 +24,5 @@ export class SettingsPanel {
     readonly showMatchTime = input(true, { transform: booleanAttribute });
 
     protected readonly formatDuration = formatDuration;
+    protected readonly parseDuration = parseDuration;
 }

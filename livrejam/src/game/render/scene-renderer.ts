@@ -6,7 +6,8 @@ import type { CharacterAnimationKey, CharacterTierSprites, DungeonSprites } from
 import { CHARACTER_CLIPS, FALLBACK_ANIMATION } from '../assets';
 import type { Dodger, Item } from '../entities';
 import type { DungeonLevel } from '../level';
-import type { Effect } from '../systems';
+import type { Effect, ScorePopup } from '../systems';
+import { scorePopupPose } from '../systems';
 import { FACE_SMASHING } from '../config';
 import { BackdropPainter } from './backdrop-painter';
 import { TerrainRenderer } from './terrain-renderer';
@@ -17,6 +18,7 @@ const FOOT_OFFSET = 62;
 export interface SceneDebug {
     colliders: boolean;
     effects: readonly Effect[];
+    scorePopups: readonly ScorePopup[];
 }
 
 export interface SceneFrame {
@@ -67,6 +69,7 @@ export class SceneRenderer {
 
         this.renderDodger(dodger);
         this.renderEffects(debug.effects);
+        this.renderScorePopups(debug.scorePopups);
         this.renderAim(level, aimX);
 
         if (debug.colliders) {
@@ -226,6 +229,43 @@ export class SceneRenderer {
                 height: effect.size,
             });
         }
+    }
+
+    private renderScorePopups(popups: readonly ScorePopup[]): void {
+        if (popups.length === 0) {
+            return;
+        }
+
+        const { camera } = this.renderer;
+        const ctx = this.renderer.context;
+        const config = FACE_SMASHING.scorePopup;
+
+        ctx.save();
+        ctx.font = `${config.fontSize}px 'Pixelify Sans', system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = config.outline;
+
+        for (const popup of popups) {
+            const progress = clamp(popup.elapsed / config.duration, 0, 1);
+            const pose = scorePopupPose(progress);
+            const x = camera.toScreenX(popup.x);
+            const y = camera.toScreenY(popup.y) - camera.toScreenLength(pose.rise);
+            const label = `+${popup.amount}`;
+
+            ctx.save();
+            ctx.globalAlpha = pose.alpha;
+            ctx.translate(x, y);
+            ctx.scale(pose.scale, pose.scale);
+            ctx.strokeText(label, 0, 0);
+            ctx.fillStyle = config.color;
+            ctx.fillText(label, 0, 0);
+            ctx.restore();
+        }
+
+        ctx.restore();
     }
 
     private renderAim(level: DungeonLevel, aimX: number): void {

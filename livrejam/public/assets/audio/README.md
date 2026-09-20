@@ -52,6 +52,22 @@ aleatoria do set.
 Se a pasta tiver varios arquivos, um deles e sorteado a cada toque — e o caso do
 `button_hover`, que toca em qualquer botao da interface.
 
+Para varios sons do mesmo evento que **nao podem repetir** (como as duas
+explosoes da tela de fim de jogo), use
+`playSoundEffectSequence('<evento>', quantidade, [atrasos])`: ele sorteia sem
+reposicao e agenda cada som no relogio de audio, entao o som cai exatamente no
+frame da animacao correspondente.
+
+## Sincronia com a animacao
+
+`playSoundEffectSequence` recebe os atrasos em segundos e usa
+`AudioBufferSourceNode.start(when)`, ou seja, o agendamento acontece na thread
+de audio. Um `setTimeout` no JS atrasaria junto com a thread principal (que
+tambem esta rodando o jogo), e o som sairia fora de sincronia.
+
+Os atrasos ficam em `src/ui/pages/end-game/end-game.ts` e espelham os delays do
+CSS (`end-game.scss`) e dos `app-particle-burst`.
+
 ## Créditos
 
 Os arquivos atuais e suas licencas estao em `CREDITS.md`.

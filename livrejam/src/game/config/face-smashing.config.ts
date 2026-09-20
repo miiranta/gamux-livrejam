@@ -171,6 +171,16 @@ export const FACE_SMASHING = {
         survivedPerSecond: 10,
         dodge: 5,
         nearMiss: 1,
+        /** Points awarded per point of damage dealt to the dodger. */
+        hitPerDamage: 1,
+    },
+    scorePopup: {
+        duration: 0.9,
+        rise: 30,
+        capacity: 16,
+        fontSize: 26,
+        color: '#f4ecd8',
+        outline: '#0a0908',
     },
     match: {
         defaultDurationSeconds: 60,

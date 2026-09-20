@@ -7,6 +7,7 @@ import {
     loadAudioManifest,
     manifestUrls,
     pickRandom,
+    pickRandomDistinct,
     resolveVoiceSet,
 } from '../../game/audio';
 import { GameFlowService } from './game-flow.service';
@@ -15,6 +16,7 @@ import { GameSettingsService } from './game-settings.service';
 /** Sound-effect events the game can trigger; keys are folder names. */
 export const SOUND_EFFECTS = {
     buttonHover: 'button_hover',
+    strongExplosion: 'strong_explosions',
 } as const;
 
 export type SoundEffectName = (typeof SOUND_EFFECTS)[keyof typeof SOUND_EFFECTS];
@@ -154,6 +156,38 @@ export class AudioService {
         }
 
         return this.engine.playRandom('soundEffect', urls, random, { volume });
+    }
+
+    /**
+     * Picks `count` **different** variants of a sound effect and plays them,
+     * each after its own delay. Used by the end-game screen, where two impacts
+     * must not repeat the same sample.
+     */
+    playSoundEffectSequence(
+        name: SoundEffectName,
+        count: number,
+        delays: readonly number[],
+        random: () => number = Math.random,
+        volume = 1,
+    ): boolean {
+        const urls = this.soundEffectFiles(name);
+        if (urls.length === 0) {
+            void this.boot();
+            return false;
+        }
+
+        const picked = pickRandomDistinct(urls, count, random);
+        let played = false;
+
+        picked.forEach((url, index) => {
+            played =
+                this.engine.play('soundEffect', url, {
+                    volume,
+                    delay: delays[index] ?? 0,
+                }) || played;
+        });
+
+        return played;
     }
 
     /** Hover blip for buttons; rate-limited so sweeping the mouse is pleasant. */

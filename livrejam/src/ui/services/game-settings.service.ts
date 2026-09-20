@@ -102,6 +102,35 @@ export function formatDuration(totalSeconds: number): string {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
+/**
+ * Inverse of `formatDuration`. Accepts "1:30", "90", "1m30", "90s" and
+ * "1:30.5"; returns `null` when the text cannot be understood.
+ */
+export function parseDuration(text: string): number | null {
+    const trimmed = text.trim().toLowerCase();
+    if (!trimmed) {
+        return null;
+    }
+
+    const clock = /^(\d+):([0-5]?\d(?:\.\d+)?)$/.exec(trimmed);
+    if (clock) {
+        return Number(clock[1]) * 60 + Number(clock[2]);
+    }
+
+    const minutes = /^(\d+(?:\.\d+)?)\s*m(?:in)?s?$/.exec(trimmed);
+    if (minutes) {
+        return Number(minutes[1]) * 60;
+    }
+
+    const seconds = /^(\d+(?:\.\d+)?)\s*s(?:ec)?s?$/.exec(trimmed);
+    if (seconds) {
+        return Number(seconds[1]);
+    }
+
+    const plain = /^\d+(?:\.\d+)?$/.exec(trimmed);
+    return plain ? Number(plain[0]) : null;
+}
+
 function clamp(value: number, min: number, max: number): number {
     if (!Number.isFinite(value)) {
         return min;

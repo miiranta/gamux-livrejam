@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_VOICE_SET } from '../../game/audio';
 import { GameFlowService } from './game-flow.service';
-import { GameSettingsService } from './game-settings.service';
+import { GameSettingsService, formatDuration, parseDuration } from './game-settings.service';
 import { LanguageService } from './language.service';
 import { provideTestTranslate, useTestTranslations } from '../testing/i18n-testing';
 
@@ -74,6 +74,37 @@ describe('GameSettingsService', () => {
         settings.setMatchTimeSeconds(90);
 
         expect(settings.matchTimeLabel()).toBe('1:30');
+    });
+});
+
+describe('parseDuration', () => {
+    it('reads clock notation', () => {
+        expect(parseDuration('1:30')).toBe(90);
+        expect(parseDuration('0:45')).toBe(45);
+        expect(parseDuration('2:05')).toBe(125);
+    });
+
+    it('reads bare numbers as seconds', () => {
+        expect(parseDuration('90')).toBe(90);
+        expect(parseDuration(' 45 ')).toBe(45);
+    });
+
+    it('reads explicit minute and second suffixes', () => {
+        expect(parseDuration('2m')).toBe(120);
+        expect(parseDuration('90s')).toBe(90);
+        expect(parseDuration('1min')).toBe(60);
+    });
+
+    it('rejects text it cannot understand', () => {
+        expect(parseDuration('')).toBeNull();
+        expect(parseDuration('abc')).toBeNull();
+        expect(parseDuration('1:99')).toBeNull();
+    });
+
+    it('round-trips through formatDuration', () => {
+        for (const seconds of [5, 45, 60, 90, 300]) {
+            expect(parseDuration(formatDuration(seconds))).toBe(seconds);
+        }
     });
 });
 
