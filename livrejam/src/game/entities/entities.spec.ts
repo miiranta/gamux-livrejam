@@ -210,6 +210,58 @@ describe('Dodger', () => {
         expect(dodger.physics.body.maxSpeed.y).toBe(FACE_SMASHING.dodger.maxFallSpeed);
     });
 
+    it('trails ghosts while the dive is held, capped at the ghost count', () => {
+        const dodger = createTestDodger();
+        dodger.physics.body.grounded = false;
+
+        for (let index = 0; index < 40; index++) {
+            dodger.fastFall(true, 1 / 60);
+            dodger.sampleDiveTrail();
+        }
+
+        expect(dodger.diving).toBe(true);
+        expect(dodger.diveGlow).toBeGreaterThan(0);
+        expect(dodger.diveTrail.length).toBe(FACE_SMASHING.dive.ghostCount + 1);
+    });
+
+    it('fades the dive trail out once the dive stops', () => {
+        const dodger = createTestDodger();
+        dodger.physics.body.grounded = false;
+
+        for (let index = 0; index < 10; index++) {
+            dodger.fastFall(true, 1 / 60);
+            dodger.sampleDiveTrail();
+        }
+
+        dodger.fastFall(false, 1 / 60);
+        dodger.sampleDiveTrail();
+        expect(dodger.diving).toBe(false);
+        expect(dodger.diveTrail.length).toBeGreaterThan(0);
+
+        for (let index = 0; index < 60; index++) {
+            dodger.advanceReaction(1 / 60);
+        }
+
+        expect(dodger.diveGlow).toBe(0);
+        expect(dodger.diveTrail.length).toBe(0);
+    });
+
+    it('never trails while grounded or dashing', () => {
+        const grounded = createTestDodger();
+        grounded.physics.body.grounded = true;
+        grounded.fastFall(true, 1 / 60);
+        grounded.sampleDiveTrail();
+        expect(grounded.diveTrail.length).toBe(0);
+
+        const dashing = createTestDodger();
+        dashing.physics.body.grounded = false;
+        dashing.dash(1);
+        dashing.fastFall(true, 1 / 60);
+        dashing.sampleDiveTrail();
+        expect(dashing.diving).toBe(false);
+        expect(dashing.diveTrail.length).toBe(0);
+    });
+
     it('caps the dive at the fast fall speed', () => {
         const dodger = createTestDodger();
         dodger.physics.body.grounded = false;
