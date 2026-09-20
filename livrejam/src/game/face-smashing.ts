@@ -12,7 +12,6 @@ import {
     PLAYER_GAMEPAD_BINDINGS,
     PLAYER_ENTITY_BY_MODE,
     readPlayerIntent,
-    speedFactorFor,
     type GameMode,
     type PlayerAction,
     type PlayerIntent,
@@ -96,8 +95,8 @@ export class FaceSmashing {
     /** The item currently being steered; a new one is released once it lands. */
     private active: Item | null = null;
     private policy: PolicyLike;
-    private action: ActionIntent = { axis: 0, jump: false, dash: false, facing: 0 };
-    private playerAction: PlayerIntent = { axis: 0, jump: false, dash: false, run: false, fastFall: false };
+    private action: ActionIntent = { axis: 0, jump: false, dash: false, fastFall: false, facing: 0 };
+    private playerAction: PlayerIntent = { axis: 0, jump: false, dash: false, fastFall: false };
     /** Edge detection for the player's held jump/dash, so holds are one-shot. */
     private jumpLatch = false;
     private playerDashLatch = false;
@@ -267,7 +266,7 @@ export class FaceSmashing {
         this.dashLatch = false;
         this.jumpLatch = false;
         this.playerDashLatch = false;
-        this.playerAction = { axis: 0, jump: false, dash: false, run: false, fastFall: false };
+        this.playerAction = { axis: 0, jump: false, dash: false, fastFall: false };
         this.clearInput();
         this.spawner.reset();
         this.impacts.reset();
@@ -370,10 +369,9 @@ export class FaceSmashing {
             this.readPolicyAction(dodger);
         }
 
-        dodger.speedFactor = playerControlled ? speedFactorFor(this.playerAction.run) : 1;
         dodger.advanceReaction(dt);
         dodger.move(this.action.axis, dt);
-        dodger.fastFall(playerControlled && this.playerAction.fastFall && !dodger.stunned, dt);
+        dodger.fastFall(this.action.fastFall, dt);
 
         const dashDirection = this.action.dash
             ? this.action.facing || dodger.facingDirection
@@ -385,14 +383,17 @@ export class FaceSmashing {
             this.tryDash(dodger, dashDirection);
         }
 
-        if (this.action.jump) {
+        const jumpEdge = this.action.jump && !this.jumpLatch;
+        this.jumpLatch = this.action.jump;
+
+        if (jumpEdge) {
             dodger.requestJump();
         }
 
         this.world.step(dodger.physics, dt);
         dodger.consumeJump();
 
-        if (playerControlled && !this.playerAction.jump) {
+        if (!this.action.jump) {
             dodger.cutJump();
         }
 
@@ -401,15 +402,13 @@ export class FaceSmashing {
         dodger.advanceAnimation(dt, DODGER_ANIMATIONS);
     }
 
-    /** Fills `action` (and the walk/run intent) from the human's controllers. */
+    /** Fills `action` from the human's controllers. */
     private readPlayerAction(dodger: Dodger): void {
         this.playerAction = readPlayerIntent([this.playerInput, this.gamepads]);
 
-        // Jump and dash are edge-triggered, so holding them does not
-        // machine-gun hops or burn the dash cooldown.
-        const jumped = this.playerAction.jump && !this.jumpLatch;
+        // Dash is edge-triggered so holding it does not burn the cooldown;
+        // jump stays a hold, because its height is how long it is held for.
         const dashed = this.playerAction.dash && !this.playerDashLatch;
-        this.jumpLatch = this.playerAction.jump;
         this.playerDashLatch = this.playerAction.dash;
 
         // A stunned character is out of the player's hands, exactly as it is
@@ -417,22 +416,22 @@ export class FaceSmashing {
         const stunned = dodger.stunned;
         this.action = {
             axis: stunned ? 0 : this.playerAction.axis,
-            jump: !stunned && jumped,
+            jump: !stunned && this.playerAction.jump,
             dash: !stunned && dashed,
+            fastFall: !stunned && this.playerAction.fastFall,
             facing: this.playerAction.axis !== 0 ? this.playerAction.axis : dodger.facingDirection,
         };
     }
 
     /** Asks the trained policy for the character's next move. */
     private readPolicyAction(dodger: Dodger): void {
-        this.playerAction = { axis: 0, jump: false, dash: false, run: false, fastFall: false };
-        this.jumpLatch = false;
+        this.playerAction = { axis: 0, jump: false, dash: false, fastFall: false };
         this.playerDashLatch = false;
 
         this.action =
             this.policy.ready && !dodger.stunned
                 ? decodeAction(this.policy.decide(this.observation))
-                : { axis: 0, jump: false, dash: false, facing: 0 };
+                : { axis: 0, jump: false, dash: false, fastFall: false, facing: 0 };
     }
 
     private heldAxis(): number {

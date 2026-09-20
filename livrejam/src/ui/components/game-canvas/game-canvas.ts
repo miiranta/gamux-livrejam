@@ -117,7 +117,6 @@ export class GameCanvas {
         { labelKey: 'hud.players.jump', icon: 'jump', keys: 'W' },
         { labelKey: 'hud.players.fastFall', icon: 'fastFall', keys: 'S' },
         { labelKey: 'hud.players.dash', icon: 'dash', keys: 'Shift' },
-        { labelKey: 'hud.players.run', icon: 'run', keys: 'Ctrl' },
     ]);
 
     constructor() {

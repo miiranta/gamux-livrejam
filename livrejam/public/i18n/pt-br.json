@@ -161,7 +161,7 @@
         "gamepad": "Controle",
         "connected": "conectado",
         "disconnected": "nenhum",
-        "hintPlayer": "Setas ou A/D mover · Ctrl correr · Cima / W / Espaço pular · Shift avanço · Enter soltar",
+        "hintPlayer": "Setas ou A/D mover · Cima / W / Espaço pular · S queda rápida · Shift avanço · Enter soltar",
         "players": {
             "p1": "Jogador 1",
             "p2": "Jogador 2",
@@ -171,7 +171,6 @@
             "move": "Mover",
             "jump": "Pular",
             "dash": "Avanço",
-            "run": "Correr",
             "fastFall": "Queda rápida"
         }
     },

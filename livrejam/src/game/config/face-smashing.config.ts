@@ -30,8 +30,8 @@ export const FACE_SMASHING = {
         runSpeed: 78,
         walkStride: 44,
         runStride: 72,
-        maxSpeedStart: 131,
-        maxSpeedEnd: 89,
+        maxSpeedStart: 146,
+        maxSpeedEnd: 104,
         jumpStart: 588,
         jumpEnd: 320,
         accelerationX: 2898,
@@ -115,12 +115,6 @@ export const FACE_SMASHING = {
         invulnerableSeconds: 0.5,
         flashColor: '#ffffff',
     },
-    player: {
-        /** Sprinting speed, as a fraction of the damaged-tier max speed. */
-        runSpeedFactor: 1,
-        /** Tapping a direction moves this fraction of the sprint speed. */
-        walkSpeedFactor: 1,
-    },
     effects: {
         impact: { frames: 6, frameDuration: 0.05 },
         slash: { frames: 6, frameDuration: 0.055 },
@@ -130,7 +124,7 @@ export const FACE_SMASHING = {
     ai: {
         modelUrl: 'models/dodger-policy.json',
         observationSize: 77,
-        actionCount: 8,
+        actionCount: 11,
         observeRadius: 576,
         sensorReach: 192,
     },
