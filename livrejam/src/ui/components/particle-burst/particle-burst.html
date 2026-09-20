@@ -1,4 +1,17 @@
 <span class="particle-burst" aria-hidden="true" [style]="style()">
+    <!-- Long streaks that shoot out ahead of the shards. -->
+    @for (spark of sparkParticles(); track $index) {
+        <span
+            class="particle-burst__spark"
+            [class]="'particle-burst__spark--tone-' + spark.tone"
+            [style.--lj-angle]="spark.angle + 'deg'"
+            [style.--lj-distance]="spark.distance"
+            [style.--lj-length]="spark.length + 'em'"
+            [style.animation-delay]="spark.delay + 's'"
+            [style.animation-duration]="spark.duration + 's'"
+        ></span>
+    }
+
     @for (particle of particles(); track $index) {
         <span
             class="particle-burst__shard"
@@ -6,6 +19,8 @@
             [style.--lj-angle]="particle.angle + 'deg'"
             [style.--lj-distance]="particle.distance"
             [style.--lj-size]="particle.size + 'em'"
+            [style.--lj-spin]="particle.spin + 'deg'"
+            [style.--lj-stretch]="particle.stretch"
             [style.animation-delay]="particle.delay + 's'"
             [style.animation-duration]="particle.duration + 's'"
         ></span>

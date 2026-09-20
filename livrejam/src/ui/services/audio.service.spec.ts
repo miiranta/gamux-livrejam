@@ -1,14 +1,24 @@
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+<<<<<<< Updated upstream
 import { AudioEngine, type AudioChannel } from '../../game/audio';
 import { useReadyCamera } from '../testing/camera-testing';
+=======
+import { AudioEngine, type AudioChannel, type AudioManifest } from '../../game/audio';
+>>>>>>> Stashed changes
 import { AudioService, SOUND_EFFECTS } from './audio.service';
 import { GameFlowService } from './game-flow.service';
 import { GameSettingsService } from './game-settings.service';
 
-const CATALOG = {
-    soundtrack: { tracks: ['assets/audio/soundtrack/soundtrack-p1.mp3'] },
+const CATALOG: AudioManifest = {
+    soundtrack: {
+        roles: [
+            { key: 'match', files: ['assets/audio/soundtrack/match/song.mp3'] },
+            { key: 'menu', files: ['assets/audio/soundtrack/menu/wind.mp3'] },
+            { key: 'end-game', files: ['assets/audio/soundtrack/end-game/end.mp3'] },
+        ],
+    },
     voices: {
         sets: [
             { key: 'set_a', files: ['assets/audio/voices/set_a/a.ogg'] },
@@ -85,13 +95,16 @@ describe('AudioService', () => {
         setVolume.mockRestore();
     });
 
-    it('plays the soundtrack only while a match is running', () => {
+    it('plays the match song while playing, and only then', () => {
         const startMusic = vi.spyOn(AudioEngine.prototype, 'startMusic');
         const stopMusic = vi.spyOn(AudioEngine.prototype, 'stopMusic');
 
         flow.startMatch();
         TestBed.tick();
-        expect(startMusic).toHaveBeenCalled();
+        expect(startMusic).toHaveBeenCalledWith(
+            'assets/audio/soundtrack/match/song.mp3',
+            expect.objectContaining({ loop: true }),
+        );
 
         startMusic.mockClear();
         flow.pause();
@@ -102,29 +115,154 @@ describe('AudioService', () => {
         stopMusic.mockClear();
         flow.resume();
         TestBed.tick();
-        expect(startMusic).toHaveBeenCalled();
-
-        startMusic.mockClear();
-        flow.endMatch({ score: 0, best: 0, survived: 1, dodges: 0, nearMisses: 0 });
-        TestBed.tick();
-        expect(startMusic).not.toHaveBeenCalled();
-
-        startMusic.mockClear();
-        flow.abandon();
-        TestBed.tick();
-        expect(startMusic).not.toHaveBeenCalled();
+        expect(startMusic).toHaveBeenCalledWith(
+            'assets/audio/soundtrack/match/song.mp3',
+            expect.objectContaining({ loop: true }),
+        );
 
         startMusic.mockRestore();
         stopMusic.mockRestore();
     });
 
-    it('never starts the soundtrack while sitting on the menu', () => {
+    it('plays the end-game song exactly once (no loop)', () => {
+        const startMusic = vi.spyOn(AudioEngine.prototype, 'startMusic');
+
+        flow.startMatch();
+        TestBed.tick();
+        startMusic.mockClear();
+
+        flow.endMatch({ score: 0, best: 0, survived: 1, dodges: 0, nearMisses: 0 });
+        TestBed.tick();
+
+        expect(startMusic).toHaveBeenCalledTimes(1);
+        expect(startMusic).toHaveBeenCalledWith('assets/audio/soundtrack/end-game/end.mp3', {
+            loop: false,
+        });
+
+        startMusic.mockRestore();
+    });
+
+    it('loops the menu ambience with a crossfade', () => {
+        const startMusic = vi.spyOn(AudioEngine.prototype, 'startMusic');
+
+        flow.startMatch();
+        TestBed.tick();
+        startMusic.mockClear();
+
+        flow.abandon();
+        TestBed.tick();
+
+        expect(startMusic).toHaveBeenCalledWith(
+            'assets/audio/soundtrack/menu/wind.mp3',
+            expect.objectContaining({ loop: true, crossfadeSeconds: expect.any(Number) }),
+        );
+        const options = startMusic.mock.calls[0]?.[1] as { crossfadeSeconds: number };
+        expect(options.crossfadeSeconds).toBeGreaterThan(0);
+
+        startMusic.mockRestore();
+    });
+
+    it('starts the menu ambience on boot, since the game opens on the menu', () => {
         const startMusic = vi.spyOn(AudioEngine.prototype, 'startMusic');
 
         TestBed.tick();
 
+        expect(startMusic).toHaveBeenCalledWith(
+            'assets/audio/soundtrack/menu/wind.mp3',
+            expect.objectContaining({ loop: true }),
+        );
+        startMusic.mockRestore();
+    });
+
+    it('keeps the pause menu silent', () => {
+        const startMusic = vi.spyOn(AudioEngine.prototype, 'startMusic');
+
+        flow.startMatch();
+        flow.pause();
+        TestBed.tick();
+
+        const roles = startMusic.mock.calls.map(([url]) => url);
+        expect(roles).not.toContain('assets/audio/soundtrack/menu/wind.mp3');
+        expect(roles).not.toContain('assets/audio/soundtrack/end-game/end.mp3');
+
+        startMusic.mockRestore();
+    });
+
+    it('stays silent when a role has no track configured', () => {
+        service.useCatalog({
+            soundtrack: { roles: [] },
+            voices: { sets: [] },
+            soundEffects: { groups: [] },
+        });
+        const startMusic = vi.spyOn(AudioEngine.prototype, 'startMusic');
+
+        flow.startMatch();
+        TestBed.tick();
+
         expect(startMusic).not.toHaveBeenCalled();
         startMusic.mockRestore();
+    });
+
+    it('suspends the mixer when the window loses focus', () => {
+        const suspend = vi.spyOn(AudioEngine.prototype, 'suspend').mockResolvedValue();
+
+        window.dispatchEvent(new Event('blur'));
+
+        expect(suspend).toHaveBeenCalledTimes(1);
+        suspend.mockRestore();
+    });
+
+    it('resumes the mixer when the window regains focus', () => {
+        const resume = vi.spyOn(AudioEngine.prototype, 'resume').mockResolvedValue();
+
+        window.dispatchEvent(new Event('focus'));
+
+        expect(resume).toHaveBeenCalledTimes(1);
+        resume.mockRestore();
+    });
+
+    it('suspends while the tab is hidden and resumes when it is shown again', () => {
+        const suspend = vi.spyOn(AudioEngine.prototype, 'suspend').mockResolvedValue();
+        const resume = vi.spyOn(AudioEngine.prototype, 'resume').mockResolvedValue();
+
+        const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+        document.dispatchEvent(new Event('visibilitychange'));
+        expect(suspend).toHaveBeenCalledTimes(1);
+        expect(resume).not.toHaveBeenCalled();
+
+        hidden.mockReturnValue(false);
+        document.dispatchEvent(new Event('visibilitychange'));
+        expect(resume).toHaveBeenCalledTimes(1);
+
+        hidden.mockRestore();
+        suspend.mockRestore();
+        resume.mockRestore();
+    });
+
+    it('stops listening for focus changes once destroyed', () => {
+        const suspend = vi.spyOn(AudioEngine.prototype, 'suspend').mockResolvedValue();
+        TestBed.resetTestingModule();
+
+        window.dispatchEvent(new Event('blur'));
+
+        expect(suspend).not.toHaveBeenCalled();
+        suspend.mockRestore();
+    });
+
+    it('never unlocks audio while the tab is hidden', () => {
+        const unlock = vi.spyOn(AudioEngine.prototype, 'unlock').mockResolvedValue(true);
+        const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+
+        window.dispatchEvent(new PointerEvent('pointerdown'));
+
+        expect(unlock).not.toHaveBeenCalled();
+
+        hidden.mockReturnValue(false);
+        window.dispatchEvent(new PointerEvent('pointerdown'));
+        expect(unlock).toHaveBeenCalledTimes(1);
+
+        hidden.mockRestore();
+        unlock.mockRestore();
     });
 
     it('plays a random variant of the hover sound', () => {
@@ -174,7 +312,7 @@ describe('AudioService', () => {
 
     it('returns false instead of throwing when the catalog has no sound', () => {
         service.useCatalog({
-            soundtrack: { tracks: [] },
+            soundtrack: { roles: [] },
             voices: { sets: [] },
             soundEffects: { groups: [] },
         });
@@ -222,7 +360,7 @@ describe('AudioService', () => {
 
     it('plays a single explosion when the pool has only one sample', () => {
         service.useCatalog({
-            soundtrack: { tracks: [] },
+            soundtrack: { roles: [] },
             voices: { sets: [] },
             soundEffects: {
                 groups: [
@@ -243,7 +381,7 @@ describe('AudioService', () => {
 
     it('returns false when the explosion group is missing', () => {
         service.useCatalog({
-            soundtrack: { tracks: [] },
+            soundtrack: { roles: [] },
             voices: { sets: [] },
             soundEffects: { groups: [] },
         });

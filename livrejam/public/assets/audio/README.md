@@ -5,9 +5,22 @@ manda no som:
 
 | pasta | volume | quem usa |
 |---|---|---|
-| `soundtrack/` | **Music** | musica do jogo (loop durante a partida) |
+| `soundtrack/<tela>/` | **Music** | musica de cada tela (ver abaixo) |
 | `voices/<set>/` | **Voice** | falas do personagem (o set e escolhido na configuracao) |
 | `sound_effects/<evento>/` | **Sound effects** | efeitos de UI e do jogo |
+
+## Soundtrack
+
+Cada tela tem a sua pasta dentro de `soundtrack/`:
+
+| pasta | quando toca | como |
+|---|---|---|
+| `match/` | durante a partida | em loop |
+| `menu/` | so no menu inicial (na pausa fica em silencio) | em loop, com crossfade |
+| `end-game/` | na tela de fim de jogo | **uma vez so**, sem loop |
+
+O menu e a partida usam loop; o de menu usa crossfade (ver abaixo) para o
+loop nao ter emenda audivel.
 
 ## Manifest
 
@@ -17,7 +30,7 @@ manda no som:
 python3 tools/build_audio_manifest.py
 ```
 
-Ele varre as tres pastas e escreve a lista de arquivos. O jogo le esse manifest
+Ele varre as pastas e escreve a lista de arquivos. O jogo le esse manifest
 no boot e **decodifica tudo em memoria** (Web Audio), entao tocar um som nao tem
 atraso entre o gatilho e o audio — importante porque os sons acompanham eventos
 visuais (hover, impacto, mudanca de nivel de dano).
@@ -28,8 +41,10 @@ Formatos aceitos: `mp3`, `ogg`, `wav`, `m4a`, `aac`, `flac`, `opus`.
 
 ### Uma musica
 
-Solte o arquivo em `soundtrack/` e rode o script. A **primeira** faixa da lista
-e a que toca em loop na partida.
+Solte o arquivo na pasta da tela (`soundtrack/match/`, `soundtrack/menu/` ou
+`soundtrack/end-game/`) e rode o script. Se houver mais de um arquivo na pasta,
+o primeiro (ordem natural) e o que toca. Pastas com nome desconhecido sao
+ignoradas, entao uma pasta nova sozinha nao quebra o jogo.
 
 ### Um set de voz
 
@@ -67,6 +82,36 @@ tambem esta rodando o jogo), e o som sairia fora de sincronia.
 
 Os atrasos ficam em `src/ui/pages/end-game/end-game.ts` e espelham os delays do
 CSS (`end-game.scss`) e dos `app-particle-burst`.
+
+## Loop sem emenda (crossfade)
+
+Um MP3 nao da loop perfeito: o encoder deixa um pequeno silencio no comeco e no
+fim do arquivo, e o `loop = true` do navegador toca esse silencio a cada volta
+(um "buraco" audivel).
+
+Para o som de menu, o engine toca o arquivo em **passadas sobrepostas**: a
+passada seguinte comeca `crossfadeSeconds` antes da atual terminar, e as duas
+se misturam. Como as passadas se sobrepoem, o periodo do loop e
+`duracao - crossfade`, entao a emenda nunca cai no comeco/fim do arquivo.
+
+As curvas de fade sao **equal-power** (seno/cosseno), nao lineares: as duas
+passadas sao sinais nao correlacionados, entao um fade linear comum daria uma
+queda de ~3 dB no meio da sobreposicao, ouvida como um pulso a cada loop.
+
+O agendamento usa `start(when)` (thread de audio) com um timer so decidindo o
+que enfileirar; assim uma thread principal ocupada nao faz o loop engasgar.
+
+## App sem foco
+
+Quando a janela perde o foco (ou a aba fica em segundo plano), o `AudioContext`
+e **suspenso**: todo o audio para. Ao voltar o foco, ele e retomado.
+
+Suspender o contexto congela o relogio de audio, entao a musica **continua de
+onde parou** em vez de reiniciar — inclusive as passadas ja agendadas do loop
+com crossfade. Nada e recriado.
+
+Enquanto o app esta sem foco, um som disparado nao resume o contexto (fica
+agendado e silencioso), e um gesto nao "destrava" o audio com a aba escondida.
 
 ## Créditos
 

@@ -4,13 +4,19 @@
 Every sound in `livrejam/public/assets/audio/` belongs to exactly one mixer
 channel, decided by the folder it lives in:
 
-    soundtrack/            -> music volume
+    soundtrack/<role>/     -> music volume (one role per screen)
     voices/<set>/          -> voice volume (the set is chosen in the configuration)
     sound_effects/<event>/ -> sound-effect volume (one event per folder)
 
 The game never hardcodes file names: it reads `manifest.json`, so adding a new
-voice set (or a new sound effect) is just "drop the file in the folder and run
+track, voice set or sound effect is just "drop the file in the folder and run
 this script".
+
+The `soundtrack` roles are fixed by the screens that use them:
+
+    match/     looped during the match
+    menu/      looped on the main menu
+    end-game/  played once on the end-game screen
 
 Usage:
     python3 tools/build_audio_manifest.py [audio_dir]
@@ -81,13 +87,14 @@ def nested_groups(root: Path, prefix: str) -> list[dict[str, object]]:
     ]
 
 
+def soundtrack_roles(soundtrack_dir: Path) -> list[dict[str, object]]:
+    """One entry per `soundtrack/<role>/` folder."""
+    return nested_groups(soundtrack_dir, SOUNDTRACK_DIR)
+
+
 def build_manifest(audio_dir: Path) -> dict[str, object]:
     return {
-        'soundtrack': {
-            'tracks': [
-                f'{SOUNDTRACK_DIR}/{name}' for name in audio_files(audio_dir / SOUNDTRACK_DIR)
-            ],
-        },
+        'soundtrack': {'roles': soundtrack_roles(audio_dir / SOUNDTRACK_DIR)},
         'voices': {'sets': voice_sets(audio_dir / VOICES_DIR)},
         'soundEffects': {'groups': nested_groups(audio_dir / SOUND_EFFECTS_DIR, SOUND_EFFECTS_DIR)},
     }
@@ -104,13 +111,15 @@ def main(argv: list[str]) -> int:
     target = audio_dir / MANIFEST_NAME
     target.write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
 
+    roles = manifest['soundtrack']['roles']  # type: ignore[index]
     sets = manifest['voices']['sets']  # type: ignore[index]
     groups = manifest['soundEffects']['groups']  # type: ignore[index]
+    role_summary = ', '.join(f"{entry['key']} ({len(entry['files'])})" for entry in roles) or 'none'  # type: ignore[index]
     set_summary = ', '.join(f"{entry['key']} ({len(entry['files'])})" for entry in sets) or 'none'  # type: ignore[index]
     group_summary = ', '.join(f"{entry['key']} ({len(entry['files'])})" for entry in groups) or 'none'  # type: ignore[index]
 
     print(f'wrote {target}')
-    print(f"  soundtrack: {len(manifest['soundtrack']['tracks'])} track(s)")  # type: ignore[index]
+    print(f'  soundtrack: {len(roles)} role(s) -> {role_summary}')  # type: ignore[arg-type]
     print(f'  voices:     {len(sets)} set(s) -> {set_summary}')  # type: ignore[arg-type]
     print(f'  sfx:        {len(groups)} group(s) -> {group_summary}')  # type: ignore[arg-type]
     return 0

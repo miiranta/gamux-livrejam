@@ -4,11 +4,13 @@ import {
     AudioEngine,
     EMPTY_AUDIO_MANIFEST,
     type AudioManifest,
+    type MusicRole,
     loadAudioManifest,
     manifestUrls,
     pickRandom,
     pickRandomDistinct,
     resolveVoiceSet,
+    soundtrackTrack,
 } from '../../game/audio';
 import { GameFlowService } from './game-flow.service';
 import { GameSettingsService } from './game-settings.service';
@@ -28,14 +30,20 @@ const HOVER_VOLUME = 0.45;
 const HOVER_COOLDOWN_MS = 60;
 
 /**
+ * Seconds of overlap used when looping the menu ambience. The wind is quiet
+ * and continuous, so a long crossfade is what makes the seam inaudible.
+ */
+const MENU_CROSSFADE_SECONDS = 1.5;
+
+/**
  * Owns the mixer and the loaded audio catalog.
  *
  * - The manifest (`assets/audio/manifest.json`) is fetched and every file is
  *   decoded into memory at boot, so playback has no delay.
  * - The mixer channels follow the settings service (music / sound effects /
  *   voice), including the selected voice set.
- * - The soundtrack only plays during a match; menus and the end screen are
- *   silent, which the game-flow service drives.
+ * - Which track plays is driven by the game-flow state: the menu ambience on
+ *   the main menu, the match song while playing, and the end-game song once.
  */
 @Injectable({ providedIn: 'root' })
 export class AudioService {
@@ -62,12 +70,30 @@ export class AudioService {
 
     constructor() {
         // Browsers only allow audio after a gesture; unlock on the first one.
-        const unlock = () => void this.unlock();
+        // A hidden tab must never unlock, or a stray event could start audio
+        // while the app is in the background.
+        const unlock = () => {
+            if (!document.hidden) {
+                void this.unlock();
+            }
+        };
         window.addEventListener('pointerdown', unlock, { passive: true });
         window.addEventListener('keydown', unlock, { passive: true });
+
+        // Silence everything while the app is in the background, and pick up
+        // exactly where it stopped when it comes back.
+        const onBlur = () => void this.suspend();
+        const onFocus = () => void this.resume();
+        window.addEventListener('blur', onBlur);
+        window.addEventListener('focus', onFocus);
+        document.addEventListener('visibilitychange', this.onVisibilityChange);
+
         this.destroyRef.onDestroy(() => {
             window.removeEventListener('pointerdown', unlock);
             window.removeEventListener('keydown', unlock);
+            window.removeEventListener('blur', onBlur);
+            window.removeEventListener('focus', onFocus);
+            document.removeEventListener('visibilitychange', this.onVisibilityChange);
             this.disposed = true;
             this.engine.dispose();
         });
@@ -83,16 +109,53 @@ export class AudioService {
             );
         });
 
-        // Music only while a match is actually running: silent in the menu, on
-        // the pause screen and on the end-game screen.
+        // The music follows the screen: menu ambience, match song, end-game
+        // song. The pause menu deliberately keeps the match song silent.
         effect(() => {
-            if (this.flow.isPlaying()) {
-                this.startMusic();
+            const role = this.currentMusicRole();
+            if (role) {
+                this.playMusic(role);
             } else {
                 this.stopMusic();
             }
         });
     }
+
+    /** Which track the current screen should play; `null` for silence. */
+    private currentMusicRole(): MusicRole | null {
+        if (this.flow.isPlaying()) {
+            return 'match';
+        }
+
+        if (this.flow.isGameOver()) {
+            return 'end-game';
+        }
+
+        // Only the *initial* menu has ambience; the pause menu is silent.
+        return this.flow.isMenu() ? 'menu' : null;
+    }
+
+    /**
+     * Stops all output while the app is unfocused. The audio clock freezes, so
+     * music resumes from the same point instead of restarting.
+     */
+    async suspend(): Promise<void> {
+        await this.engine.suspend();
+    }
+
+    /** Resumes output after {@link suspend}. */
+    async resume(): Promise<void> {
+        await this.engine.resume();
+    }
+
+    /** Background tabs also count as unfocused, even without a blur event. */
+    private readonly onVisibilityChange = (): void => {
+        if (document.hidden) {
+            void this.suspend();
+        } else {
+            void this.resume();
+        }
+    };
 
     /** Loads the catalog and preloads every sound. Safe to call repeatedly. */
     async boot(): Promise<void> {
@@ -228,15 +291,32 @@ export class AudioService {
         return resolveVoiceSet(this.voiceSets(), voiceSet)?.files ?? [];
     }
 
-    /** Starts the match soundtrack (first track), looping. */
-    startMusic(): void {
-        const track = this.manifest().soundtrack.tracks[0];
-        if (track) {
-            this.engine.startMusic(track, { loop: true });
+    /**
+     * Plays the track configured for a screen.
+     *
+     * The match and menu tracks loop (the menu one with a crossfade, so its
+     * seam is inaudible); the end-game track plays through exactly once and
+     * then releases the channel, which is what allows replaying it on a later
+     * visit to the screen.
+     */
+    playMusic(role: MusicRole): void {
+        const track = soundtrackTrack(this.manifest(), role);
+        if (!track) {
+            return;
         }
+
+        if (role === 'end-game') {
+            this.engine.startMusic(track, { loop: false });
+            return;
+        }
+
+        this.engine.startMusic(track, {
+            loop: true,
+            crossfadeSeconds: role === 'menu' ? MENU_CROSSFADE_SECONDS : 0,
+        });
     }
 
-    /** Fades the soundtrack out (pause, end of match, back to the menu). */
+    /** Fades the current track out (pause, end of match, back to the menu). */
     stopMusic(): void {
         this.engine.stopMusic();
     }

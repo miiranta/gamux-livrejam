@@ -52,6 +52,61 @@ describe('ParticleBurst', () => {
 
         expect(angles.size).toBeGreaterThan(4);
     });
+
+    it('renders no sparks unless asked', async () => {
+        const host = await render(ParticleBurst);
+
+        expect(host.querySelectorAll('.particle-burst__spark').length).toBe(0);
+    });
+
+    it('deals the shards across three staggered rings', async () => {
+        await TestBed.configureTestingModule({ imports: [ParticleBurst] }).compileComponents();
+
+        const fixture = TestBed.createComponent(ParticleBurst);
+        fixture.componentRef.setInput('count', 30);
+        fixture.detectChanges();
+
+        const shards = Array.from(
+            (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
+                '.particle-burst__shard',
+            ),
+        );
+
+        // A single ring would mean every shard shares one distance multiplier.
+        const distances = new Set(
+            shards.map((shard) => shard.style.getPropertyValue('--lj-distance')),
+        );
+        expect(distances.size).toBeGreaterThan(10);
+
+        // Ring 1 launches first, so not every shard shares a start time.
+        const delays = new Set(shards.map((shard) => shard.style.animationDelay));
+        expect(delays.size).toBeGreaterThan(3);
+    });
+
+    it('gives every shard a spin and a stretch', async () => {
+        const host = await render(ParticleBurst);
+
+        const shards = Array.from(host.querySelectorAll<HTMLElement>('.particle-burst__shard'));
+        for (const shard of shards) {
+            expect(shard.style.getPropertyValue('--lj-spin')).not.toBe('');
+            expect(Number.parseFloat(shard.style.getPropertyValue('--lj-stretch'))).toBeGreaterThan(
+                1,
+            );
+        }
+    });
+
+    it('throws the requested number of sparks', async () => {
+        await TestBed.configureTestingModule({ imports: [ParticleBurst] }).compileComponents();
+
+        const fixture = TestBed.createComponent(ParticleBurst);
+        fixture.componentRef.setInput('sparks', 12);
+        fixture.detectChanges();
+
+        expect(
+            (fixture.nativeElement as HTMLElement).querySelectorAll('.particle-burst__spark')
+                .length,
+        ).toBe(12);
+    });
 });
 
 describe('ParticleField', () => {

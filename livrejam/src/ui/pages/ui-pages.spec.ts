@@ -381,6 +381,18 @@ describe('EndGame', () => {
         expect(TestBed.inject(GameFlowService).isMenu()).toBe(true);
     });
 
+    it('keeps the content inside the shake layer', () => {
+        const host = fixture.nativeElement as HTMLElement;
+        const shake = host.querySelector('.end-game__shake');
+
+        // The shake layer is absolutely positioned, so it replaces the host as
+        // the stack's layout parent. If it stops centering, the whole screen
+        // snaps to the top-left corner.
+        expect(shake).not.toBeNull();
+        expect(shake?.querySelector('.end-game__stack')).not.toBeNull();
+        expect(host.querySelector(':scope > .end-game__stack')).toBeNull();
+    });
+
     it('fires two different explosions, one per impact', () => {
         const audio = TestBed.inject(AudioService);
         const sequence = vi.spyOn(audio, 'playSoundEffectSequence').mockReturnValue(true);

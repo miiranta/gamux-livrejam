@@ -1,7 +1,24 @@
 {
   "soundtrack": {
-    "tracks": [
-      "soundtrack/soundtrack-p1.mp3"
+    "roles": [
+      {
+        "key": "end-game",
+        "files": [
+          "soundtrack/end-game/end-game.mp3"
+        ]
+      },
+      {
+        "key": "match",
+        "files": [
+          "soundtrack/match/soundtrack-p1.mp3"
+        ]
+      },
+      {
+        "key": "menu",
+        "files": [
+          "soundtrack/menu/wind.mp3"
+        ]
+      }
     ]
   },
   "voices": {

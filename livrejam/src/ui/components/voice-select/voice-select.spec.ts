@@ -9,7 +9,7 @@ import { provideTestTranslate, useTestTranslations } from '../../testing/i18n-te
 import { VoiceSelect } from './voice-select';
 
 const CATALOG = {
-    soundtrack: { tracks: [] },
+    soundtrack: { roles: [] },
     voices: {
         sets: [
             { key: 'set_a', files: ['assets/audio/voices/set_a/normal-1.ogg'] },

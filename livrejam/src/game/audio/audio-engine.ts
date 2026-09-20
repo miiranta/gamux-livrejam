@@ -15,6 +15,8 @@
  * (sound_effects folder).
  */
 
+import { isDevMode } from "@angular/core";
+
 /** Optional prefix prepended to relative URLs; empty = served from the root. */
 export const AUDIO_SOURCE_ROOT = '';
 
@@ -40,17 +42,39 @@ export interface PlayOptions {
 export interface MusicOptions {
     loop?: boolean;
     fadeSeconds?: number;
+    /**
+     * Seconds of overlap between two passes of a looping track. A looping
+     * MP3 cannot be seamless on its own (encoder padding leaves a small gap),
+     * so the track is played as overlapping passes that fade into each other.
+     * `0` falls back to the browser's own gapless loop.
+     */
+    crossfadeSeconds?: number;
 }
 
+/** A track currently on the music channel, with its own way of stopping. */
 interface MusicHandle {
     url: string;
+    /** Fades the track out over `fadeSeconds` and releases it. */
+    stop: (fadeSeconds: number) => void;
+}
+
+/** One overlapping pass of a crossfaded loop. */
+interface LoopSegment {
     source: AudioBufferSourceNode;
-    gain: GainNode;
+    /** Audio-clock time at which this pass is silent again. */
+    end: number;
 }
 
 const MASTER_GAIN = 0.9;
 /** Long enough to avoid clicks, short enough to feel instant. */
 const MUSIC_FADE_SECONDS = 0.4;
+/** How far ahead the loop scheduler queues passes, in seconds. */
+const LOOP_LOOKAHEAD_SECONDS = 1;
+/** How often the loop scheduler tops up, in milliseconds. */
+const LOOP_TICK_MS = 250;
+/** Points used to approximate an equal-power fade curve. */
+const CROSSFADE_STEPS = 16;
+const HALF_PI = Math.PI / 2;
 
 export class AudioEngine {
     private context: AudioContext | null = null;
@@ -71,6 +95,8 @@ export class AudioEngine {
     private inFlight = new Set<Promise<unknown>>();
     private unlocked = false;
     private disposed = false;
+    /** True while the app is unfocused and we suspended the context ourselves. */
+    private suspendedByUs = false;
 
     constructor(private readonly root: string = AUDIO_SOURCE_ROOT) {}
 
@@ -107,8 +133,53 @@ export class AudioEngine {
         }
 
         this.unlocked = context.state !== 'closed';
+        // A gesture means the app is in use again, so any suspension we applied
+        // for being unfocused no longer applies.
+        this.suspendedByUs = false;
         this.flushPendingMusic();
         return this.unlocked;
+    }
+
+    /**
+     * Freezes all output without losing playback position.
+     *
+     * Suspending the context stops the audio clock, so every scheduled source
+     * (including the queued passes of a crossfaded loop) simply pauses and
+     * carries on from the same point when {@link resume} is called. That is
+     * what makes "stop while unfocused, continue when focused" work without
+     * restarting the music.
+     */
+    async suspend(): Promise<void> {
+        const context = this.context;
+        if (!context || context.state !== 'running') {
+            return;
+        }
+
+        this.suspendedByUs = true;
+
+        try {
+            await context.suspend();
+        } catch {
+            // Already suspended/closed, or the browser refused; nothing to do.
+            this.suspendedByUs = false;
+        }
+    }
+
+    /** Resumes output after {@link suspend}. */
+    async resume(): Promise<void> {
+        const context = this.context;
+        if (!context || context.state !== 'suspended') {
+            this.suspendedByUs = false;
+            return;
+        }
+
+        this.suspendedByUs = false;
+
+        try {
+            await context.resume();
+        } catch {
+            // The context was closed meanwhile; nothing to resume.
+        }
     }
 
     setVolume(channel: AudioChannel, value: number): void {
@@ -172,7 +243,10 @@ export class AudioEngine {
             return false;
         }
 
-        if (context.state === 'suspended') {
+        // Only nudge a context the browser left suspended. When *we* suspended
+        // it (app unfocused) the sound is scheduled anyway and stays silent
+        // until focus returns, instead of leaking audio from a hidden tab.
+        if (context.state === 'suspended' && !this.suspendedByUs) {
             void context.resume().catch(() => undefined);
         }
 
@@ -216,15 +290,15 @@ export class AudioEngine {
         return this.play(channel, urls[index] ?? urls[0], options);
     }
 
-    /** Starts a track on the music channel, fading in and looping by default. */
+    /** Starts a track on the music channel, replacing whatever was playing. */
     startMusic(url: string, options: MusicOptions = {}): void {
-        const context = this.context;
-        const output = this.channels.get('music');
-        const buffer = this.buffers.get(url);
-
         if (this.music?.url === url) {
             return;
         }
+
+        const context = this.context;
+        const output = this.channels.get('music');
+        const buffer = this.buffers.get(url);
 
         if (!context || !output || !buffer) {
             // Unlock/preload may still be pending; retried once they finish.
@@ -237,20 +311,167 @@ export class AudioEngine {
         this.stopMusic(0);
 
         const fade = Math.max(options.fadeSeconds ?? MUSIC_FADE_SECONDS, 0);
-        const source = context.createBufferSource();
-        source.buffer = buffer;
-        source.loop = options.loop ?? true;
-
+        const crossfade = Math.max(options.crossfadeSeconds ?? 0, 0);
         const gain = context.createGain();
         gain.gain.value = fade > 0 ? 0 : 1;
         if (fade > 0) {
             gain.gain.linearRampToValueAtTime(1, context.currentTime + fade);
         }
+        gain.connect(output);
 
-        source.connect(gain).connect(output);
+        if (!(options.loop ?? true)) {
+            this.music = this.playOnce(url, context, buffer, gain);
+        } else if (crossfade > 0) {
+            this.music = this.playCrossfadeLoop(url, context, buffer, gain, crossfade);
+        } else {
+            this.music = this.playGaplessLoop(url, context, buffer, gain);
+        }
+    }
+
+    /** A track that plays through once and then releases itself. */
+    private playOnce(
+        url: string,
+        context: AudioContext,
+        buffer: AudioBuffer,
+        gain: GainNode,
+    ): MusicHandle {
+        const source = context.createBufferSource();
+        source.buffer = buffer;
+        source.connect(gain);
+
+        const handle: MusicHandle = {
+            url,
+            stop: (fadeSeconds) => {
+                fadeOut(context, gain, [source], fadeSeconds);
+            },
+        };
+
+        // Once it ends on its own, the channel is free again — which is what
+        // lets the same track be replayed on a later visit to the screen.
+        source.onended = () => {
+            disconnect(source, gain);
+            if (this.music === handle) {
+                this.music = null;
+            }
+        };
+
+        source.start();
+        return handle;
+    }
+
+    /** The browser's own gapless loop: no scheduling, no overlap. */
+    private playGaplessLoop(
+        url: string,
+        context: AudioContext,
+        buffer: AudioBuffer,
+        gain: GainNode,
+    ): MusicHandle {
+        const source = context.createBufferSource();
+        source.buffer = buffer;
+        source.loop = true;
+        source.connect(gain);
         source.start();
 
-        this.music = { url, source, gain };
+        return {
+            url,
+            stop: (fadeSeconds) => fadeOut(context, gain, [source], fadeSeconds),
+        };
+    }
+
+    /**
+     * Seamless loop built from overlapping passes.
+     *
+     * Each pass plays the whole file; the next one starts `crossfade` seconds
+     * before the current one ends, and the two fade into each other. Because
+     * the passes overlap, the loop period is `duration - crossfade`, so the
+     * seam never lines up with the (gap-prone) start/end of the file.
+     *
+     * Passes are queued on the audio clock with a coarse lookahead timer: the
+     * timer only decides *what* to queue, while the audio thread decides
+     * *when* it sounds, so a busy main thread cannot make the loop stutter.
+     */
+    private playCrossfadeLoop(
+        url: string,
+        context: AudioContext,
+        buffer: AudioBuffer,
+        gain: GainNode,
+        crossfadeSeconds: number,
+    ): MusicHandle {
+        const duration = buffer.duration;
+        // A crossfade longer than half the file would leave nothing to hear.
+        const crossfade = Math.min(crossfadeSeconds, duration / 2);
+        const period = Math.max(duration - crossfade, 0.01);
+        const segments: LoopSegment[] = [];
+
+        let nextStart = context.currentTime;
+        let stopped = false;
+        let timer: ReturnType<typeof setInterval> | null = null;
+
+        const spawn = (start: number): void => {
+            const source = context.createBufferSource();
+            const segmentGain = context.createGain();
+            const end = start + duration;
+            const fadeFrom = end - crossfade;
+
+            // Equal-power (sine/cosine) fades rather than linear ones: the two
+            // passes are uncorrelated, so linear ramps would dip ~3 dB in the
+            // middle of the overlap and be heard as a pulse on every loop.
+            segmentGain.gain.setValueAtTime(0, start);
+            rampGainCurve(segmentGain.gain, start, crossfade, (progress) =>
+                Math.sin(progress * HALF_PI),
+            );
+
+            segmentGain.gain.setValueAtTime(1, fadeFrom);
+            rampGainCurve(segmentGain.gain, fadeFrom, crossfade, (progress) =>
+                Math.cos(progress * HALF_PI),
+            );
+
+            source.buffer = buffer;
+            source.connect(segmentGain).connect(gain);
+            source.start(start, 0);
+            source.stop(end + 0.02);
+
+            segments.push({ source, end });
+        };
+
+        const tick = (): void => {
+            if (stopped) {
+                return;
+            }
+
+            // Keep a full period queued ahead, so a throttled timer (background
+            // tab) still has the next pass scheduled before it is needed.
+            const horizon = context.currentTime + LOOP_LOOKAHEAD_SECONDS + period;
+            while (nextStart < horizon) {
+                spawn(nextStart);
+                nextStart += period;
+            }
+
+            // Drop passes that already finished, so the list cannot grow.
+            for (let index = segments.length - 1; index >= 0; index--) {
+                if (segments[index].end < context.currentTime) {
+                    segments.splice(index, 1);
+                }
+            }
+        };
+
+        tick();
+        timer = setInterval(tick, LOOP_TICK_MS);
+
+        return {
+            url,
+            stop: (fadeSeconds) => {
+                stopped = true;
+                if (timer !== null) {
+                    clearInterval(timer);
+                    timer = null;
+                }
+
+                const sources = segments.map((segment) => segment.source);
+                segments.length = 0;
+                fadeOut(context, gain, sources, fadeSeconds);
+            },
+        };
     }
 
     /** Stops the current track (with a short fade by default). */
@@ -258,23 +479,12 @@ export class AudioEngine {
         this.pendingMusic = null;
 
         const handle = this.music;
-        const context = this.context;
-        if (!handle || !context) {
+        if (!handle) {
             return;
         }
 
         this.music = null;
-        const fade = Math.max(fadeSeconds, 0);
-        const now = context.currentTime;
-
-        try {
-            handle.gain.gain.cancelScheduledValues(now);
-            handle.gain.gain.setValueAtTime(handle.gain.gain.value, now);
-            handle.gain.gain.linearRampToValueAtTime(0, now + fade);
-            handle.source.stop(now + fade + 0.02);
-        } catch {
-            // The source was already stopped; nothing to release.
-        }
+        handle.stop(fadeSeconds);
     }
 
     /** Stops everything and releases the audio context. */
@@ -332,7 +542,7 @@ export class AudioEngine {
         }
 
         try {
-            const response = await fetch(this.resolve(url), { cache: 'force-cache' });
+            const response = await fetch(this.resolve(url), { cache: isDevMode() ? 'reload' : 'force-cache' });
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
@@ -414,6 +624,71 @@ function audioContextCtor(): typeof AudioContext | null {
     };
 
     return candidate.AudioContext ?? candidate.webkitAudioContext ?? null;
+}
+
+/**
+ * Fades a music bus down and releases its sources. `fadeSeconds` of 0 stops
+ * immediately; the sources are always stopped so they cannot outlive the call.
+ */
+function fadeOut(
+    context: AudioContext,
+    gain: GainNode,
+    sources: readonly AudioBufferSourceNode[],
+    fadeSeconds: number,
+): void {
+    const fade = Math.max(fadeSeconds, 0);
+    const now = context.currentTime;
+    const end = now + fade;
+
+    try {
+        gain.gain.cancelScheduledValues(now);
+        gain.gain.setValueAtTime(gain.gain.value, now);
+        gain.gain.linearRampToValueAtTime(0, end);
+    } catch {
+        // A detached context (closed meanwhile); the stop below is enough.
+    }
+
+    for (const source of sources) {
+        try {
+            source.stop(end + 0.02);
+        } catch {
+            // Already stopped; nothing to release.
+        }
+    }
+
+    // Give the ramp time to finish before the nodes are detached.
+    if (fade > 0) {
+        setTimeout(() => disconnect(gain, ...sources), (fade + 0.1) * 1000);
+    } else {
+        disconnect(gain, ...sources);
+    }
+}
+
+function disconnect(...nodes: readonly (AudioNode | null | undefined)[]): void {
+    for (const node of nodes) {
+        try {
+            node?.disconnect();
+        } catch {
+            // Already disconnected; nothing to do.
+        }
+    }
+}
+
+/**
+ * Approximates a fade curve with piecewise-linear ramps: Web Audio has no
+ * built-in curve automation, and a plain linear ramp has the wrong shape.
+ * `shape` maps progress (0..1) to a gain (0..1).
+ */
+function rampGainCurve(
+    gain: AudioParam,
+    start: number,
+    duration: number,
+    shape: (progress: number) => number,
+): void {
+    for (let step = 1; step <= CROSSFADE_STEPS; step++) {
+        const progress = step / CROSSFADE_STEPS;
+        gain.linearRampToValueAtTime(shape(progress), start + duration * progress);
+    }
 }
 
 function clamp01(value: number): number {
