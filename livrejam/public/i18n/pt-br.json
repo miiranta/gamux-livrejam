@@ -15,7 +15,7 @@
     },
     "mode": {
         "single": "1 Jogador",
-        "two": "2 Jogadores"
+        "two": "Jogar"
     },
     "settings": {
         "audio": "Áudio",
@@ -55,7 +55,7 @@
         "intro": {
             "p1": "Boas-vindas ao projeto Quebrando a Cara da LivreJam 2026!",
             "p2": "O jogo que você está prestes a jogar é uma aberração criada pela dupla Lucas Miranda e Ângelo Pilotto. A ideia naturalmente se originou a partir do tema “Quebrando a Cara”, e enquanto a primeira coisa que veio à mente perturbada do Miranda foi “67”, o Ângelo pensou em uma mistura de Happy Wheels e Skate 3, em que o intuito é maximizar o quão “quebrado” o seu personagem fica. Por conta dessa complexidade, a ideia evoluiu para algo mais próximo de jogos como Kick the Buddy. Então, em vez de você controlar o personagem que será “quebrado”, você é quem quebra a cara dele, arremessando todo tipo de objeto cortante e perigoso em sua direção.",
-            "p3": "Porém, o Miranda, fissurado em redes neurais, resolveu treinar uma IA e colocá-la no personagem, para que ele fuja das suas tentativas de violência. O seu objetivo, então, é “quebrar” ao máximo esse personagem, usando uma maneira não convencional de controle — aquilo que o Miranda mais desejava… Fazendo o 67. Ao iniciar o jogo, habilite sua câmera e mostre o que sabe fazer! E essa ideia não veio do nada. Você também pode fazer algumas caretas para “quebrar a cara” e ter outra forma de controlar o jogo (e descobrir outras coisas).",
+            "p3": "Porém, o Miranda, fissurado em redes neurais, resolveu treinar uma IA e colocá-la no personagem, para que ele fuja das suas tentativas de violência (infelizmente essa foi a última pendência não resolvida, e o jogo foi submetido sem essa IA). O seu objetivo, então, é “quebrar” ao máximo esse personagem, usando uma maneira não convencional de controle — aquilo que o Miranda mais desejava… Fazendo o 67. Ao iniciar o jogo, habilite sua câmera e mostre o que sabe fazer! E essa ideia não veio do nada. Você também pode fazer algumas caretas para “quebrar a cara” e ter outra forma de controlar o jogo (e descobrir outras coisas).",
             "p4": "No mais, nosso objetivo foi concluir a maior quantidade de achievements possível. Segue a lista de cada achievement que acreditamos ter atingido, e de como chegamos lá:"
         },
         "achievements": {
