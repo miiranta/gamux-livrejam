@@ -26,6 +26,10 @@ export const FACE_SMASHING = {
     },
     dodger: {
         box: { width: 24, height: 26 },
+        idleSpeed: 6,
+        runSpeed: 78,
+        walkStride: 44,
+        runStride: 72,
         maxSpeedStart: 131,
         maxSpeedEnd: 89,
         jumpStart: 588,
@@ -112,7 +116,7 @@ export const FACE_SMASHING = {
         /** Sprinting speed, as a fraction of the damaged-tier max speed. */
         runSpeedFactor: 1,
         /** Tapping a direction moves this fraction of the sprint speed. */
-        walkSpeedFactor: 0.6,
+        walkSpeedFactor: 1,
     },
     effects: {
         impact: { frames: 6, frameDuration: 0.05 },

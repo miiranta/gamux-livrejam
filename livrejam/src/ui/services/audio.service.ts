@@ -157,7 +157,7 @@ export class AudioService {
 
     /** Which track the current screen should play; `null` for silence. */
     private currentMusicRole(): MusicRole | null {
-        if (this.flow.isPlaying()) {
+        if (this.flow.isPlaying() || this.flow.isCountdown()) {
             return this.sigmaMusic() ? 'match-sigma' : 'match';
         }
 

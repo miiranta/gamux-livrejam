@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular
 
 import { Camera } from '../ui/components/camera/camera';
 import { CameraGate } from '../ui/components/camera-gate/camera-gate';
+import { Countdown } from '../ui/components/countdown/countdown';
 import { GameCanvas } from '../ui/components/game-canvas/game-canvas';
 import { WelcomeScreen } from '../ui/components/welcome-screen/welcome-screen';
 import { EndGame } from '../ui/pages/end-game/end-game';
@@ -19,7 +20,16 @@ import { GameFlowService, WelcomeService } from '../ui/services';
  */
 @Component({
     selector: 'app-root',
-    imports: [Camera, CameraGate, EndGame, GameCanvas, MainMenu, PauseMenu, WelcomeScreen],
+    imports: [
+        Camera,
+        CameraGate,
+        Countdown,
+        EndGame,
+        GameCanvas,
+        MainMenu,
+        PauseMenu,
+        WelcomeScreen,
+    ],
     templateUrl: './app.html',
     styleUrl: './app.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -40,7 +50,7 @@ export class App {
             return;
         }
 
-        if (this.flow.isPlaying() || this.flow.isPaused()) {
+        if (this.flow.isPlaying() || this.flow.isCountdown() || this.flow.isPaused()) {
             event.preventDefault();
             this.flow.togglePause();
             return;

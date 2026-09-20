@@ -158,6 +158,74 @@
     );
 }
 
+.game-canvas__players {
+    position: absolute;
+    right: 0.5rem;
+    bottom: 0.5rem;
+    left: 0.5rem;
+    z-index: 2;
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-end;
+    justify-content: space-between;
+    pointer-events: none;
+}
+
+.game-canvas__player {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+    padding: 0.3rem 0.55rem;
+    background: rgb(10 13 20 / 78%);
+    border: 1px solid rgb(255 255 255 / 10%);
+    border-radius: 0.45rem;
+
+    &--right {
+        text-align: right;
+    }
+}
+
+.game-canvas__player-name {
+    margin: 0;
+    color: #fff;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.game-canvas__player-ai {
+    margin: 0;
+    color: #9fd0ff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+}
+
+.game-canvas__player-keys {
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    li {
+        display: flex;
+        gap: 0.4rem;
+        align-items: baseline;
+        justify-content: space-between;
+        color: #9aa6ba;
+        font-size: 0.64rem;
+        white-space: nowrap;
+    }
+
+    b {
+        color: #cdd6e6;
+        font-weight: 700;
+    }
+}
+
 .game-canvas__hint {
     position: absolute;
     bottom: 0.5rem;

@@ -9,11 +9,10 @@ roda com lotes enormes: 64 politicas x 512 ambientes = 32768 ambientes num
 unico tensor, o que da ~12 milhoes de passos-ambiente por segundo.
 
 Fitness (por candidato):
-    1 - dano_medio/teto - worst_weight * pior_ambiente/teto + dodge_weight * esquivas
-O termo da pior ambiente e o que empurra a politica para "funciona em qualquer
-situacao" em vez de otimizar so a media. O `dano_worst` do simulador conta rodadas,
-e cada ambiente roda ~1 rodada por geracao, entao o pior caso que interessa aqui e
-o pior **ambiente** do candidato (nao a pior rodada de um ambiente).
+    1 - dano_medio/teto - worst_weight * cauda/teto + dodge_weight * esquivas
+A cauda e a media dos `worst_quantile` piores ambientes do candidato (CVaR), nao o
+pior ambiente isolado: e ela que empurra a politica para "funciona em qualquer
+situacao" sem deixar um unico ambiente azarado dominar o sinal.
 """
 
 import argparse
@@ -38,6 +37,8 @@ def parse_args():
     parser.add_argument("--sigma", type=float, default=0.05)
     parser.add_argument("--learning-rate", type=float, default=0.06)
     parser.add_argument("--worst-weight", type=float, default=0.5)
+    parser.add_argument("--worst-quantile", type=float, default=0.1)
+    parser.add_argument("--mirrored", type=int, default=1, choices=(0, 1))
     parser.add_argument("--dodge-weight", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--out", default="livrejam/public/models/dodger-policy.json")
@@ -58,7 +59,7 @@ def rank_weights(fitness):
     order = torch.argsort(fitness)
     ranks = torch.empty_like(order, dtype=torch.float32)
     ranks[order] = torch.arange(population, dtype=torch.float32, device=fitness.device)
-    return (ranks / (population - 1) - 0.5) / (population - 1)
+    return ranks / (population - 1) - 0.5
 
 
 def expand_candidates(candidates, sizes):
@@ -82,14 +83,14 @@ def to_layers(vector, sizes):
     return expand_candidates(vector[None, :], sizes)[0]
 
 
-def evaluate(theta, perturbations, args, drop_cap=None):
+def evaluate(theta, perturbations, args, generation, drop_cap=None):
     sizes = cfg.NETWORK_SIZES
     population = perturbations.shape[0]
     total = population * args.envs
     candidates = theta[None, :] + args.sigma * perturbations
 
     stacked = stack_policies(expand_candidates(candidates, sizes))
-    sim = FaceSmashingSim(total, device=args.device, seed=args.seed + 1000)
+    sim = FaceSmashingSim(total, device=args.device, seed=args.seed + 1000 + generation * 7919)
     if drop_cap is not None:
         sim.set_drop_cap(drop_cap)
     observation = sim.reset()
@@ -106,8 +107,9 @@ def evaluate(theta, perturbations, args, drop_cap=None):
 
     ceiling = cfg.DAMAGE_CEILING
 
+    tail = max(1, int(round(args.worst_quantile * args.envs)))
     by_env = damage.mean(dim=1)
-    worst_env = damage.max(dim=1).values
+    worst_env = damage.topk(tail, dim=1).values.mean(dim=1)
 
     fitness = (
         1.0
@@ -188,6 +190,9 @@ def main():
     args = parse_args()
     torch.manual_seed(args.seed)
 
+    if args.mirrored and args.population % 2 != 0:
+        raise SystemExit("--population precisa ser par quando --mirrored 1")
+
     device = torch.device(args.device)
     sizes = cfg.NETWORK_SIZES
     theta = torch.cat(
@@ -219,20 +224,26 @@ def main():
     started = time.time()
 
     for generation in range(1, args.generations + 1):
-        perturbations = torch.randn(
-            (args.population, parameters), device=device, dtype=torch.float32
-        )
+        if args.mirrored:
+            half = args.population // 2
+            noise = torch.randn((half, parameters), device=device, dtype=torch.float32)
+            perturbations = torch.cat([noise, -noise], dim=0)
+        else:
+            perturbations = torch.randn(
+                (args.population, parameters), device=device, dtype=torch.float32
+            )
         fitness, mean_damage, worst_damage, best_damage, hits, dodges, champion_damage, champion_worst = (
-            evaluate(theta, perturbations, args, drop_cap)
+            evaluate(theta, perturbations, args, generation, drop_cap)
         )
         weights = rank_weights(fitness)
 
         gradient = (perturbations * weights[:, None]).sum(dim=0) / (args.population * args.sigma)
+        centre_fitness = fitness.mean().item()
         theta = theta + args.learning_rate * gradient
 
         top = fitness.max().item()
-        if top > best_fitness:
-            best_fitness = top
+        if centre_fitness > best_fitness:
+            best_fitness = centre_fitness
             best_theta = theta.clone()
             best_generation = generation
 
@@ -240,7 +251,7 @@ def main():
         if (
             args.curriculum
             and drop_cap < cfg.DROP_MAX_SPEED
-            and champion_damage < args.curriculum_target * cfg.DAMAGE_CEILING
+            and mean_damage < args.curriculum_target * cfg.DAMAGE_CEILING
         ):
             drop_cap = min(drop_cap + args.curriculum_step, cfg.DROP_MAX_SPEED)
             promoted = True
@@ -251,7 +262,7 @@ def main():
 
         entry = {
             "generation": generation,
-            "mean_fitness": fitness.mean().item(),
+            "mean_fitness": centre_fitness,
             "top_fitness": top,
             "mean_damage": mean_damage,
             "worst_damage": worst_damage,

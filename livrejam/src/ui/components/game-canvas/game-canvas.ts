@@ -30,6 +30,13 @@ import {
 type CanvasStatus = 'loading' | 'ready' | 'error';
 type ModelStatus = 'idle' | 'loading' | 'ready' | 'error';
 
+/** One line of the per-player control legend: a gesture hint or a key cap. */
+interface ControlRow {
+    labelKey: string;
+    hintKey?: string;
+    keys?: string;
+}
+
 const INITIAL_STATS: MatchStats = {
     score: 0,
     best: 0,
@@ -92,6 +99,28 @@ export class GameCanvas {
     protected readonly controlHintKey = computed(() =>
         this.stats().gameMode === 'two' ? 'hud.hintPlayer' : 'hud.hint',
     );
+
+    /** Player 1 always drives the falling item, with the camera rather than keys. */
+    protected readonly playerOneControls = computed<ControlRow[]>(() => [
+        {
+            labelKey: 'hud.players.steer',
+            hintKey:
+                this.settings.steeringMode() === 'rizz'
+                    ? 'hud.players.eyes'
+                    : 'hud.players.hands',
+        },
+        { labelKey: 'hud.players.itemDash', hintKey: 'hud.players.mouth' },
+    ]);
+
+    /** The character is the policy's in `single` and the second human's in `two`. */
+    protected readonly playerTwoIsAi = computed(() => this.stats().gameMode !== 'two');
+
+    protected readonly playerTwoControls = computed<ControlRow[]>(() => [
+        { labelKey: 'hud.players.move', keys: 'A / D' },
+        { labelKey: 'hud.players.jump', keys: 'W / Space' },
+        { labelKey: 'hud.players.dash', keys: 'Shift' },
+        { labelKey: 'hud.players.run', keys: 'Ctrl' },
+    ]);
 
     constructor() {
         afterNextRender(() => void this.start());
@@ -207,20 +236,21 @@ export class GameCanvas {
 
         const restarting = token !== this.lastRestartToken;
         const startingMatch =
-            screen === 'playing' && (this.lastScreen === 'menu' || this.lastScreen === 'game-over');
+            screen === 'countdown' &&
+            (this.lastScreen === 'menu' || this.lastScreen === 'game-over');
         this.lastRestartToken = token;
         this.lastScreen = screen;
-
-        if (screen !== 'playing') {
-            game.pause();
-            return;
-        }
 
         if (restarting || startingMatch) {
             game.setMatchDuration(this.settings.matchTimeSeconds());
             // Mode is chosen on the menu, so it only ever changes between
             // matches — never under the player's hands mid-match.
             game.setGameMode(this.settings.gameMode());
+        }
+
+        if (screen !== 'playing') {
+            game.pause();
+            return;
         }
 
         game.resume();

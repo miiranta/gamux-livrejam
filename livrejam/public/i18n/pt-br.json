@@ -161,7 +161,21 @@
         "gamepad": "Controle",
         "connected": "conectado",
         "disconnected": "nenhum",
-        "hintPlayer": "Setas ou A/D mover · Ctrl correr · Cima / W / Espaço pular · Shift avanço · Enter soltar"
+        "hintPlayer": "Setas ou A/D mover · Ctrl correr · Cima / W / Espaço pular · Shift avanço · Enter soltar",
+        "players": {
+            "p1": "Jogador 1",
+            "p2": "Jogador 2",
+            "ai": "IA",
+            "steer": "Guiar item",
+            "itemDash": "Empurrar item",
+            "hands": "Levantar uma mão",
+            "eyes": "Fechar um olho",
+            "mouth": "Abrir a boca",
+            "move": "Mover",
+            "jump": "Pular",
+            "dash": "Avanço",
+            "run": "Correr"
+        }
     },
     "end": {
         "title": "It's over...",

@@ -240,7 +240,7 @@ describe('MainMenu', () => {
 
         clickButton(fixture, '1 Player');
 
-        expect(flow.isPlaying()).toBe(true);
+        expect(flow.isCountdown()).toBe(true);
         expect(settings.gameMode()).toBe('single');
     });
 
@@ -250,7 +250,7 @@ describe('MainMenu', () => {
 
         clickButton(fixture, '2 Players');
 
-        expect(flow.isPlaying()).toBe(true);
+        expect(flow.isCountdown()).toBe(true);
         expect(settings.gameMode()).toBe('two');
     });
 
@@ -356,10 +356,10 @@ describe('PauseMenu', () => {
         expect(content).not.toContain('Match time');
     });
 
-    it('resumes the match', () => {
+    it('resumes the match through the countdown', () => {
         clickButton(fixture, 'Resume');
 
-        expect(TestBed.inject(GameFlowService).isPlaying()).toBe(true);
+        expect(TestBed.inject(GameFlowService).isCountdown()).toBe(true);
     });
 
     it('restarts the match', () => {
@@ -368,7 +368,7 @@ describe('PauseMenu', () => {
 
         clickButton(fixture, 'Restart');
 
-        expect(flow.isPlaying()).toBe(true);
+        expect(flow.isCountdown()).toBe(true);
         expect(flow.restartToken()).toBe(before + 1);
     });
 
@@ -421,7 +421,7 @@ describe('EndGame', () => {
         clickButton(fixture, 'Retry');
 
         const flow = TestBed.inject(GameFlowService);
-        expect(flow.isPlaying()).toBe(true);
+        expect(flow.isCountdown()).toBe(true);
         expect(flow.result().score).toBe(0);
     });
 
