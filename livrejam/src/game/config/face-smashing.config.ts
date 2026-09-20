@@ -50,6 +50,12 @@ export const FACE_SMASHING = {
         trailAfter: 0.1,
         trailAlpha: 0.42,
     },
+    dive: {
+        ghostCount: 5,
+        trailAfter: 0.14,
+        trailAlpha: 0.34,
+        stretch: 0.34,
+    },
     damage: {
         levels: 8,
         perLevel: 100,

@@ -236,6 +236,10 @@ export class SceneRenderer {
         const row = dodger.spriteRow(CHARACTER_CLIPS);
         const fx = this.dodgerFx(dodger);
 
+        if (dodger.diveTrail.length > 0) {
+            this.renderDiveTrail(dodger, sheet, frame, row);
+        }
+
         if (dodger.dashTrail.length > 0) {
             this.renderDashTrail(dodger, sheet, frame, row);
         }
@@ -287,6 +291,13 @@ export class SceneRenderer {
             fx.scaleY -= dash * 0.14;
         }
 
+        if (dodger.diveGlow > 0) {
+            const dive = clamp(dodger.diveGlow / FACE_SMASHING.dive.trailAfter, 0, 1);
+
+            fx.scaleY += dive * 0.2;
+            fx.scaleX -= dive * 0.12;
+        }
+
         return fx;
     }
 
@@ -323,6 +334,45 @@ export class SceneRenderer {
                 worldY: point.y - FOOT_OFFSET,
                 width: CHARACTER_FRAME_SIZE * stretch,
                 height: CHARACTER_FRAME_SIZE,
+            });
+        }
+
+        ctx.restore();
+    }
+
+    private renderDiveTrail(
+        dodger: Dodger,
+        sheet: CharacterTierSprites['walk'],
+        frame: number,
+        row: number,
+    ): void {
+        const config = FACE_SMASHING.dive;
+        const ctx = this.renderer.context;
+        const points = dodger.diveTrail;
+        const strength = clamp(dodger.diveGlow / config.trailAfter, 0, 1);
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+
+        for (let index = 0; index < points.length - 1; index++) {
+            const distance = points.length - 1 - index;
+            const age = 1 - distance / Math.max(points.length - 1, 1);
+            const fade = age * config.trailAlpha * strength;
+            const stretch = 1 + (1 - age) * config.stretch;
+            const point = points[index];
+
+            if (fade <= 0.01) {
+                continue;
+            }
+
+            ctx.globalAlpha = fade;
+            drawSheetSprite(ctx, sheet, this.camera, {
+                column: frame,
+                row,
+                worldX: point.x - CHARACTER_FRAME_SIZE / 2,
+                worldY: point.y - FOOT_OFFSET * stretch,
+                width: CHARACTER_FRAME_SIZE,
+                height: CHARACTER_FRAME_SIZE * stretch,
             });
         }
 
