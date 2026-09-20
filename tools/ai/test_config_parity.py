@@ -22,6 +22,9 @@ import config as cfg
 
 PAIRS = (
     ("tile.size", cfg.TILE_SOURCE, "tile.size"),
+    ("tile.rows", cfg.ROWS, "tile.rows"),
+    ("tile.ceilingRows", cfg.CEILING_ROWS, "tile.ceilingRows"),
+    ("item.spawnHeight", cfg.SPAWN_HEIGHT, "item.spawnHeight"),
     ("dodger.maxSpeedStart", cfg.DODGER_MAX_SPEED_START, "dodger.maxSpeedStart"),
     ("dodger.maxSpeedEnd", cfg.DODGER_MAX_SPEED_END, "dodger.maxSpeedEnd"),
     ("dodger.jumpStart", cfg.DODGER_JUMP_START, "dodger.jumpStart"),

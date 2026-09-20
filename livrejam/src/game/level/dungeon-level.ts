@@ -26,10 +26,16 @@ export interface DungeonLevel {
 const LAYER_WALL = 1;
 const LAYER_FLOOR = 2;
 
-const CEILING_ROWS = 2;
-
 export function createDungeonLevel(): DungeonLevel {
-    const { size, scale, columns, rows, wallThickness, floorThickness } = FACE_SMASHING.tile;
+    const {
+        size,
+        scale,
+        columns,
+        rows,
+        wallThickness,
+        floorThickness,
+        ceilingRows: ceilingHeight,
+    } = FACE_SMASHING.tile;
     const grid = new TileGrid({ columns, rows, tileSize: size * scale });
     const floorRow = rows - floorThickness;
     const solid = new Set<string>();
@@ -47,7 +53,7 @@ export function createDungeonLevel(): DungeonLevel {
 
     const isSolid = (column: number, row: number): boolean => solid.has(`${column},${row}`);
     const floorTop = grid.rowY(floorRow);
-    const ceilingRows = Math.min(CEILING_ROWS, Math.max(0, floorRow - 2));
+    const ceilingRows = Math.min(ceilingHeight, Math.max(0, floorRow - 2));
     const ceilingBottom = grid.rowY(ceilingRows);
 
     const level: DungeonLevel = {

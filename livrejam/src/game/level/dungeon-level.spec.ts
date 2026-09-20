@@ -1,25 +1,28 @@
 import { describe, expect, it } from 'vitest';
 
+import { FACE_SMASHING } from '../config';
 import { createDungeonLevel } from './dungeon-level';
 
 describe('createDungeonLevel', () => {
     const level = createDungeonLevel();
+    const { columns, rows, size, scale, floorThickness, wallThickness } = FACE_SMASHING.tile;
+    const tileSize = size * scale;
 
     it('uses the configured tile grid', () => {
-        expect(level.grid.columns).toBe(20);
-        expect(level.grid.rows).toBe(12);
-        expect(level.grid.width).toBe(640);
-        expect(level.grid.height).toBe(384);
+        expect(level.grid.columns).toBe(columns);
+        expect(level.grid.rows).toBe(rows);
+        expect(level.grid.width).toBe(columns * tileSize);
+        expect(level.grid.height).toBe(rows * tileSize);
     });
 
     it('places the floor on the last row', () => {
-        expect(level.floorTop).toBe(352);
-        expect(level.grid.bottom - level.floorTop).toBe(32);
+        expect(level.floorTop).toBe((rows - floorThickness) * tileSize);
+        expect(level.grid.bottom - level.floorTop).toBe(tileSize);
     });
 
     it('keeps the playable span between the walls', () => {
-        expect(level.playLeft).toBe(64);
-        expect(level.playRight).toBe(576);
+        expect(level.playLeft).toBe(wallThickness * tileSize);
+        expect(level.playRight).toBe((columns - wallThickness) * tileSize);
     });
 
     it('tags wall colliders and floor colliders with different layers', () => {
