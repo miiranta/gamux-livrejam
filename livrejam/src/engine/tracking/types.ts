@@ -5,9 +5,20 @@ import type {
     GestureObservations,
     MouthObservation,
     MouthState,
+    TopHandObservation,
+    TopHandSide,
 } from './streams/types';
 
-export type { EyeObservation, EyeState, GestureObservations, MouthState, Point2D, Point3D };
+export type {
+    EyeObservation,
+    EyeState,
+    GestureObservations,
+    MouthState,
+    Point2D,
+    Point3D,
+    TopHandObservation,
+    TopHandSide,
+};
 
 export type Handedness = 'Left' | 'Right' | 'Unknown';
 

@@ -1,12 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-<<<<<<< Updated upstream
-import { AudioEngine, type AudioChannel } from '../../game/audio';
-import { useReadyCamera } from '../testing/camera-testing';
-=======
 import { AudioEngine, type AudioChannel, type AudioManifest } from '../../game/audio';
->>>>>>> Stashed changes
+import { useReadyCamera } from '../testing/camera-testing';
 import { AudioService, SOUND_EFFECTS } from './audio.service';
 import { GameFlowService } from './game-flow.service';
 import { GameSettingsService } from './game-settings.service';

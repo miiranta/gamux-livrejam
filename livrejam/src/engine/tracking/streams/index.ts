@@ -3,6 +3,7 @@ export { GestureStreams, type GestureStreamsInput } from './gesture-streams';
 export { MouthStream } from './mouth-stream';
 export { SigmaStream, type SigmaStreamInput } from './sigma-stream';
 export { SixtySevenStream } from './sixty-seven-stream';
+export { TopHandStream } from './top-hand-stream';
 export type {
     EyeObservation,
     EyeState,
@@ -14,4 +15,6 @@ export type {
     SigmaObservation,
     SixtySevenObservation,
     Stream,
+    TopHandObservation,
+    TopHandSide,
 } from './types';

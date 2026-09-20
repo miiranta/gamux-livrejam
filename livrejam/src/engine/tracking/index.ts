@@ -17,6 +17,8 @@ export type {
     MouthState,
     Point2D,
     Point3D,
+    TopHandObservation,
+    TopHandSide,
     TrackingFrame,
     TrackingThresholds,
 } from './types';

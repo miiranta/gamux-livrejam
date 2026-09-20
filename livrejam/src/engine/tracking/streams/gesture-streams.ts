@@ -3,6 +3,7 @@ import { FACE_LANDMARK, HAND_LANDMARK } from '../landmarks';
 import type { FaceState, HandState } from '../types';
 import { SigmaStream, type SigmaStreamInput } from './sigma-stream';
 import { SixtySevenStream } from './sixty-seven-stream';
+import { TopHandStream } from './top-hand-stream';
 import type { GestureObservations } from './types';
 
 export interface GestureStreamsInput {
@@ -14,17 +15,20 @@ export interface GestureStreamsInput {
 export class GestureStreams {
     private readonly sixtySeven = new SixtySevenStream();
     private readonly sigma = new SigmaStream();
+    private readonly topHand = new TopHandStream();
 
     update(input: GestureStreamsInput): GestureObservations {
         return {
             sixtySeven: this.sixtySeven.update(input.hands, input.timestamp),
             sigma: this.sigma.update(toSigmaInput(input.face, input.hands)),
+            topHand: this.topHand.update(input.hands, input.timestamp),
         };
     }
 
     reset(): void {
         this.sixtySeven.reset();
         this.sigma.reset();
+        this.topHand.reset();
     }
 }
 

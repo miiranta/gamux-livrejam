@@ -84,6 +84,7 @@ export class Camera {
         Math.round((this.frame()?.gestures.sixtySeven.level ?? 0) * 100),
     );
     protected readonly sigmaActive = computed(() => this.frame()?.gestures.sigma.active ?? false);
+    protected readonly topHandSide = computed(() => this.frame()?.gestures.topHand.side ?? null);
     protected readonly overlayViewBox = computed(() => {
         const { width, height } = this.videoSize();
         const side = Math.min(width, height);

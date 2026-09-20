@@ -34,9 +34,17 @@ export interface SigmaObservation extends Observation {
     score: number;
 }
 
+export type TopHandSide = 'left' | 'right' | null;
+
+export interface TopHandObservation extends Observation {
+    side: TopHandSide;
+    margin: number;
+}
+
 export interface GestureObservations {
     sixtySeven: SixtySevenObservation;
     sigma: SigmaObservation;
+    topHand: TopHandObservation;
 }
 
 export interface Stream<TInput, TOutput> {
