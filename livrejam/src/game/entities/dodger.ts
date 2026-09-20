@@ -23,7 +23,10 @@ export class Dodger extends Character {
     dashTimer = 0;
     dashCooldown = 0;
     dashGlow = 0;
+    diveGlow = 0;
+    diving = false;
     readonly dashTrail: TrailPoint[] = [];
+    readonly diveTrail: TrailPoint[] = [];
     private tierSpeed: number;
     private jumpCutArmed = false;
 
@@ -108,6 +111,19 @@ export class Dodger extends Character {
         }
     }
 
+    sampleDiveTrail(): void {
+        if (!this.diving) {
+            return;
+        }
+
+        this.diveTrail.push({ x: this.feet.x, y: this.feet.y });
+        const cap = FACE_SMASHING.dive.ghostCount + 1;
+
+        while (this.diveTrail.length > cap) {
+            this.diveTrail.shift();
+        }
+    }
+
     override move(axis: number, dt: number): void {
         if (this.dashing) {
             if (axis !== 0) {
@@ -168,6 +184,11 @@ export class Dodger extends Character {
         this.dashTimer = Math.max(this.dashTimer - dt, 0);
         this.dashCooldown = Math.max(this.dashCooldown - dt, 0);
         this.dashGlow = Math.max(this.dashGlow - dt, 0);
+        this.diveGlow = Math.max(this.diveGlow - dt, 0);
+
+        if (this.diveGlow <= 0 && this.diveTrail.length > 0) {
+            this.diveTrail.length = 0;
+        }
 
         if (wasDashing && !this.dashing) {
             this.physics.body.maxSpeed.x = this.tierSpeed;
@@ -235,9 +256,12 @@ export class Dodger extends Character {
 
         if (!active || body.grounded || this.dashing) {
             body.maxSpeed.y = config.maxFallSpeed;
+            this.diving = false;
             return;
         }
 
+        this.diving = true;
+        this.diveGlow = FACE_SMASHING.dive.trailAfter;
         this.jumpCutArmed = false;
         body.maxSpeed.y = config.fastFallSpeed;
         body.velocity.y = Math.min(

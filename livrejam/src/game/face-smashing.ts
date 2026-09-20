@@ -418,6 +418,7 @@ export class FaceSmashing {
         }
 
         dodger.sampleDashTrail();
+        dodger.sampleDiveTrail();
         dodger.resolveAnimation();
         dodger.advanceAnimation(dt, DODGER_ANIMATIONS);
     }
