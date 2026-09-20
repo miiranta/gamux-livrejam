@@ -2,6 +2,7 @@
     display: block;
 }
 
+/* Owns the viewport and the camera-above-canvas layout for every screen. */
 .app-shell {
     --shell-pad: 1rem;
     --shell-gap: 1rem;
@@ -21,21 +22,27 @@
     padding: var(--shell-pad);
 }
 
-/* The canvas keeps its place in the layout while the menu is up, so
-   `resize()` never sees a zero-sized surface. */
+.app-shell__match {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--shell-gap);
+    width: 100%;
+    min-height: 0;
+}
+
+/* Hidden rather than removed: the canvas must stay measurable so it never
+   has to re-layout when a menu takes over the screen. */
+.app-shell__match--hidden {
+    visibility: hidden;
+    pointer-events: none;
+}
+
 .app-shell__stage {
     display: grid;
     place-items: center;
     height: var(--lj-stage-height);
-    transition: opacity 0.2s ease-out;
-
-    &--hidden {
-        /* Hidden rather than removed: the canvas must stay measurable. */
-        position: fixed;
-        inset: 0;
-        opacity: 0;
-        pointer-events: none;
-    }
+    min-height: 0;
 }
 
 .app-shell__camera {

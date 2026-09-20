@@ -1,11 +1,11 @@
 <div class="app-shell">
-    <app-camera class="app-shell__camera" />
+    <div class="app-shell__match" [class.app-shell__match--hidden]="flow.isMenu()">
+        <app-camera class="app-shell__camera" />
 
-    <div class="app-shell__stage" [class.app-shell__stage--hidden]="flow.isMenu()">
-        <app-game-canvas />
+        <div class="app-shell__stage">
+            <app-game-canvas />
+        </div>
     </div>
-
-    <router-outlet />
 
     @if (flow.isMenu()) {
         <app-main-menu />

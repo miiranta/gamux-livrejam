@@ -448,6 +448,7 @@ class FaceSmashingSim:
             {
                 "pos_x": self.pos_x,
                 "vel_x": self.vel_x,
+                "max_speed": self.current_max_speed(),
                 "fall_speed": self.drop_speed,
                 "grounded": self.grounded,
             }

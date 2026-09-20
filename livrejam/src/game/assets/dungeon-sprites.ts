@@ -1,8 +1,6 @@
 import { loadImage, type SpriteSheet } from '../../engine/render';
 import { FACE_SMASHING, ITEMS } from '../config';
 
-export type PropSpriteKey = 'torch' | 'bracket';
-export type PropDecorKey = 'banner' | 'crate' | 'rubble' | 'barrel';
 export type CharacterAnimationKey = 'walk' | 'run' | 'jump' | 'hurt';
 export type EffectKey = 'impact' | 'slash' | 'dust';
 import { DAMAGE_LEVELS } from '../damage';
@@ -28,11 +26,9 @@ export interface TerrainSprites {
     ground: Record<GroundKey, HTMLImageElement>;
     ceiling: Record<CeilingKey, HTMLImageElement>;
     strut: Record<StrutKey, HTMLImageElement>;
-    propDecor: Record<PropDecorKey, HTMLImageElement>;
 }
 
 export interface DungeonSprites extends TerrainSprites {
-    props: Record<PropSpriteKey, HTMLImageElement>;
     items: Map<string, HTMLImageElement>;
     character: CharacterTierSprites[];
     effects: Record<EffectKey, LoadedSpriteSheet>;
@@ -68,19 +64,7 @@ const STRUT_TILE_PATHS: Record<StrutKey, string> = {
     pillar: dungeonTile(58),
     segment: dungeonTile(56),
     capital: dungeonTile(41),
-    pier: townTile(110),
-};
-
-const PROP_PATHS: Record<PropSpriteKey, string> = {
-    torch: dungeonTile(29),
-    bracket: dungeonTile(26),
-};
-
-const PROP_DECOR_PATHS: Record<PropDecorKey, string> = {
-    banner: dungeonTile(75),
-    crate: dungeonTile(88),
-    rubble: townTile(81),
-    barrel: dungeonTile(86),
+    pier: dungeonTile(39),
 };
 
 const CHARACTER_ANIMATIONS: Record<CharacterAnimationKey, number> = {
@@ -177,7 +161,6 @@ export function loadDungeonSprites(): Promise<DungeonSprites> {
 }
 
 interface LoadedTerrain extends TerrainSprites {
-    props: Record<PropSpriteKey, HTMLImageElement>;
     items: Map<string, HTMLImageElement>;
 }
 
@@ -196,17 +179,13 @@ function loadTerrain(): Promise<LoadedTerrain> {
         loadGroup(GROUND_TILE_PATHS),
         loadGroup(CEILING_TILE_PATHS),
         loadGroup(STRUT_TILE_PATHS),
-        loadGroup(PROP_DECOR_PATHS),
-        loadGroup(PROP_PATHS),
         Promise.all(
             ITEMS.map((item) => loadImage(item.sprite).then((image) => [item.key, image] as const)),
         ),
-    ]).then(([ground, ceiling, strut, decor, props, items]) => ({
+    ]).then(([ground, ceiling, strut, items]) => ({
         ground,
         ceiling,
         strut,
-        propDecor: decor,
-        props,
         items: new Map(items),
     }));
 }

@@ -84,3 +84,11 @@ carregado em um Web Worker, entao a inferencia nao bloqueia a renderizacao.
 
 Assets de terceiros e suas licencas estao em
 `livrejam/public/assets/CREDITS.md` e nos arquivos `License.txt` de cada pack.
+
+
+
+
+# More things we used
+
+https://ansimuz.itch.io/explosion-animations-pack
+https://pixelfrog-assets.itch.io/treasure-hunters

@@ -8,8 +8,9 @@ import { ChainPainter } from './chain-painter';
 import { RuinPainter, ruinCount, ruinDepths } from './ruin-painter';
 
 const HAZE_STOPS = 5;
-const EMBER_RADIUS_RATIO = 0.05;
-const EMBER_DRIFT_RATIO = 0.05;
+const EMBER_RADIUS_RATIO = 0.02;
+const EMBER_DRIFT_RATIO = 0.04;
+const EMBER_GLOW = 2.4;
 
 export class BackdropPainter {
     private readonly ruins = new RuinPainter();
@@ -154,13 +155,15 @@ export class BackdropPainter {
             const x = width * (0.12 + valueNoise(index, 1, config.emberSeed) * 0.76);
             const y = height * (0.58 + valueNoise(index, 2, config.emberSeed) * 0.34);
             const size = radius * (0.4 + valueNoise(index, 3, config.emberSeed) * 0.9);
-            const glow = ctx.createRadialGradient(x, y - drift, 0, x, y - drift, size * 3);
+            const reach = size * EMBER_GLOW;
+            const lift = driftSeed(index, config.emberSeed) * drift;
+            const glow = ctx.createRadialGradient(x, y - lift, 0, x, y - lift, reach);
 
-            glow.addColorStop(0, scaleAlpha(config.emberColor, 0.9));
-            glow.addColorStop(0.35, scaleAlpha(config.emberColor, 0.35));
+            glow.addColorStop(0, scaleAlpha(config.emberColor, 0.55));
+            glow.addColorStop(0.4, scaleAlpha(config.emberColor, 0.18));
             glow.addColorStop(1, scaleAlpha(config.emberColor, 0));
             ctx.fillStyle = glow;
-            ctx.fillRect(x - size * 3, y - drift - size * 3, size * 6, size * 6);
+            ctx.fillRect(x - reach, y - lift - reach, reach * 2, reach * 2);
         }
 
         ctx.restore();
@@ -184,4 +187,8 @@ export class BackdropPainter {
         ctx.fillStyle = gradient;
         ctx.fillRect(0, top, camera.viewportWidth, band);
     }
+}
+
+function driftSeed(index: number, seed: number): number {
+    return valueNoise(index, 4, seed) * 0.6 - 0.3;
 }

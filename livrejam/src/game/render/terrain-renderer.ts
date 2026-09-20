@@ -5,34 +5,26 @@ import type { CeilingKey, DungeonSprites, GroundKey, StrutKey } from '../assets'
 import type { DungeonLevel } from '../level';
 import { FACE_SMASHING } from '../config';
 
-const GROUND_KINDS: readonly GroundKey[] = ['stone', 'grate', 'plate', 'rubble', 'cobble'];
-const CEILING_KINDS: readonly CeilingKey[] = ['panel', 'slab', 'lattice', 'girder'];
-const STRUT_KINDS: readonly StrutKey[] = ['pillar', 'segment', 'capital', 'pier'];
-const GROUND_WEIGHTS = [31, 22, 17, 16, 14];
-const CEILING_WEIGHTS = [42, 31, 15, 12];
-const STRUT_WEIGHTS = [36, 26, 22, 16];
-
 const VARIATION_SEED = 0x2545f491;
-const KIND_SEED = 0x9e3779b1;
 const COURSE_SEED = 0x1b873593;
 const DUST_SEED = 0x85ebca6b;
 const SPECK_SEED = 0x27d4eb2f;
 
-const CEILING_BRIGHT_ROWS = 1;
 const STRUT_WIDTH_RATIO = 1.06;
-const STRUT_STRIDE = 3;
-const STRUT_MARGIN = 1;
 
-const EMPTY_COLOR = '#08060c';
-const STRUT_LIT = 'rgba(166, 168, 182, 0.42)';
+const EMPTY_TOP = 'rgba(20, 15, 26, 0.3)';
+const EMPTY_MID = 'rgba(15, 11, 21, 0.52)';
+const EMPTY_BOTTOM = 'rgba(9, 7, 13, 0.74)';
+const STRUT_LIT = 'rgba(178, 182, 198, 0.22)';
+const STRUT_CAP = 'rgba(96, 90, 108, 0.85)';
 const STRUT_SHADOW = 'rgba(6, 4, 10, 0.72)';
 const GROUND_LIT = 'rgba(178, 176, 190, 0.3)';
-const DUST_COLOR = 'rgba(96, 86, 104, 0.55)';
-const GROUND_SHADOW = 'rgba(6, 4, 10, 0.62)';
-const GROUND_DEPTH = 'rgba(4, 3, 7, 0.86)';
-const CEILING_SHADOW = 'rgba(4, 3, 7, 0.78)';
-const CEILING_LIT = 'rgba(150, 152, 166, 0.24)';
-const SPECK_COLOR = 'rgba(210, 208, 216, 0.5)';
+const DUST_COLOR = 'rgba(118, 106, 122, 0.42)';
+const GROUND_SHADOW = 'rgba(6, 4, 10, 0.5)';
+const GROUND_DEPTH = 'rgba(4, 3, 7, 0.66)';
+const CEILING_SHADOW = 'rgba(4, 3, 7, 0.86)';
+const CEILING_LIT = 'rgba(128, 130, 146, 0.16)';
+const SPECK_COLOR = 'rgba(190, 188, 198, 0.42)';
 
 const SPECK_COUNT_MIN = 3;
 const SPECK_COUNT_MAX = 9;
@@ -67,93 +59,99 @@ export class TerrainRenderer {
     }
 
     private paintEmpty(ctx: CanvasRenderingContext2D, camera: Camera): void {
-        ctx.fillStyle = EMPTY_COLOR;
+        const gradient = ctx.createLinearGradient(0, 0, 0, camera.viewportHeight);
+
+        gradient.addColorStop(0, EMPTY_TOP);
+        gradient.addColorStop(0.5, EMPTY_MID);
+        gradient.addColorStop(1, EMPTY_BOTTOM);
+        ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, camera.viewportWidth, camera.viewportHeight);
     }
 
     private paintCeiling(ctx: CanvasRenderingContext2D, level: DungeonLevel, camera: Camera): void {
         const { grid } = level;
         const size = camera.toScreenLength(grid.tileSize);
-        const first = grid.columnAt(level.playLeft) - 1;
-        const last = grid.columnAt(level.playRight) + 1;
 
-        for (let row = 0; row < level.ceilingRows; row++) {
-            const kinds = row < CEILING_BRIGHT_ROWS ? CEILING_KINDS : (CEILING_KINDS.map(
-                (_, index) => CEILING_KINDS[(index + 1) % CEILING_KINDS.length],
-            ) as readonly CeilingKey[]);
+        for (const piece of level.decorations.ceiling) {
+            const x = camera.toScreenX(grid.columnX(piece.column));
+            const y = camera.toScreenY(grid.rowY(piece.row));
 
-            for (let column = first; column <= last; column++) {
-                const x = camera.toScreenX(grid.columnX(column));
-                const y = camera.toScreenY(grid.rowY(row));
-                const kind = pickKind(kinds, CEILING_WEIGHTS, column, row, KIND_SEED);
-
-                ctx.save();
-                ctx.globalAlpha = brightness(column, row, FACE_SMASHING.backdrop.wallVariation);
-                ctx.drawImage(this.ceiling[kind], x, y, size, size);
-                ctx.restore();
-                this.paintCourses(ctx, x, y, size, column, row, CEILING_KINDS.length);
-            }
+            ctx.save();
+            ctx.globalAlpha = brightness(piece.column, piece.row, FACE_SMASHING.backdrop.wallVariation);
+            ctx.drawImage(this.ceiling[piece.kind], x, y, size, size);
+            ctx.restore();
+            this.paintCourses(ctx, x, y, size, piece.column, piece.row, 4);
         }
     }
 
     private paintStruts(ctx: CanvasRenderingContext2D, level: DungeonLevel, camera: Camera): void {
-        const { grid, playLeft, playRight } = level;
+        const { grid } = level;
         const size = camera.toScreenLength(grid.tileSize);
-        const width = size * STRUT_WIDTH_RATIO;
-        const floorRow = grid.rowAt(level.floorTop);
-        const first = grid.columnAt(playLeft) - STRUT_MARGIN;
-        const last = grid.columnAt(playRight) + STRUT_MARGIN;
+        const columns = groupStruts(level.decorations.struts);
 
-        for (let column = first; column <= last; column += STRUT_STRIDE) {
-            const kind = pickKind(STRUT_KINDS, STRUT_WEIGHTS, column, 0, KIND_SEED ^ 0x2f1a9c3d);
-            const image = this.strut[kind];
+        for (const [column, pieces] of columns) {
             const x = camera.toScreenX(grid.columnX(column));
-            const top = camera.toScreenY(grid.rowY(level.ceilingRows));
-            const bottom = camera.toScreenY(grid.rowY(floorRow - 1)) + size;
+            const width = size * STRUT_WIDTH_RATIO;
 
-            for (let row = level.ceilingRows; row < floorRow; row++) {
-                const y = camera.toScreenY(grid.rowY(row));
+            for (const run of contiguousRuns(pieces)) {
+                const top = camera.toScreenY(grid.rowY(run[0].row));
+                const bottom = camera.toScreenY(grid.rowY(run[run.length - 1].row)) + size;
 
-                ctx.save();
-                ctx.globalAlpha = brightness(column, row, FACE_SMASHING.backdrop.wallVariation);
-                ctx.drawImage(image, x, y, width, size);
-                ctx.restore();
-                this.paintCourses(ctx, x, y, width, row, column, 2);
+                for (const piece of run) {
+                    const y = camera.toScreenY(grid.rowY(piece.row));
+
+                    ctx.save();
+                    ctx.globalAlpha = brightness(column, piece.row, FACE_SMASHING.backdrop.wallVariation);
+                    ctx.drawImage(this.strut[run[0].kind], x, y, width, size);
+                    ctx.restore();
+                    this.paintCourses(ctx, x, y, width, piece.row, column, 2);
+                }
+
+                this.paintStrutEdges(ctx, top, bottom, x, width);
+                this.paintStrutCap(ctx, top, x, width);
             }
-
-            const litWidth = Math.max(1, width * 0.06);
-            const shadeWidth = Math.max(2, width * 0.22);
-
-            ctx.fillStyle = STRUT_LIT;
-            ctx.fillRect(x + litWidth, top, litWidth, bottom - top);
-            ctx.fillStyle = STRUT_SHADOW;
-            ctx.fillRect(x + width - shadeWidth, top, shadeWidth, bottom - top);
         }
+    }
+
+    private paintStrutEdges(
+        ctx: CanvasRenderingContext2D,
+        top: number,
+        bottom: number,
+        x: number,
+        width: number,
+    ): void {
+        const litWidth = Math.max(1, width * 0.07);
+        const shadeWidth = Math.max(2, width * 0.26);
+
+        ctx.fillStyle = STRUT_LIT;
+        ctx.fillRect(x + litWidth, top, litWidth, bottom - top);
+        ctx.fillStyle = STRUT_SHADOW;
+        ctx.fillRect(x + width - shadeWidth, top, shadeWidth, bottom - top);
+    }
+
+    private paintStrutCap(ctx: CanvasRenderingContext2D, top: number, x: number, width: number): void {
+        ctx.fillStyle = STRUT_CAP;
+        ctx.fillRect(x - width * 0.08, top - 2, width * 1.16, 3);
     }
 
     private paintGround(ctx: CanvasRenderingContext2D, level: DungeonLevel, camera: Camera): void {
         const { grid } = level;
         const size = camera.toScreenLength(grid.tileSize);
-        const first = grid.columnAt(level.playLeft) - 1;
-        const last = grid.columnAt(level.playRight) + 1;
-        const row = grid.rowAt(level.floorTop);
 
-        for (let column = first; column <= last; column++) {
-            const x = camera.toScreenX(grid.columnX(column));
-            const y = camera.toScreenY(grid.rowY(row));
-            const kind = pickKind(GROUND_KINDS, GROUND_WEIGHTS, column, row, KIND_SEED);
-            const spill = pickKind(GROUND_KINDS, GROUND_WEIGHTS, column, row, KIND_SEED ^ 0x7ed55d16);
-            const alpha = brightness(column, row, FACE_SMASHING.backdrop.floorVariation);
+        for (const piece of level.decorations.ground) {
+            const x = camera.toScreenX(grid.columnX(piece.column));
+            const y = camera.toScreenY(grid.rowY(piece.row));
+            const alpha = brightness(piece.column, piece.row, FACE_SMASHING.backdrop.floorVariation);
 
             ctx.save();
             ctx.globalAlpha = alpha * 0.42;
-            ctx.drawImage(this.ground[spill], x, y - size * SPILL_RATIO, size, size * SPILL_RATIO);
+            ctx.drawImage(this.ground[piece.spill], x, y - size * SPILL_RATIO, size, size * SPILL_RATIO);
             ctx.globalAlpha = alpha;
-            ctx.drawImage(this.ground[kind], x, y, size, size);
+            ctx.drawImage(this.ground[piece.kind], x, y, size, size);
             ctx.restore();
 
             this.paintGroundLit(ctx, x, y, size);
-            this.paintGroundDust(ctx, x, y, size, column, row);
+            this.paintGroundDust(ctx, x, y, size, piece.column, piece.row);
         }
     }
 
@@ -240,11 +238,12 @@ export class TerrainRenderer {
         const y = camera.toScreenY(floorTop);
         const height = camera.toScreenLength(grid.tileSize);
         const edge = Math.max(1, height * 0.08);
-        const shade = Math.max(2, height * 0.34);
+        const shade = Math.max(2, height * 0.26);
         const gradient = ctx.createLinearGradient(0, y, 0, y + height);
 
-        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.16)');
-        gradient.addColorStop(0.18, 'rgba(0, 0, 0, 0)');
+        gradient.addColorStop(0, 'rgba(255, 250, 236, 0.3)');
+        gradient.addColorStop(0.16, 'rgba(255, 240, 214, 0.1)');
+        gradient.addColorStop(0.42, 'rgba(0, 0, 0, 0)');
         gradient.addColorStop(1, GROUND_DEPTH);
         ctx.fillStyle = gradient;
         ctx.fillRect(x, y, width, height);
@@ -368,24 +367,45 @@ function mapValues<TKey extends string>(
     ) as Record<TKey, HTMLCanvasElement>;
 }
 
-function pickKind<TKey extends string>(
-    kinds: readonly TKey[],
-    weights: readonly number[],
-    column: number,
-    row: number,
-    seed: number,
-): TKey {
-    const total = weights.reduce((sum, weight) => sum + weight, 0);
-    let threshold = valueNoise(column, row, seed) * total;
+type StrutPiece = DungeonLevel['decorations']['struts'][number];
 
-    for (let index = 0; index < kinds.length; index++) {
-        threshold -= weights[index];
-        if (threshold <= 0) {
-            return kinds[index];
-        }
+function groupStruts(pieces: readonly StrutPiece[]): Map<number, StrutPiece[]> {
+    const grouped = new Map<number, StrutPiece[]>();
+
+    for (const piece of pieces) {
+        const column = grouped.get(piece.column) ?? [];
+
+        column.push(piece);
+        grouped.set(piece.column, column);
     }
 
-    return kinds[kinds.length - 1];
+    for (const column of grouped.values()) {
+        column.sort((a, b) => a.row - b.row);
+    }
+
+    return grouped;
+}
+
+function contiguousRuns(pieces: readonly StrutPiece[]): StrutPiece[][] {
+    const runs: StrutPiece[][] = [];
+    let current: StrutPiece[] = [];
+
+    for (const piece of pieces) {
+        const previous = current[current.length - 1];
+
+        if (previous && piece.row !== previous.row + 1) {
+            runs.push(current);
+            current = [];
+        }
+
+        current.push(piece);
+    }
+
+    if (current.length > 0) {
+        runs.push(current);
+    }
+
+    return runs;
 }
 
 function brightness(column: number, row: number, variation: number): number {

@@ -47,7 +47,11 @@ export function createDungeonLevel(): DungeonLevel {
 
     const level: DungeonLevel = {
         grid,
-        decorations: { walls: [], floors: [], torches: [], ceiling: [], arch: [], banners: [], props: [] },
+        decorations: {
+            ceiling: [],
+            ground: [],
+            struts: [],
+        },
         colliders: mergeColliders(
             solid,
             columns,

@@ -36,33 +36,25 @@ describe('createDungeonLevel', () => {
         expect(level.despawnY).toBeGreaterThan(level.grid.bottom);
     });
 
-    it('places decorative props on both inner wall faces', () => {
-        const left = level.grid.columnAt(level.playLeft) - 1;
-        const right = level.grid.columnAt(level.playRight);
-        const columns = new Set(level.decorations.torches.map((torch) => torch.column));
+    it('reaches past the play area so no seam shows at the arena border', () => {
+        const ground = level.decorations.ground;
+        const first = level.grid.columnAt(level.playLeft) - 1;
+        const last = level.grid.columnAt(level.playRight);
 
-        expect(level.decorations.torches.length).toBeGreaterThan(0);
-        expect(columns.has(left)).toBe(true);
-        expect(columns.has(right)).toBe(true);
+        expect(ground[0].column).toBe(first);
+        expect(ground[ground.length - 1].column).toBe(last);
     });
 
-    it('keeps every torch clear of the floor row', () => {
+    it('leaves vertical gaps in the struts so they do not read as a solid wall', () => {
+        const columns = new Set(level.decorations.struts.map((piece) => piece.column));
         const floorRow = level.grid.rowAt(level.floorTop);
 
-        for (const torch of level.decorations.torches) {
-            expect(torch.row).toBeLessThan(floorRow);
+        expect(columns.size).toBeGreaterThan(0);
+        for (const column of columns) {
+            const rows = level.decorations.struts.filter((piece) => piece.column === column);
+
+            expect(rows.length).toBeLessThan(floorRow - level.ceilingRows);
         }
-    });
-
-
-    it('covers the same wall and floor footprint as the solid grid', () => {
-        const floorRow = level.grid.rowAt(level.floorTop);
-        const wallThickness = level.grid.columnAt(level.playLeft);
-        const walls = level.decorations.walls.length;
-        const floors = level.decorations.floors.length;
-
-        expect(walls).toBe(level.grid.columns * 0 + wallThickness * 2 * floorRow);
-        expect(floors).toBe(level.grid.columns - wallThickness * 2);
     });
 
 });

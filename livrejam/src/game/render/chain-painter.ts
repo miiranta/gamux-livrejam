@@ -4,17 +4,19 @@ import { sampleRamp, toCss } from '../../engine/render';
 import { FACE_SMASHING } from '../config';
 
 const ARC_SEGMENTS = 34;
-const SAG_MIN = 0.1;
-const SAG_MAX = 0.44;
-const LINK_SPACING = 9;
-const LINK_WIDTH_RATIO = 0.42;
-const LINK_HEIGHT_RATIO = 0.62;
-const LINK_LIT_COLOR = 'rgba(196, 200, 212, 0.5)';
-const LINK_DARK_COLOR = 'rgba(16, 12, 20, 0.72)';
+const SAG_MIN = 0.12;
+const SAG_MAX = 0.5;
+const LINK_SPACING = 11;
+const LINK_WIDTH_RATIO = 0.4;
+const LINK_HEIGHT_RATIO = 0.72;
+const LINK_LIT_COLOR = 'rgba(210, 214, 226, 0.6)';
+const LINK_DARK_COLOR = 'rgba(14, 10, 18, 0.8)';
 const STRAND_SPREAD_MIN = 1;
 const STRAND_SPREAD_MAX = 3;
 const STRAND_OFFSET_MIN = 4;
 const STRAND_OFFSET_MAX = 15;
+const LINK_SCALE_MIN = 0.85;
+const LINK_SCALE_MAX = 1.55;
 
 export interface ChainOptions {
     width: number;
@@ -63,7 +65,7 @@ export class ChainPainter {
         const endY = height * (0.06 + valueNoise(index, 4, seed) * 0.52) + offset;
         const sag = height * (SAG_MIN + valueNoise(index, 5, seed) * (SAG_MAX - SAG_MIN));
         const drift = (valueNoise(index, 6, seed) - 0.5) * height * 0.22;
-        const scale = 0.7 + valueNoise(index, 7, seed) * 0.55;
+        const scale = LINK_SCALE_MIN + valueNoise(index, 7, seed) * (LINK_SCALE_MAX - LINK_SCALE_MIN);
         const links: Link[] = [];
         let previous: { x: number; y: number } | null = null;
 

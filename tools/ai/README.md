@@ -237,17 +237,19 @@ aceleracao, todo quadro em que o desviador esta no chao. Com o atrito na frente,
 a aceleracao continua empurrando e o limite de projeto e alcancavel:
 
 ```
-v_terminal = maxSpeed = 448 px/s (nivel 0) e 150 px/s (nivel 7)
+v_terminal = maxSpeed = 314 px/s (nivel 0) e 150 px/s (nivel 7)
 ```
 
 O que **nao** funciona e aplicar o atrito depois de limitar a velocidade: nesse
-caso o teto real vira `maxSpeed * f` (367 px/s), a velocidade maxima do nivel deixa
+caso o teto real vira `maxSpeed * f` (257 px/s), a velocidade maxima do nivel deixa
 de ser alcancavel e a observacao passa a mentir sobre a propria capacidade. A
-aceleracao de 5900 foi escolhida para vencer o atrito e ainda chegar aos 448.
+aceleracao de 4136 foi escolhida para vencer o atrito e ainda chegar aos 314.
 
 O avanco (dash) ignora o atrito e o limite de velocidade: e um pico de 0,16 s que
-chega a 1000 px/s no nivel 0, com 1 s de recarga. Ele exige o chao e e recusado
-durante o tremor, entao nao e uma saida livre de qualquer situacao.
+chega a 1000 px/s no nivel 0, com 2,5 s de recarga. Ele exige o chao e e recusado
+durante o tremor, entao nao e uma saida livre de qualquer situacao. A recarga longa
+importa: com 1 s o avanco cobria 16% do tempo e a politica degenerava para avancar
+sem parar, ja que a recarga terminava antes do desvio seguinte valer a pena.
 
 O tremor (0.28 s sem controle) continua valendo e agora e **visivel** na
 observacao (indice 8), senao a politica nao tinha como saber quando perdeu o
@@ -265,10 +267,14 @@ pena, porque e ela que carrega a informacao de onde o oponente mirou.
 
 O objeto cai de `SPAWN_Y` (24 px) ate o chao (352 px) com gravidade
 `ITEM_GRAVITY` = 900 px/s², partindo de `DROP_BASE_SPEED` = 140 px/s. A queda
-de 328 px leva `t = (-v0 + sqrt(v0² + 2gh)) / g` = **0,71 s** (contra 2,34 s da
-v1, que caia a velocidade constante). Uma deriva lateral de `v` desloca o ponto
-de pouso em `0,71 * v` px, o que hoje da 14 px com `v = 20` — folgado diante da
-meia arena de 256 px.
+leva `t = (-v0 + sqrt(v0² + 2gh)) / g` ate a velocidade terminal
+(`ITEM_MAX_FALL` = 520 px/s) e depois segue reta: **0,82 s** partindo de 140 px/s
+e **0,67 s** no teto de 500 px/s. E esse tempo que a mira usa para antecipar o
+desviador, nao `dropHeight / speed`, que ignora a gravidade e erra para cima em
+ate 0,19 s.
+
+Uma deriva lateral de `v` desloca o ponto de pouso em `t * v` px, o que hoje da
+16 px com `v = 20` — folgado diante da meia arena de 256 px.
 
 O teste continua guardando o caso extremo: se uma deriva futura passar de meia
 arena, o pouso vira uniforme, a mira do oponente deixa de significar qualquer
@@ -323,8 +329,8 @@ Cada nivel enfraquece a mobilidade de forma linear, do nivel 0 ao 7:
 
 | nivel | velocidade maxima | pulo (px de subida) | arrancada do avanco |
 | --- | --- | --- | --- |
-| 0 | 448 | 192 | 1000 |
-| 3 | 320 | 124 | 657 |
+| 0 | 314 | 192 | 1000 |
+| 3 | 244 | 124 | 657 |
 | 7 | 150 | 57 | 400 |
 
 A subida vem de `v^2 / 2g`, nao do valor cru do pulo. No nivel 0 ela e de 192 px,
@@ -334,8 +340,8 @@ nao chega ao teto e nao da para escapar da chuva de itens por cima.
 A **arrancada** (dash) tambem cai com o dano: e um pico de velocidade de 0.16 s
 que ignora o limite de velocidade do nivel, e o alcance util e proporcional a ela.
 O avanco cobre `1000 * 0.16 = 160 px` no nivel 0 e `400 * 0.16 = 64 px` no nivel 7,
-com recarga de 1 s. E o movimento mais rapido do jogo e a unica forma de sair de
-uma situacao ja perdida, por isso o custo de 1 s importa.
+com recarga de 2,5 s. E o movimento mais rapido do jogo e a unica forma de sair de
+uma situacao ja perdida, por isso o custo de 2,5 s importa.
 
 Ao encostar num item o desviador recebe:
 
@@ -383,7 +389,7 @@ inteira com folga e o filtro nunca descarta um item real.
 | 20 + 8k | dano base do item / maior dano do catalogo |
 
 O indice 7 e o que faz a arrancada ser aprendivel. Sem ele a politica nao sabe se
-pode usar o avanco, tenta em todo passo e desperdica a recarga de 1 s; com ele o
+pode usar o avanco, tenta em todo passo e desperdica a recarga de 2,5 s; com ele o
 valor cai linearmente de 1 a 0 e a rede consegue escolher o momento.
 
 O indice 8 faz o mesmo para o tremor. O tremor e uma restricao real (0,28 s sem

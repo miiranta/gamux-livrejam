@@ -6,7 +6,7 @@ import { PhysicsWorld } from '../engine/physics';
 import { CHARACTER_CLIPS, loadDungeonSprites } from './assets';
 import type { ActionIntent, PolicyLike } from './ai';
 import { IdlePolicy, createObservationBuffer, decodeAction, writeObservation } from './ai';
-import { FACE_SMASHING } from './config';
+import { FACE_SMASHING, ITEM_MAX_EXTENT } from './config';
 import { Dodger, Item } from './entities';
 import type { DungeonLevel } from './level';
 import { createDungeonLevel } from './level';
@@ -60,6 +60,19 @@ const KEY_BINDINGS: Record<string, DropAction> = {
 
 const DODGER_ANIMATIONS = CHARACTER_CLIPS;
 const DROPPED_ACCELERATION = 400;
+
+function fallSeconds(speed: number, distance: number): number {
+    const { gravity, maxFallSpeed } = FACE_SMASHING.item;
+    const clamped = Math.min(speed, maxFallSpeed);
+    const accelerating = (maxFallSpeed - clamped) / gravity;
+    const accelerated = clamped * accelerating + 0.5 * gravity * accelerating * accelerating;
+
+    if (accelerated >= distance) {
+        return (-clamped + Math.sqrt(clamped * clamped + 2 * gravity * distance)) / gravity;
+    }
+
+    return accelerating + (distance - accelerated) / maxFallSpeed;
+}
 
 export class FaceSmashing {
     private readonly level: DungeonLevel;
@@ -358,11 +371,17 @@ export class FaceSmashing {
         }
 
         const { velocity, grounded } = dodger.physics.body;
-        const size = FACE_SMASHING.tile.size * FACE_SMASHING.tile.scale;
+        const size = ITEM_MAX_EXTENT * 2;
+        const config = FACE_SMASHING;
         const dropHeight = this.level.floorTop - (this.level.spawnY - size / 2);
         const speed = Math.max(this.spawner.speed, 1);
-        const lead = Math.min(dropHeight / speed, FACE_SMASHING.drop.maxLead);
-        const lateral = grounded ? velocity.x : velocity.x * 0.5;
+        const lead = Math.min(fallSeconds(speed, dropHeight), config.drop.maxLead);
+        const topSpeed = dodger.maxSpeedX;
+        const lateral = clamp(
+            grounded ? velocity.x : velocity.x * 0.5,
+            -topSpeed,
+            topSpeed,
+        );
 
         return clamp(
             dodger.feet.x + lateral * lead,

@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
 
 import { Camera } from '../ui/components/camera/camera';
 import { GameCanvas } from '../ui/components/game-canvas/game-canvas';
@@ -8,9 +7,17 @@ import { MainMenu } from '../ui/pages/main-menu/main-menu';
 import { PauseMenu } from '../ui/pages/pause-menu/pause-menu';
 import { GameFlowService } from '../ui/services';
 
+/**
+ * Single-route shell: it owns the layout for every screen and swaps the
+ * visible layer based on {@link GameFlowService}.
+ *
+ * The match layer (camera + canvas) is hidden with `visibility` rather than
+ * removed, so the canvas keeps a measurable size and never has to re-layout
+ * when returning from a menu.
+ */
 @Component({
     selector: 'app-root',
-    imports: [Camera, EndGame, GameCanvas, MainMenu, PauseMenu, RouterOutlet],
+    imports: [Camera, EndGame, GameCanvas, MainMenu, PauseMenu],
     templateUrl: './app.html',
     styleUrl: './app.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,

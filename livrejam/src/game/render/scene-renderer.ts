@@ -65,9 +65,7 @@ export class SceneRenderer {
             }
         }
 
-        this.renderBanners(level);
         this.renderDodger(dodger);
-        this.renderProps(level);
         this.renderEffects(debug.effects);
         this.renderAim(level, aimX);
 
@@ -211,87 +209,6 @@ export class SceneRenderer {
         ctx.fillStyle = config.flashColor;
         ctx.fillRect(x, y, width, height);
         ctx.restore();
-    }
-
-    private renderProps(level: DungeonLevel): void {
-        const { camera } = this.renderer;
-        const ctx = this.renderer.context;
-        const { grid } = level;
-        const size = camera.toScreenLength(grid.tileSize);
-        const bracket = this.sprites.props.bracket;
-        const torch = this.sprites.props.torch;
-
-        for (const placement of level.decorations.props) {
-            const image = this.sprites.propDecor[placement.kind];
-            const x = camera.toScreenX(grid.columnX(placement.column));
-            const y = camera.toScreenY(grid.rowY(placement.row));
-
-            ctx.save();
-            ctx.globalAlpha = 0.82;
-            ctx.drawImage(image, x, y, size, size);
-            ctx.globalAlpha = 0.72;
-            ctx.globalCompositeOperation = 'multiply';
-            ctx.fillStyle = FACE_SMASHING.backdrop.propTint;
-            ctx.fillRect(x, y, size, size);
-            ctx.restore();
-        }
-
-        for (const placement of level.decorations.torches) {
-            const x = camera.toScreenX(grid.columnX(placement.column));
-            const y = camera.toScreenY(grid.rowY(placement.row));
-
-            ctx.save();
-            ctx.globalAlpha = 0.9;
-            ctx.drawImage(bracket, x, y, size, size);
-            ctx.globalCompositeOperation = 'multiply';
-            ctx.fillStyle = FACE_SMASHING.backdrop.propTint;
-            ctx.fillRect(x, y, size, size);
-            ctx.restore();
-
-            ctx.save();
-            ctx.translate(x + size / 2, y + size / 2);
-            ctx.scale(placement.facing, 1);
-            ctx.drawImage(torch, -size / 2, -size / 2, size, size);
-            ctx.restore();
-
-            this.renderTorchGlow(x + size / 2, y + size / 2, size);
-        }
-    }
-
-    private renderTorchGlow(centerX: number, centerY: number, size: number): void {
-        const ctx = this.renderer.context;
-        const radius = size * 2.4;
-        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
-
-        gradient.addColorStop(0, 'rgba(255, 186, 112, 0.34)');
-        gradient.addColorStop(0.45, 'rgba(232, 140, 76, 0.13)');
-        gradient.addColorStop(1, 'rgba(232, 140, 76, 0)');
-        ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.fillStyle = gradient;
-        ctx.fillRect(centerX - radius, centerY - radius, radius * 2, radius * 2);
-        ctx.restore();
-    }
-
-    private renderBanners(level: DungeonLevel): void {
-        const { camera } = this.renderer;
-        const ctx = this.renderer.context;
-        const { grid } = level;
-        const banner = this.sprites.propDecor.banner;
-        const size = camera.toScreenLength(grid.tileSize);
-
-        for (const tile of level.decorations.banners) {
-            const x = camera.toScreenX(grid.columnX(tile.column));
-            const y = camera.toScreenY(grid.rowY(tile.row));
-            const isLeft = tile.column < grid.columns / 2;
-
-            ctx.save();
-            ctx.translate(x + size / 2, y);
-            ctx.scale(isLeft ? 1 : -1, 1);
-            ctx.globalAlpha = 0.85;
-            ctx.drawImage(banner, -size / 2, 0, size, size);
-            ctx.restore();
-        }
     }
 
     private renderEffects(effects: readonly Effect[]): void {
