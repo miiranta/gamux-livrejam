@@ -72,6 +72,24 @@ describe('player bindings', () => {
         expect(buttons[GAMEPAD_BUTTON.right]).toBe('dash');
     });
 
+    it('leaves start and back to the menus', () => {
+        const buttons = PLAYER_GAMEPAD_BINDINGS.buttons ?? {};
+
+        // Start pauses the match, so it must not also drive the character.
+        expect(buttons[GAMEPAD_BUTTON.start]).toBeUndefined();
+        expect(buttons[GAMEPAD_BUTTON.back]).toBeUndefined();
+    });
+
+    it('shares the bottom button with the menus, which jump must allow for', () => {
+        const buttons = PLAYER_GAMEPAD_BINDINGS.buttons ?? {};
+
+        // The button that confirms "2 Players" is the button that jumps, and
+        // it is still held when the match begins. `FaceSmashing.clearInput`
+        // arms the jump edge with it so the character does not hop on the
+        // first frame; this pins the overlap that makes that necessary.
+        expect(buttons[GAMEPAD_BUTTON.bottom]).toBe('jump');
+    });
+
     it('never jumps from a stick, only from the d-pad and buttons', () => {
         const sticks = PLAYER_GAMEPAD_BINDINGS.sticks ?? [];
 

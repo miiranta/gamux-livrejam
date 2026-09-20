@@ -7,6 +7,15 @@
     @include ornaments.pixel-drop(4px);
 }
 
+/* The focused button, which is the only thing telling a pad player where they
+   are. The ring goes on the host, not on the button: the button is clipped to
+   an octagon, and a ring drawn on it would be cut off with its corners.
+   `:focus-within` rather than `:focus-visible`, because a pad moves the focus
+   programmatically and that never counts as "visible" focus. */
+:host(:focus-within) {
+    @include ornaments.pixel-ring();
+}
+
 :host(.pixel-button-host--block) {
     display: flex;
     width: 100%;
@@ -110,7 +119,13 @@
         transform: translateY(2px);
     }
 
+    /* Brighter than hover, and paired with the ring on the host above, so
+       the focused button never reads as "just hovered". */
     &:is(:focus, :focus-visible) {
-        filter: brightness(1.18) drop-shadow(0 0 0 var(--lj-accent));
+        filter: brightness(1.25);
+
+        .pixel-button__label {
+            color: var(--lj-accent-hi);
+        }
     }
 }

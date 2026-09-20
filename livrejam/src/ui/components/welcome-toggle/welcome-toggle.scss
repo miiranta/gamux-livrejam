@@ -7,6 +7,12 @@
     @include ornaments.pixel-drop(3px);
 }
 
+/* Small, and off in a corner over the particles: the lit frame alone is easy
+   to miss, so the host carries the outer ring too (see `pixel-button`). */
+:host(:focus-within) {
+    @include ornaments.pixel-ring($drop: 3px);
+}
+
 /* Same silhouette as the fullscreen toggle, so the two corners match. */
 .welcome-toggle {
     position: relative;

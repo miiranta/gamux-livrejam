@@ -51,9 +51,10 @@ export type PlayerAction = 'left' | 'right' | 'fastFall' | 'jump' | 'dash' | 'dr
  * | jump | up arrow, W, Space | bottom face button ("A"), top face button ("Y") |
  * | dash | Shift (either) | right face button ("B") |
  * | fast fall | down arrow, S | d-pad down |
- * | drop | Enter | Start, Back, triggers |
+ * | drop | Enter | triggers |
  *
- * Sticks are horizontal only: a stick pushed up must not jump.
+ * Sticks are horizontal only: a stick pushed up must not jump. Start and Back
+ * are left unbound on purpose: Start pauses the match, and the menus own it.
  */
 export const PLAYER_BINDINGS: Record<string, PlayerAction> = {
     ArrowLeft: 'left',
@@ -105,8 +106,6 @@ export const PLAYER_GAMEPAD_BINDINGS: GamepadBindings<PlayerAction> = {
         [GAMEPAD_BUTTON.bottom]: 'jump',
         [GAMEPAD_BUTTON.right]: 'dash',
         [GAMEPAD_BUTTON.top]: 'jump',
-        [GAMEPAD_BUTTON.start]: 'drop',
-        [GAMEPAD_BUTTON.back]: 'drop',
         [GAMEPAD_BUTTON.leftTrigger]: 'drop',
         [GAMEPAD_BUTTON.rightTrigger]: 'drop',
     },

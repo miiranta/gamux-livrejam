@@ -64,7 +64,16 @@ describe('GamepadNavigation', () => {
         return TestBed.inject(GamepadNavigation);
     }
 
+    /**
+     * Puts a menu layer on screen. Confirm and back only act while one is
+     * visible, so every test about them needs it.
+     */
+    function withLayer(): void {
+        document.body.innerHTML = '<app-main-menu><button id="one">One</button></app-main-menu>';
+    }
+
     it('does nothing while no pad is connected', () => {
+        withLayer();
         pad.connected = false;
         const navigation = create();
         const back = vi.fn();
@@ -78,6 +87,7 @@ describe('GamepadNavigation', () => {
     });
 
     it('calls the back handler on the right face button', () => {
+        withLayer();
         const navigation = create();
         const back = vi.fn();
         navigation.onBack = back;
@@ -90,6 +100,7 @@ describe('GamepadNavigation', () => {
     });
 
     it('does not repeat while the back button stays held', () => {
+        withLayer();
         const navigation = create();
         const back = vi.fn();
         navigation.onBack = back;
@@ -102,6 +113,7 @@ describe('GamepadNavigation', () => {
     });
 
     it('fires again after the button is released and pressed anew', () => {
+        withLayer();
         const navigation = create();
         const back = vi.fn();
         navigation.onBack = back;
@@ -118,6 +130,7 @@ describe('GamepadNavigation', () => {
     });
 
     it('ignores a button that is already held when the pad is first seen', () => {
+        withLayer();
         pad.buttons[GAMEPAD_BUTTON.right].pressed = true;
         const navigation = create();
         const back = vi.fn();
@@ -128,12 +141,18 @@ describe('GamepadNavigation', () => {
         expect(back).not.toHaveBeenCalled();
     });
 
-    it('clicks the focused control on the bottom face button', () => {
-        const button = document.createElement('button');
+    /** A menu layer with one button in it, focused, and its click spy. */
+    function withButton(): ReturnType<typeof vi.fn> {
+        document.body.innerHTML = '<app-main-menu><button id="one">One</button></app-main-menu>';
         const clicked = vi.fn();
+        const button = document.getElementById('one') as HTMLButtonElement;
         button.addEventListener('click', clicked);
-        document.body.append(button);
         button.focus();
+        return clicked;
+    }
+
+    it('clicks the focused control on the bottom face button', () => {
+        const clicked = withButton();
 
         const navigation = create();
         runFrames(2);
@@ -145,11 +164,7 @@ describe('GamepadNavigation', () => {
     });
 
     it('ignores confirm and back while the actions are held', () => {
-        const button = document.createElement('button');
-        const clicked = vi.fn();
-        button.addEventListener('click', clicked);
-        document.body.append(button);
-        button.focus();
+        const clicked = withButton();
 
         // The hold is measured against `performance.now()`, which the fake
         // timers leave alone, so the clock is driven by hand here.
@@ -175,6 +190,119 @@ describe('GamepadNavigation', () => {
         runFrames(2);
 
         expect(clicked).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves the menu buttons alone while a match is on screen', () => {
+        // No menu layer: the same buttons are jump and dash, and a control
+        // left focused behind the HUD must not answer them.
+        const button = document.createElement('button');
+        const clicked = vi.fn();
+        button.addEventListener('click', clicked);
+        document.body.append(button);
+        button.focus();
+
+        const navigation = create();
+        const back = vi.fn();
+        navigation.onBack = back;
+
+        runFrames(2);
+        pad.buttons[GAMEPAD_BUTTON.bottom].pressed = true;
+        pad.buttons[GAMEPAD_BUTTON.right].pressed = true;
+        runFrames(2);
+
+        expect(clicked).not.toHaveBeenCalled();
+        expect(back).not.toHaveBeenCalled();
+    });
+
+    it('calls the pause handler on start, with or without a menu', () => {
+        const navigation = create();
+        const pause = vi.fn();
+        navigation.onPause = pause;
+
+        runFrames(2);
+        pad.buttons[GAMEPAD_BUTTON.start].pressed = true;
+        runFrames(2);
+
+        expect(pause).toHaveBeenCalledTimes(1);
+    });
+
+    it('brings the ring back when the focused control disappears', () => {
+        document.body.innerHTML = `
+            <app-main-menu>
+                <nav data-gamepad-first>
+                    <button id="one">1 Player</button>
+                    <button id="two">2 Players</button>
+                </nav>
+            </app-main-menu>
+        `;
+        focusFirst();
+
+        create();
+        runFrames(2);
+
+        // What the menu does when a panel replaces the button list.
+        document.getElementById('one')?.remove();
+        expect(document.activeElement).toBe(document.body);
+
+        runFrames(1);
+
+        expect(document.activeElement?.id).toBe('two');
+    });
+
+    it('does not move the ring while the focus is inside the layer', () => {
+        document.body.innerHTML = `
+            <app-main-menu>
+                <nav data-gamepad-first>
+                    <button id="one">1 Player</button>
+                    <button id="two">2 Players</button>
+                </nav>
+            </app-main-menu>
+        `;
+        document.getElementById('two')?.focus();
+
+        create();
+        runFrames(3);
+
+        expect(document.activeElement?.id).toBe('two');
+    });
+
+    it('keeps the ring where it is when the press runs nothing', () => {
+        document.body.innerHTML = `
+            <app-main-menu>
+                <div data-gamepad-first>
+                    <button id="one">One</button>
+                    <input id="readout" type="text" />
+                </div>
+            </app-main-menu>
+        `;
+        document.getElementById('readout')?.focus();
+
+        create();
+        runFrames(2);
+        pad.buttons[GAMEPAD_BUTTON.bottom].pressed = true;
+        runFrames(2);
+
+        expect(document.activeElement?.id).toBe('readout');
+    });
+
+    it('walks past fields the pad cannot type into', () => {
+        document.body.innerHTML = `
+            <app-main-menu>
+                <div data-gamepad-first>
+                    <button id="minus">-</button>
+                    <input id="readout" type="text" />
+                    <button id="plus">+</button>
+                </div>
+            </app-main-menu>
+        `;
+        document.getElementById('minus')?.focus();
+
+        create();
+        runFrames(2);
+        pad.buttons[GAMEPAD_BUTTON.dpadDown].pressed = true;
+        runFrames(2);
+
+        expect(document.activeElement?.id).toBe('plus');
     });
 
     function withSlider(): HTMLInputElement {
@@ -352,6 +480,33 @@ describe('focusFirst', () => {
 
         // Without the marker this would land on the corner toggle.
         expect(document.activeElement?.id).toBe('main');
+    });
+
+    it('keeps the starting point inside the marked container', () => {
+        document.body.innerHTML = `
+            <app-main-menu>
+                <input id="loose" type="range" />
+                <nav data-gamepad-first><button id="main">1 Player</button></nav>
+            </app-main-menu>
+        `;
+
+        focusFirst();
+
+        // The marker has to bind every kind of control, not only the buttons.
+        expect(document.activeElement?.id).toBe('main');
+    });
+
+    it('skips a field the pad cannot type into', () => {
+        document.body.innerHTML = `
+            <app-main-menu>
+                <input id="readout" type="text" />
+                <button id="on">On</button>
+            </app-main-menu>
+        `;
+
+        focusFirst();
+
+        expect(document.activeElement?.id).toBe('on');
     });
 
     it('returns null when no menu layer is on screen', () => {
