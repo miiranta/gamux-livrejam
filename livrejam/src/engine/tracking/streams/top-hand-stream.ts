@@ -2,10 +2,10 @@ import { clamp } from '../../math';
 import type { HandState } from '../types';
 import type { Stream, TopHandObservation, TopHandSide } from './types';
 
-const WINDOW_MS = 500;
-const MIN_SAMPLES = 3;
-const DEADBAND = 0.02;
-const SWITCH_MARGIN = 0.04;
+const WINDOW_MS = 100;
+const MIN_SAMPLES = 2;
+const DEADBAND = 0.012;
+const SWITCH_MARGIN = 0.025;
 
 interface Sample {
     time: number;

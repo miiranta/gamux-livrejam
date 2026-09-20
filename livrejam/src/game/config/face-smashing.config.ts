@@ -79,7 +79,7 @@ export const FACE_SMASHING = {
         highlight: '#f7cd72',
         shade: '#a06a26',
         outline: '#0a0908',
-        smoothingSeconds: 0.16,
+        smoothingSeconds: 0.05,
     },
     round: {
         seconds: 60,

@@ -30,7 +30,11 @@ import {
 type CameraStatus = 'idle' | 'starting' | 'running' | 'error';
 
 const CAMERA_CONSTRAINTS: MediaStreamConstraints = {
-    video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+    video: {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 60 },
+    },
     audio: false,
 };
 
