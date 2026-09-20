@@ -48,6 +48,63 @@
             "teresa": "Backing voice on the end-game song"
         }
     },
+    "welcome": {
+        "title": "Welcome!",
+        "open": "About the game",
+        "start": "Let's go!",
+        "intro": {
+            "p1": "Welcome to the Quebrando a Cara project, made for LivreJam 2026!",
+            "p2": "The game you are about to play is an abomination created by the duo Lucas Miranda and Ângelo Pilotto. The idea naturally grew out of the jam theme, “Quebrando a Cara”, and while the first thing that came to Miranda's disturbed mind was “67”, Ângelo pictured a mix of Happy Wheels and Skate 3, where the point is to maximise how “broken” your character is. Because that turned out to be rather complex, the idea evolved into something closer to games like Kick the Buddy. So instead of controlling the character who gets “broken”, you are the one smashing their face, hurling every kind of sharp and dangerous object at them.",
+            "p3": "Miranda, however, being obsessed with neural networks, decided to train an AI to drive the character so it would run away from your attempts at violence. Your goal, then, is to “break” that character as much as you can, using a rather unconventional control scheme — the one Miranda wanted most… Doing the 67. When the match starts, enable your camera and show us what you can do! And that idea did not come out of nowhere either. You can also pull a few faces to “break your own face” and get another way to control the game (and to find a few other things).",
+            "p4": "Beyond that, our goal was to complete as many achievements as possible. Here is the list of every achievement we believe we reached, and how we got there:"
+        },
+        "achievements": {
+            "tony": {
+                "title": "Tony did it in a cave",
+                "body": "We had to choose: build the game with an engine (we know none of them), or use generative AI to write the code. We went with the second option, so our game is written entirely in Angular, with no engine."
+            },
+            "speedruim": {
+                "title": "Speedruim",
+                "body": "Breaking the character fits the goal of the game perfectly. You score the more you hit them, and the more you hit them, the more hurt they get. The more hurt, the slower. The slower, the easier to hit, and so on…"
+            },
+            "kompetitivo": {
+                "title": "Kompetitivo",
+                "body": "There are primarily two ways to compete in this game. The most direct one: who scores the most against the AI. But it can be more fun to see who survives taking the fewest points, too. For that, the two-player mode lets a second player drive the character (with a gamepad as well!) instead of the AI. In that case, the second player's goal is to keep the first player's score as low as possible."
+            },
+            "oneUp": {
+                "title": "1 Up!",
+                "body": "We think making the dummy's death the player's final goal, reached when the timer runs out, is rather unusual. Even though we drew inspiration from the games mentioned above, none of them has the same mechanic as ours."
+            },
+            "youCanPlay": {
+                "title": "You can play too!",
+                "body": "You need nothing beyond your own body to play this game! If you cannot use your arms, use your eyes!"
+            },
+            "helpOther": {
+                "title": "The one where you help another group",
+                "body": "If all goes well, a colleague of ours will have an easter egg from our game inside theirs…"
+            },
+            "oneManBand": {
+                "title": "One-Gamuto band",
+                "body": "Now this achievement really is Ângelo's dream. He LOVES making sounds with his mouth, and over-the-top acapella songs of terrible quality. Working on this one was his favourite part."
+            },
+            "altControl": {
+                "title": "Alternative Controller",
+                "body": "Very alternative ;)"
+            },
+            "onesAndZeros": {
+                "title": "Ones and zeros",
+                "body": "Self-explanatory"
+            },
+            "libre": {
+                "title": "Libre",
+                "body": "Even though we used generative AI, the model we used was DeepSeek. Other than that: VSCode, Linux (Ubuntu), Angular, Audacity…"
+            },
+            "joymaxxing": {
+                "title": "Joymaxxing",
+                "body": "We have no doubt we had a lot of fun! We hope you have fun too with this crazy thing we built. Thanks for playing!"
+            }
+        }
+    },
     "language": {
         "title": "Language",
         "en-us": "English (US)",

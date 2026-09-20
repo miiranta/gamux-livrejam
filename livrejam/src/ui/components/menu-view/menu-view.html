@@ -6,6 +6,7 @@
     <span class="menu-view__corner menu-view__corner--bl" aria-hidden="true"></span>
     <span class="menu-view__corner menu-view__corner--br" aria-hidden="true"></span>
 
+    <app-welcome-toggle class="menu-view__welcome" />
     <app-fullscreen-toggle class="menu-view__fullscreen" />
 
     <div class="menu-view__stack">
@@ -83,17 +84,23 @@
         } @else {
             <div class="menu-view__panel">
                 <app-pixel-panel [titleKey]="panelTitleKey()">
-                    @switch (panel()) {
-                        @case ('configuration') {
-                            <app-settings-panel [showMatchTime]="!isPause()" />
+                    <!--
+                        Only the contents scroll: the frame, the title and the
+                        way back stay put, however long the panel gets.
+                    -->
+                    <div class="menu-view__panel-scroll">
+                        @switch (panel()) {
+                            @case ('configuration') {
+                                <app-settings-panel [showMatchTime]="!isPause()" />
+                            }
+                            @case ('language') {
+                                <app-language-select />
+                            }
+                            @case ('credits') {
+                                <app-credits-panel />
+                            }
                         }
-                        @case ('language') {
-                            <app-language-select />
-                        }
-                        @case ('credits') {
-                            <app-credits-panel />
-                        }
-                    }
+                    </div>
 
                     <div class="menu-view__panel-footer">
                         <app-pixel-button block variant="ghost" appHoverSound (pressed)="close()">

@@ -7,3 +7,4 @@ export * from './game-flow.service';
 export * from './gamepad-navigation.service';
 export * from './language.service';
 export * from './tracking-frame.service';
+export * from './welcome.service';

@@ -1,11 +1,21 @@
+@use '../../styles/ornaments' as ornaments;
+
 :host {
     position: fixed;
     inset: 0;
     z-index: 30;
     display: grid;
     place-items: center;
-    overflow: auto;
+    /* A gate too tall for the screen scrolls inside its own frame. */
+    overflow: hidden;
     padding: 1.5rem;
+}
+
+.camera-gate {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
 }
 
 .camera-gate__backdrop {
@@ -20,6 +30,7 @@
 .camera-gate__panel {
     position: relative;
     width: min(90vw, 26rem);
+    max-height: 100%;
     animation: camera-gate-in 0.3s var(--lj-punch) both;
 }
 
@@ -27,6 +38,11 @@
     display: grid;
     justify-items: center;
     gap: 1rem;
+    min-height: 0;
+    margin-right: -0.4rem;
+    padding-right: 0.4rem;
+
+    @include ornaments.pixel-scroll();
 }
 
 .camera-gate__preview {
@@ -63,6 +79,7 @@
 
 .camera-gate__actions {
     display: grid;
+    flex: 0 0 auto;
     gap: 0.6rem;
     margin-top: 1.4rem;
 }

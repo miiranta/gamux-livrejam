@@ -14,6 +14,12 @@
         ]
       },
       {
+        "key": "match-sigma",
+        "files": [
+          "soundtrack/match-sigma/sigma.mp3"
+        ]
+      },
+      {
         "key": "menu",
         "files": [
           "soundtrack/menu/wind.mp3"

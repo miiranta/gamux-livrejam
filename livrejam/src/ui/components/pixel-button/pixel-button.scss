@@ -37,7 +37,10 @@
         filter: saturate(0.35) brightness(0.75);
     }
 
-    &:focus-visible {
+    /* The lit frame below is the ring, so the UA outline stays off. Both
+       `:focus` and `:focus-visible` are matched because a gamepad focuses
+       programmatically, which never matches `:focus-visible`. */
+    &:is(:focus, :focus-visible) {
         outline: none;
     }
 }
@@ -107,7 +110,7 @@
         transform: translateY(2px);
     }
 
-    &:focus-visible {
+    &:is(:focus, :focus-visible) {
         filter: brightness(1.18) drop-shadow(0 0 0 var(--lj-accent));
     }
 }

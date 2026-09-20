@@ -1,7 +1,6 @@
 import {
     ChangeDetectionStrategy,
     Component,
-    afterNextRender,
     booleanAttribute,
     computed,
     input,
@@ -20,6 +19,7 @@ import { ParticleField } from '../particle-field/particle-field';
 import { PixelButton } from '../pixel-button/pixel-button';
 import { PixelPanel } from '../pixel-panel/pixel-panel';
 import { SettingsPanel } from '../settings-panel/settings-panel';
+import { WelcomeToggle } from '../welcome-toggle/welcome-toggle';
 
 /** Sub-screen opened from the menu list. */
 export type MenuPanelId = 'none' | 'configuration' | 'credits' | 'language';
@@ -51,6 +51,7 @@ const PANEL_TITLE_KEYS: Record<Exclude<MenuPanelId, 'none'>, string> = {
         PixelPanel,
         SettingsPanel,
         TranslatePipe,
+        WelcomeToggle,
     ],
     templateUrl: './menu-view.html',
     styleUrl: './menu-view.scss',
@@ -81,12 +82,6 @@ export class MenuView {
         const id = this.panel();
         return id === 'none' ? null : PANEL_TITLE_KEYS[id];
     });
-
-    constructor() {
-        // Give the pad (and the keyboard) a starting point as soon as the
-        // menu appears, so "confirm" always has something to press.
-        afterNextRender(() => focusFirst());
-    }
 
     protected startMode(mode: GameMode): void {
         this.mode.emit(mode);

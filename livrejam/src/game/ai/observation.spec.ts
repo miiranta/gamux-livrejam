@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FACE_SMASHING, ITEMS } from '../config';
+import { DAMAGE_CEILING } from '../damage';
 import { createDungeonLevel } from '../level';
 import type { DungeonLevel } from '../level';
 import { Dodger, Item } from '../entities';
@@ -113,7 +114,7 @@ describe('writeObservation', () => {
         expect(buffer[2]).toBeCloseTo(1, 6);
         expect(buffer[3]).toBe(1);
         expect(buffer[4]).toBeCloseTo(-0.5, 6);
-        expect(buffer[5]).toBeCloseTo((FACE_SMASHING.damage.perLevel * 2) / 4000, 6);
+        expect(buffer[5]).toBeCloseTo((FACE_SMASHING.damage.perLevel * 2) / DAMAGE_CEILING, 6);
         expect(buffer[6]).toBeCloseTo(2 / 7, 6);
         expect(buffer[7]).toBeCloseTo(1, 6);
         expect(buffer[8]).toBeCloseTo(0, 6);

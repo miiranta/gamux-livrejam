@@ -14,6 +14,7 @@ import {
 } from '../../game/audio';
 import { GameFlowService } from './game-flow.service';
 import { GameSettingsService } from './game-settings.service';
+import { TrackingFrameService } from './tracking-frame.service';
 
 /** Sound-effect events the game can trigger; keys are folder names. */
 export const SOUND_EFFECTS = {
@@ -44,6 +45,8 @@ const MENU_CROSSFADE_SECONDS = 1.5;
  *   voice), including the selected voice set.
  * - Which track plays is driven by the game-flow state: the menu ambience on
  *   the main menu, the match song while playing, and the end-game song once.
+ * - During a match the sigma gesture swaps the match song for the sigma one;
+ *   doing it again swaps back. The swap lasts until the match ends.
  */
 @Injectable({ providedIn: 'root' })
 export class AudioService {
@@ -51,10 +54,13 @@ export class AudioService {
     private readonly destroyRef = inject(DestroyRef);
     private readonly settings = inject(GameSettingsService);
     private readonly flow = inject(GameFlowService);
+    private readonly trackingFrames = inject(TrackingFrameService);
     private readonly manifest = signal<AudioManifest>(EMPTY_AUDIO_MANIFEST);
     private readonly ready = signal(false);
     private readonly unlocked = signal(false);
     private readonly lastHoverAt = signal(0);
+    /** True while the sigma gesture replaced the match song with its own. */
+    private readonly sigmaMusic = signal(false);
 
     readonly catalog = this.manifest.asReadonly();
     readonly isReady = this.ready.asReadonly();
@@ -109,6 +115,34 @@ export class AudioService {
             );
         });
 
+        // Every rising edge of the sigma gesture during a match toggles the
+        // match song: the gesture is held for many frames, so only the
+        // transition counts, not each frame it stays active.
+        let sigmaWasActive = false;
+        effect(() => {
+            const active = this.trackingFrames.frame()?.gestures.sigma.active ?? false;
+
+            if (active && !sigmaWasActive && this.flow.isPlaying()) {
+                this.sigmaMusic.update((on) => !on);
+            }
+
+            sigmaWasActive = active;
+        });
+
+        // The swap belongs to one match only, so leaving the match (game over,
+        // menu) or restarting one brings the normal match song back. A pause
+        // keeps it, since the same match carries on afterwards.
+        let lastRestartToken = this.flow.restartToken();
+        effect(() => {
+            const token = this.flow.restartToken();
+            const restarted = token !== lastRestartToken;
+            lastRestartToken = token;
+
+            if (restarted || !this.flow.isMatchVisible()) {
+                this.sigmaMusic.set(false);
+            }
+        });
+
         // The music follows the screen: menu ambience, match song, end-game
         // song. The pause menu deliberately keeps the match song silent.
         effect(() => {
@@ -124,7 +158,7 @@ export class AudioService {
     /** Which track the current screen should play; `null` for silence. */
     private currentMusicRole(): MusicRole | null {
         if (this.flow.isPlaying()) {
-            return 'match';
+            return this.sigmaMusic() ? 'match-sigma' : 'match';
         }
 
         if (this.flow.isGameOver()) {

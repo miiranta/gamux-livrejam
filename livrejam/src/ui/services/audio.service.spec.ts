@@ -2,15 +2,18 @@ import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AudioEngine, type AudioChannel, type AudioManifest } from '../../game/audio';
+import type { TrackingFrame } from '../../engine/tracking';
 import { useReadyCamera } from '../testing/camera-testing';
 import { AudioService, SOUND_EFFECTS } from './audio.service';
 import { GameFlowService } from './game-flow.service';
 import { GameSettingsService } from './game-settings.service';
+import { TrackingFrameService } from './tracking-frame.service';
 
 const CATALOG: AudioManifest = {
     soundtrack: {
         roles: [
             { key: 'match', files: ['assets/audio/soundtrack/match/song.mp3'] },
+            { key: 'match-sigma', files: ['assets/audio/soundtrack/match-sigma/sigma.mp3'] },
             { key: 'menu', files: ['assets/audio/soundtrack/menu/wind.mp3'] },
             { key: 'end-game', files: ['assets/audio/soundtrack/end-game/end.mp3'] },
         ],
@@ -39,10 +42,36 @@ const CATALOG: AudioManifest = {
     },
 };
 
+const MATCH_SONG = 'assets/audio/soundtrack/match/song.mp3';
+const SIGMA_SONG = 'assets/audio/soundtrack/match-sigma/sigma.mp3';
+
+/** A tracking frame whose only meaningful bit is the sigma gesture. */
+function sigmaFrame(active: boolean): TrackingFrame {
+    return {
+        timestamp: 0,
+        face: null,
+        hands: [],
+        gestures: {
+            sixtySeven: { active: false, confidence: 0, level: 0, frequency: 0, alternations: 0 },
+            sigma: { active, confidence: active ? 1 : 0, score: active ? 1 : 0 },
+            topHand: { active: false, confidence: 0, side: null, margin: 0 },
+        },
+    };
+}
+
 describe('AudioService', () => {
     let service: AudioService;
     let settings: GameSettingsService;
     let flow: GameFlowService;
+    let frames: TrackingFrameService;
+
+    /** One full sigma gesture: it becomes active, then is released. */
+    const doSigma = () => {
+        frames.publish(sigmaFrame(true));
+        TestBed.tick();
+        frames.publish(sigmaFrame(false));
+        TestBed.tick();
+    };
 
     beforeEach(() => {
         TestBed.configureTestingModule({});
@@ -50,6 +79,7 @@ describe('AudioService', () => {
         service = TestBed.inject(AudioService);
         settings = TestBed.inject(GameSettingsService);
         flow = TestBed.inject(GameFlowService);
+        frames = TestBed.inject(TrackingFrameService);
         service.useCatalog(CATALOG);
     });
 
@@ -118,6 +148,101 @@ describe('AudioService', () => {
 
         startMusic.mockRestore();
         stopMusic.mockRestore();
+    });
+
+    it('swaps the match song for the sigma one, and back, on each sigma gesture', () => {
+        const startMusic = vi.spyOn(AudioEngine.prototype, 'startMusic');
+
+        flow.startMatch();
+        TestBed.tick();
+        startMusic.mockClear();
+
+        doSigma();
+        expect(startMusic).toHaveBeenCalledWith(SIGMA_SONG, expect.objectContaining({ loop: true }));
+
+        startMusic.mockClear();
+        doSigma();
+        expect(startMusic).toHaveBeenCalledWith(MATCH_SONG, expect.objectContaining({ loop: true }));
+
+        startMusic.mockRestore();
+    });
+
+    it('swaps once while the gesture is held, not on every frame', () => {
+        const startMusic = vi.spyOn(AudioEngine.prototype, 'startMusic');
+
+        flow.startMatch();
+        TestBed.tick();
+        startMusic.mockClear();
+
+        // The gesture stays active for many frames; only the first one counts.
+        for (let frame = 0; frame < 5; frame++) {
+            frames.publish(sigmaFrame(true));
+            TestBed.tick();
+        }
+
+        expect(startMusic.mock.calls.map(([url]) => url)).toEqual([SIGMA_SONG]);
+        startMusic.mockRestore();
+    });
+
+    it('ignores the sigma gesture outside a running match', () => {
+        const startMusic = vi.spyOn(AudioEngine.prototype, 'startMusic');
+
+        doSigma();
+        flow.startMatch();
+        TestBed.tick();
+
+        expect(startMusic).toHaveBeenCalledWith(MATCH_SONG, expect.objectContaining({ loop: true }));
+        expect(startMusic.mock.calls.map(([url]) => url)).not.toContain(SIGMA_SONG);
+        startMusic.mockRestore();
+    });
+
+    it('keeps the sigma song across a pause, since the match carries on', () => {
+        const startMusic = vi.spyOn(AudioEngine.prototype, 'startMusic');
+
+        flow.startMatch();
+        TestBed.tick();
+        doSigma();
+
+        flow.pause();
+        TestBed.tick();
+        startMusic.mockClear();
+        flow.resume();
+        TestBed.tick();
+
+        expect(startMusic).toHaveBeenCalledWith(SIGMA_SONG, expect.objectContaining({ loop: true }));
+        startMusic.mockRestore();
+    });
+
+    it('brings the match song back for the next match', () => {
+        const startMusic = vi.spyOn(AudioEngine.prototype, 'startMusic');
+
+        flow.startMatch();
+        TestBed.tick();
+        doSigma();
+
+        flow.endMatch({ score: 0, best: 0, survived: 1, dodges: 0, nearMisses: 0 });
+        TestBed.tick();
+        startMusic.mockClear();
+        flow.startMatch();
+        TestBed.tick();
+
+        expect(startMusic).toHaveBeenCalledWith(MATCH_SONG, expect.objectContaining({ loop: true }));
+        startMusic.mockRestore();
+    });
+
+    it('brings the match song back when the match is restarted', () => {
+        const startMusic = vi.spyOn(AudioEngine.prototype, 'startMusic');
+
+        flow.startMatch();
+        TestBed.tick();
+        doSigma();
+        startMusic.mockClear();
+
+        flow.restartMatch();
+        TestBed.tick();
+
+        expect(startMusic).toHaveBeenCalledWith(MATCH_SONG, expect.objectContaining({ loop: true }));
+        startMusic.mockRestore();
     });
 
     it('plays the end-game song exactly once (no loop)', () => {

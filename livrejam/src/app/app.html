@@ -22,4 +22,8 @@
     @if (flow.cameraGate()) {
         <app-camera-gate />
     }
+
+    @if (welcome.isOpen()) {
+        <app-welcome-screen />
+    }
 </div>

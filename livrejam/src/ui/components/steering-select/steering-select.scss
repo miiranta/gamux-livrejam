@@ -31,10 +31,7 @@
         filter: brightness(1.15);
     }
 
-    &:focus-visible {
-        outline: 2px solid var(--lj-accent-hi);
-        outline-offset: 2px;
-    }
+    @include ornaments.focus-ring;
 
     &:active {
         transform: translateY(1px);

@@ -45,7 +45,7 @@ export const FACE_SMASHING = {
     },
     damage: {
         levels: 8,
-        perLevel: 500,
+        perLevel: 100,
     },
     item: {
         gravity: 417,

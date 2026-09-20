@@ -6,8 +6,17 @@
     z-index: 20;
     display: grid;
     place-items: center;
-    overflow: auto;
+    /* The menu itself never scrolls: a panel too tall for the screen scrolls
+       inside its own frame instead of handing the overflow to the browser. */
+    overflow: hidden;
     padding: 1.5rem;
+}
+
+.menu-view {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
 }
 
 .menu-view__backdrop {
@@ -64,16 +73,25 @@
     }
 }
 
-.menu-view__fullscreen {
+.menu-view__fullscreen,
+.menu-view__welcome {
     /* Sits on the diagonal, mirroring the corner ornament's own symmetric
        inset (0.75rem), and clears it on both axes. */
     --lj-fullscreen-inset: 5.25rem;
 
     position: absolute;
     top: var(--lj-fullscreen-inset);
-    right: var(--lj-fullscreen-inset);
     z-index: 2;
     animation: menu-fullscreen-in 0.3s ease-out 0.15s both;
+}
+
+.menu-view__fullscreen {
+    right: var(--lj-fullscreen-inset);
+}
+
+/* Mirrored into the opposite corner, on the same diagonal. */
+.menu-view__welcome {
+    left: var(--lj-fullscreen-inset);
 }
 
 .menu-view__stack {
@@ -83,6 +101,7 @@
     justify-items: center;
     gap: 1.75rem;
     width: min(90vw, 27rem);
+    max-height: 100%;
 }
 
 /* --- Brand -------------------------------------------------------------- */
@@ -156,11 +175,25 @@
 /* --- Panels ------------------------------------------------------------- */
 
 .menu-view__panel {
+    display: flex;
     width: 100%;
+    min-height: 0;
+    max-height: 100%;
     animation: menu-panel-in 0.26s var(--lj-punch) both;
 }
 
+.menu-view__panel-scroll {
+    min-height: 0;
+    /* The bar lives in the padding and the negative margin gives that space
+       back, so a panel that fits keeps the full width it always had. */
+    margin-right: -0.4rem;
+    padding-right: 0.4rem;
+
+    @include ornaments.pixel-scroll();
+}
+
 .menu-view__panel-footer {
+    flex: 0 0 auto;
     margin-top: 1.35rem;
 }
 

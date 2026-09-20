@@ -57,6 +57,12 @@ Os menus tambem funcionam no controle: o d-pad (ou o analógico esquerdo) anda
 pelo foco, o botao de baixo ("A") confirma e o botao da direita ("B") volta
 (fecha um painel, sai da pausa, sai da tela de fim de jogo).
 
+O anel de foco usa `:focus` **e** `:focus-visible` de proposito (mixin
+`focus-ring` em `src/ui/styles/_ornaments.scss`). O navegador so liga
+`:focus-visible` depois de teclado ou mouse, e o controle foca o elemento via
+codigo — com `:focus-visible` sozinho, a navegacao no controle parece nao
+fazer nada porque nada fica destacado.
+
 ## Testes
 
 ```bash

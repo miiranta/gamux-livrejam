@@ -79,7 +79,9 @@
     cursor: pointer;
 }
 
-.pixel-slider:has(.pixel-slider__input:focus-visible) .pixel-slider__track {
+/* `:focus` as well as `:focus-visible`: a gamepad focuses the input
+   programmatically, which never matches `:focus-visible`. */
+.pixel-slider:has(.pixel-slider__input:is(:focus, :focus-visible)) .pixel-slider__track {
     box-shadow:
         inset 0 0 0 2px var(--lj-shadow),
         inset 0 0 0 3px var(--lj-accent-hi);

@@ -346,7 +346,7 @@ Para a politica ir bem em qualquer partida, cada ambiente sorteia:
 O dano nao tem teto. O nivel visual e a faixa:
 
 ```
-nivel = clamp(floor(dano / 500), 0, 7)
+nivel = clamp(floor(dano / 100), 0, 7)
 ```
 
 Cada nivel enfraquece a mobilidade de forma linear, do nivel 0 ao 7:

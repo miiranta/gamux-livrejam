@@ -3,10 +3,11 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular
 import { Camera } from '../ui/components/camera/camera';
 import { CameraGate } from '../ui/components/camera-gate/camera-gate';
 import { GameCanvas } from '../ui/components/game-canvas/game-canvas';
+import { WelcomeScreen } from '../ui/components/welcome-screen/welcome-screen';
 import { EndGame } from '../ui/pages/end-game/end-game';
 import { MainMenu } from '../ui/pages/main-menu/main-menu';
 import { PauseMenu } from '../ui/pages/pause-menu/pause-menu';
-import { GameFlowService } from '../ui/services';
+import { GameFlowService, WelcomeService } from '../ui/services';
 
 /**
  * Single-route shell: it owns the layout for every screen and swaps the
@@ -18,13 +19,14 @@ import { GameFlowService } from '../ui/services';
  */
 @Component({
     selector: 'app-root',
-    imports: [Camera, CameraGate, EndGame, GameCanvas, MainMenu, PauseMenu],
+    imports: [Camera, CameraGate, EndGame, GameCanvas, MainMenu, PauseMenu, WelcomeScreen],
     templateUrl: './app.html',
     styleUrl: './app.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class App {
     protected readonly flow = inject(GameFlowService);
+    protected readonly welcome = inject(WelcomeService);
     private readonly destroyRef = inject(DestroyRef);
 
     constructor() {

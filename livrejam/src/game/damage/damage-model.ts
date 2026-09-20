@@ -1,7 +1,7 @@
 import { clamp } from '../../engine/math';
 
 const LEVELS = 8;
-const PER_LEVEL = 500;
+const PER_LEVEL = 100;
 const CEILING = LEVELS * PER_LEVEL;
 
 export function damageLevel(damage: number): number {

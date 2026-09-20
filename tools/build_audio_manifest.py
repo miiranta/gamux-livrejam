@@ -14,9 +14,10 @@ this script".
 
 The `soundtrack` roles are fixed by the screens that use them:
 
-    match/     looped during the match
-    menu/      looped on the main menu
-    end-game/  played once on the end-game screen
+    match/       looped during the match
+    match-sigma/ looped during the match, after the sigma gesture swapped it in
+    menu/        looped on the main menu
+    end-game/    played once on the end-game screen
 
 Usage:
     python3 tools/build_audio_manifest.py [audio_dir]

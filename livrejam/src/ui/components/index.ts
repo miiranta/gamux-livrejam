@@ -12,3 +12,5 @@ export * from './pixel-stepper/pixel-stepper';
 export * from './settings-panel/settings-panel';
 export * from './steering-select/steering-select';
 export * from './voice-select/voice-select';
+export * from './welcome-screen/welcome-screen';
+export * from './welcome-toggle/welcome-toggle';

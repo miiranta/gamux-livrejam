@@ -209,7 +209,7 @@ export function focusableItems(): HTMLElement[] {
 /** The last opened layer, which is the one the pad is "inside". */
 function topLayer(): HTMLElement | null {
     const layers = document.querySelectorAll<HTMLElement>(
-        'app-main-menu, app-pause-menu, app-end-game, app-camera-gate',
+        'app-main-menu, app-pause-menu, app-end-game, app-camera-gate, app-welcome-screen',
     );
 
     return layers[layers.length - 1] ?? null;

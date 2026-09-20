@@ -7,7 +7,8 @@
     @include ornaments.pixel-drop(3px);
 }
 
-.fullscreen-toggle {
+/* Same silhouette as the fullscreen toggle, so the two corners match. */
+.welcome-toggle {
     position: relative;
     display: grid;
     place-items: center;
@@ -26,11 +27,6 @@
         filter: brightness(1.2);
     }
 
-    &:disabled {
-        cursor: not-allowed;
-        filter: saturate(0.3) brightness(0.7);
-    }
-
     &:active {
         transform: translateY(2px);
     }
@@ -38,7 +34,7 @@
     @include ornaments.focus-ring;
 }
 
-.fullscreen-toggle__rim {
+.welcome-toggle__rim {
     position: absolute;
     inset: 3px;
     background: linear-gradient(180deg, var(--lj-panel-hi), var(--lj-panel));
@@ -47,13 +43,13 @@
     @include ornaments.octagon(4px);
 }
 
-.fullscreen-toggle__glyph {
+.welcome-toggle__glyph {
     position: relative;
     display: grid;
     place-items: center;
 }
 
-.fullscreen-toggle__icon {
+.welcome-toggle__icon {
     width: 1.15rem;
     height: 1.15rem;
     shape-rendering: crispEdges;
