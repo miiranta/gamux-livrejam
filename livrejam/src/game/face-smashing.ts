@@ -97,7 +97,7 @@ export class FaceSmashing {
     private active: Item | null = null;
     private policy: PolicyLike;
     private action: ActionIntent = { axis: 0, jump: false, dash: false, facing: 0 };
-    private playerAction: PlayerIntent = { axis: 0, jump: false, dash: false, run: false };
+    private playerAction: PlayerIntent = { axis: 0, jump: false, dash: false, run: false, fastFall: false };
     /** Edge detection for the player's held jump/dash, so holds are one-shot. */
     private jumpLatch = false;
     private playerDashLatch = false;
@@ -267,7 +267,7 @@ export class FaceSmashing {
         this.dashLatch = false;
         this.jumpLatch = false;
         this.playerDashLatch = false;
-        this.playerAction = { axis: 0, jump: false, dash: false, run: false };
+        this.playerAction = { axis: 0, jump: false, dash: false, run: false, fastFall: false };
         this.clearInput();
         this.spawner.reset();
         this.impacts.reset();
@@ -373,6 +373,7 @@ export class FaceSmashing {
         dodger.speedFactor = playerControlled ? speedFactorFor(this.playerAction.run) : 1;
         dodger.advanceReaction(dt);
         dodger.move(this.action.axis, dt);
+        dodger.fastFall(playerControlled && this.playerAction.fastFall && !dodger.stunned, dt);
 
         const dashDirection = this.action.dash
             ? this.action.facing || dodger.facingDirection
@@ -390,6 +391,11 @@ export class FaceSmashing {
 
         this.world.step(dodger.physics, dt);
         dodger.consumeJump();
+
+        if (playerControlled && !this.playerAction.jump) {
+            dodger.cutJump();
+        }
+
         dodger.sampleDashTrail();
         dodger.resolveAnimation();
         dodger.advanceAnimation(dt, DODGER_ANIMATIONS);
@@ -419,7 +425,7 @@ export class FaceSmashing {
 
     /** Asks the trained policy for the character's next move. */
     private readPolicyAction(dodger: Dodger): void {
-        this.playerAction = { axis: 0, jump: false, dash: false, run: false };
+        this.playerAction = { axis: 0, jump: false, dash: false, run: false, fastFall: false };
         this.jumpLatch = false;
         this.playerDashLatch = false;
 

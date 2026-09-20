@@ -169,6 +169,62 @@ describe('Dodger', () => {
         expect(slow).toBeGreaterThan(0);
     });
 
+    it('cuts the rise short when the jump key is let go', () => {
+        const full = createTestDodger();
+        full.physics.body.grounded = true;
+        full.requestJump();
+        full.consumeJump();
+        const held = full.physics.body.velocity.y;
+
+        const tapped = createTestDodger();
+        tapped.physics.body.grounded = true;
+        tapped.requestJump();
+        tapped.consumeJump();
+        tapped.cutJump();
+
+        expect(held).toBeLessThan(0);
+        expect(tapped.physics.body.velocity.y).toBe(
+            held * FACE_SMASHING.dodger.jumpCutMultiplier,
+        );
+        expect(tapped.physics.body.velocity.y).toBeGreaterThan(held);
+    });
+
+    it('never cuts a knockback pop, only a jump the player started', () => {
+        const dodger = createTestDodger();
+        dodger.react(1, 40);
+        const popped = dodger.physics.body.velocity.y;
+
+        dodger.cutJump();
+
+        expect(popped).toBeLessThan(0);
+        expect(dodger.physics.body.velocity.y).toBe(popped);
+    });
+
+    it('dives faster than gravity while the fast fall is held', () => {
+        const dodger = createTestDodger();
+        dodger.physics.body.grounded = false;
+        dodger.physics.body.velocity.y = 0;
+        dodger.fastFall(true, 1 / 60);
+
+        expect(dodger.physics.body.velocity.y).toBeGreaterThan(0);
+        expect(dodger.physics.body.maxSpeed.y).toBe(FACE_SMASHING.dodger.fastFallSpeed);
+
+        dodger.physics.body.grounded = true;
+        dodger.fastFall(true, 1 / 60);
+        expect(dodger.physics.body.maxSpeed.y).toBe(FACE_SMASHING.dodger.maxFallSpeed);
+    });
+
+    it('caps the dive at the fast fall speed', () => {
+        const dodger = createTestDodger();
+        dodger.physics.body.grounded = false;
+
+        for (let index = 0; index < 300; index++) {
+            dodger.fastFall(true, 1 / 60);
+        }
+
+        expect(dodger.physics.body.velocity.y).toBe(FACE_SMASHING.dodger.fastFallSpeed);
+    });
+
     it('freezes the sprite while the dodger is standing still', () => {
         const dodger = createTestDodger();
         dodger.physics.body.grounded = true;

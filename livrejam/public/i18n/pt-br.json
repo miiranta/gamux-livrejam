@@ -168,13 +168,11 @@
             "ai": "IA",
             "steer": "Guiar item",
             "itemDash": "Empurrar item",
-            "hands": "Levantar uma mão",
-            "eyes": "Fechar um olho",
-            "mouth": "Abrir a boca",
             "move": "Mover",
             "jump": "Pular",
             "dash": "Avanço",
-            "run": "Correr"
+            "run": "Correr",
+            "fastFall": "Queda rápida"
         }
     },
     "end": {

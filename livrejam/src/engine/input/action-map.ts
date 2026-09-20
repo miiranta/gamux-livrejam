@@ -36,8 +36,6 @@ export class KeyboardActionMap<TAction extends string> {
             return;
         }
 
-        // Auto-repeat still has to be swallowed, or the browser keeps acting on
-        // the key: Space scrolls the page while it is held down.
         event.preventDefault();
 
         if (event.repeat) {

@@ -27,6 +27,7 @@ export class Dodger extends Character {
     speedFactor = 1;
     readonly dashTrail: TrailPoint[] = [];
     private tierSpeed: number;
+    private jumpCutArmed = false;
 
     constructor(options: DodgerOptions) {
         const config = FACE_SMASHING.dodger;
@@ -157,6 +158,7 @@ export class Dodger extends Character {
         body.velocity.y = -config.pop;
         this.stun = config.stunSeconds;
         this.flash = config.flashSeconds;
+        this.jumpCutArmed = false;
     }
 
     advanceReaction(dt: number): void {
@@ -210,7 +212,40 @@ export class Dodger extends Character {
         }
 
         this.jumpQueued = false;
-        this.jump();
+
+        if (this.jump()) {
+            this.jumpCutArmed = true;
+        }
+    }
+
+    cutJump(): void {
+        if (!this.jumpCutArmed) {
+            return;
+        }
+
+        this.jumpCutArmed = false;
+        const body = this.physics.body;
+
+        if (body.velocity.y < 0) {
+            body.velocity.y *= FACE_SMASHING.dodger.jumpCutMultiplier;
+        }
+    }
+
+    fastFall(active: boolean, dt: number): void {
+        const config = FACE_SMASHING.dodger;
+        const body = this.physics.body;
+
+        if (!active || body.grounded || this.dashing) {
+            body.maxSpeed.y = config.maxFallSpeed;
+            return;
+        }
+
+        this.jumpCutArmed = false;
+        body.maxSpeed.y = config.fastFallSpeed;
+        body.velocity.y = Math.min(
+            body.velocity.y + config.fastFallBoost * dt,
+            config.fastFallSpeed,
+        );
     }
 
     resolveAnimation(): void {

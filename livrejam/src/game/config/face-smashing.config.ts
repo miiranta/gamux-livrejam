@@ -37,6 +37,9 @@ export const FACE_SMASHING = {
         accelerationX: 2898,
         dragX: 6,
         maxFallSpeed: 900,
+        jumpCutMultiplier: 0.5,
+        fastFallSpeed: 1600,
+        fastFallBoost: 2400,
     },
     dash: {
         speedStart: 1000,

@@ -11,6 +11,7 @@ const WALL_RAMP: GradientRamp = [
 ];
 
 const TEXEL_SCALE = 0.55;
+const WALL_DROP_WORLD = 64;
 const WALL_ALPHA = 0.78;
 const BLACKOUT = 'rgba(7, 6, 5, 1)';
 const BLACKOUT_CLEAR = 'rgba(7, 6, 5, 0)';
@@ -32,11 +33,13 @@ export class BackdropPainter {
             return;
         }
 
+        const drop = camera.toScreenLength(WALL_DROP_WORLD);
+
         ctx.save();
         ctx.beginPath();
         ctx.rect(left, top, width, height);
         ctx.clip();
-        this.paintMasonry(ctx, left, top, width, height);
+        this.paintMasonry(ctx, left, top + drop, width, height);
         this.paintDepth(ctx, left, top, width, height);
         ctx.restore();
     }

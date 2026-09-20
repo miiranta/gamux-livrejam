@@ -125,6 +125,7 @@ describe('readPlayerIntent', () => {
             jump: false,
             dash: false,
             run: false,
+            fastFall: false,
         });
     });
 });

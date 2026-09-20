@@ -1,3 +1,5 @@
+@use '../../styles/ornaments' as ornaments;
+
 :host {
     display: block;
 }
@@ -166,64 +168,105 @@
     z-index: 2;
     display: flex;
     gap: 0.5rem;
-    align-items: flex-end;
+    align-items: stretch;
     justify-content: space-between;
     pointer-events: none;
 }
 
 .game-canvas__player {
+    position: relative;
     display: flex;
+    flex: 0 0 auto;
     flex-direction: column;
-    gap: 0.2rem;
-    min-width: 0;
-    padding: 0.3rem 0.55rem;
-    background: rgb(10 13 20 / 78%);
-    border: 1px solid rgb(255 255 255 / 10%);
-    border-radius: 0.45rem;
+    gap: 0.22rem;
+    align-items: center;
+    justify-content: flex-start;
+    width: 7.6rem;
+    height: 3.05rem;
+    padding: 0.3rem 0.28rem 0.32rem;
+    background: linear-gradient(180deg, var(--lj-line-hi), var(--lj-line));
 
-    &--right {
-        text-align: right;
-    }
+    @include ornaments.octagon(6px);
+    @include ornaments.studs(transparent, 4px, 2px);
+}
+
+.game-canvas__player-rim {
+    position: absolute;
+    inset: 2px;
+    background: linear-gradient(180deg, var(--lj-panel-hi), var(--lj-panel));
+    pointer-events: none;
+
+    @include ornaments.octagon(5px);
 }
 
 .game-canvas__player-name {
+    position: relative;
     margin: 0;
-    color: #fff;
-    font-size: 0.68rem;
-    letter-spacing: 0.08em;
+    color: var(--lj-ink-dim);
+    font-size: 0.46rem;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    text-align: center;
     text-transform: uppercase;
 }
 
 .game-canvas__player-ai {
+    position: relative;
+    display: grid;
+    flex: 1 1 auto;
+    place-items: center;
     margin: 0;
-    color: #9fd0ff;
-    font-size: 0.72rem;
+    color: var(--lj-accent-hi);
+    font-size: 0.85rem;
     font-weight: 700;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.16em;
 }
 
 .game-canvas__player-keys {
+    position: relative;
     display: flex;
-    flex-direction: column;
-    gap: 0.12rem;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    gap: 0.1rem;
+    align-content: center;
+    justify-content: center;
+    width: 100%;
     margin: 0;
     padding: 0;
     list-style: none;
+}
 
-    li {
-        display: flex;
-        gap: 0.4rem;
-        align-items: baseline;
-        justify-content: space-between;
-        color: #9aa6ba;
-        font-size: 0.64rem;
+.game-canvas__key {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 0.06rem;
+    align-items: center;
+    justify-content: center;
+    width: 1.3rem;
+    padding: 0.12rem 0;
+    color: var(--lj-ink);
+    background: rgb(0 0 0 / 30%);
+
+    @include ornaments.octagon(3px);
+
+    app-pixel-icon {
+        width: 0.72rem;
+        height: 0.72rem;
+    }
+
+    kbd {
+        color: var(--lj-ink-dim);
+        font-family: inherit;
+        font-size: 0.38rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
         white-space: nowrap;
     }
+}
 
-    b {
-        color: #cdd6e6;
-        font-weight: 700;
-    }
+.game-canvas__key-gesture {
+    color: var(--lj-accent-hi);
 }
 
 .game-canvas__hint {
