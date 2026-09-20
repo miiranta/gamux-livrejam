@@ -7,9 +7,8 @@ que caem). Treinada com Evolution Strategies em PyTorch/CUDA.
 
 | arquivo | papel |
 | --- | --- |
-| `config.py` | constantes da simulacao, espelho de `src/game/config/dungeon-drop.config.ts` |
+| `config.py` | constantes da simulacao, espelho de `src/game/config/face-smashing.config.ts` |
 | `sim.py` | simulacao vetorizada (uma copia do jogo por ambiente, tudo no GPU) |
-| `dropper.py` | politica do "jogador" que solta os objetos durante o treino |
 | `model.py` | rede MLP, forward em lote e serializacao JSON |
 | `train.py` | treino ES |
 | `plot.py` | grafico do treino em PNG, reescrito a cada geracao |
@@ -19,6 +18,19 @@ que caem). Treinada com Evolution Strategies em PyTorch/CUDA.
 | `fixture-harness.ts` | gera a cena de referencia (`fixtures/observation_fixture.json`) |
 | `test_config_parity.py` | garante que `config.py` e o config do TypeScript tem os mesmos numeros |
 | `fixtures/` | vetor de referencia compartilhado entre as duas implementacoes |
+
+## Como os itens caem
+
+O item nasce no **centro do teto** e depois **segue o desviador**: a cada passo a
+velocidade horizontal dele e ajustada para perseguir a posicao do personagem,
+limitada por `DROP_STEER_SPEED`. A chuva continua caindo em cima do jogador,
+como antes, mas agora o desvio e o que decide o pouso — nao existe mais deriva
+aleatoria nem mira do oponente.
+
+`DROP_STEER_SPEED` e o mesmo numero que o jogo usa para a guinada do jogador
+(`drop.steerSpeed`), entao a dificuldade e identica nas duas partes. O teste
+`test_lateral_speed_is_learnable` garante que a guinada cobre a arena: se ela
+for pequena demais, o item nunca chega a borda e o jogo fica sem decisao real.
 
 ## Setup
 
@@ -99,10 +111,10 @@ Para redesenhar a partir de um treino ja salvo:
 
 ### Curriculo de dificuldade
 
-O oponente normal comeca lento (140 px/s) e acelera ate 500 px/s em ~27 s, o que
-significa que a maior parte da rodada acontece com 5 itens no ar ao mesmo tempo
-(cadencia de 0.4 s). Comecar do zero nesse regime da pouquissimo sinal: a politica
-leva dano de qualquer jeito e nao consegue associar acao e consequencia.
+O jogo normal comeca lento (120 px/s) e acelera ate 400 px/s em ~24 s, o que
+significa que a maior parte da rodada acontece com varios itens no ar ao mesmo
+tempo (cadencia de 1.05 s). Comecar do zero nesse regime da pouquissimo sinal: a
+politica leva dano de qualquer jeito e nao consegue associar acao e consequencia.
 
 Com `--curriculum 1` a rampa ganha um **teto** que sobe sozinho:
 
@@ -145,7 +157,7 @@ O que deixava lento (e foi corrigido):
   bloqueador por eixo**. A resolucao agora e totalmente vetorizada:
   `overlaps.all/any` calcula tudo de uma vez e `min/max` escolhem o plano de
   contato, sem nenhuma ida ao host.
-- O gerador de numeros aleatorios do oponente rodava na CPU e era copiado para
+- O gerador de numeros aleatorios do item rodava na CPU e era copiado para
   a GPU a cada passo. Agora e um `torch.Generator` no proprio device.
 - Constantes de decaimento eram construidas com `torch.exp` dentro do passo.
 
@@ -180,7 +192,7 @@ Veja `livrejam/public/models/dodger-policy.eval.json`, gerado por
 `evaluate.py`, para os numeros da rodada mais recente. O baseline util de
 comparacao e "ficar parado": se a politica treinada nao levar menos dano do que
 ficar parado, ela nao aprendeu nada — foi exatamente o sintoma de um bug de
-mecanica (deriva lateral grande demais), ver a secao sobre deriva lateral.
+mecanica (guinada fraca demais), ver a secao sobre a guinada.
 
 ## Avaliacao
 
@@ -216,27 +228,22 @@ node /tmp/fixture-harness.cjs > ../tools/ai/fixtures/observation_fixture.json
 cd .. && .venv/bin/python tools/ai/test_observation.py
 ```
 
-## Oponente de treino
+## Como o item chega ao jogador
 
-O `DropperPolicy` imita o jogador humano: mira onde o desviador **vai estar**
-quando o objeto chegar ao chao (antecipando a velocidade dele), com erro de
-mira. Em 5% dos lancamentos ele joga aleatorio, para a politica aprender a
-lidar com objetos que ela nao previu.
+Nao existe mais politica de oponente. O item nasce no **centro do teto** e
+**segue o desviador**: a cada passo a velocidade horizontal dele e ajustada
+para perseguir a posicao do personagem, limitada por `DROP_STEER_SPEED`. A
+chuva continua caindo em cima do jogador, como antes, mas agora quem decide o
+pouso e o desvio — nao ha deriva aleatoria nem mira antecipada.
 
-A previsao usa duas correcoes que faltavam antes: o tempo de queda e balistico
-(nao `altura / velocidade`, que ignora a gravidade) e a velocidade lateral do
-desviador e limitada ao `maxSpeed` do nivel. Sem esse teto, um avanco de
-1000 px/s projetava 900 px numa arena de 512 px e a mira era jogada contra a
-parede — foi assim que "os objetos deixaram de cair na cabeca" do jogador.
-
-Isso e um espelho de `face-smashing.ts:aimPoint()` + `ItemSpawner.spawn()`. Se
-mudar um lado, mude o outro — senao o jogo cobra situacoes que o treino nunca
-mostrou.
+Isso e um espelho de `face-smashing.ts:updateSteering()` +
+`systems/item-spawner.ts:spawnItem()`. Se mudar um lado, mude o outro — senao o
+jogo cobra situacoes que o treino nunca mostrou.
 
 A dificuldade sobe sozinha: a cada `DROP_RAMP_SECONDS` a velocidade dos objetos
-aumenta `DROP_SPEED_STEP`, o que tambem encurta o intervalo entre eles. Os dois
-lados fazem isso automaticamente (`ItemSpawner.update` no jogo,
-`step_dropper` na simulacao), entao uma partida longa fica realmente dificil.
+aumenta `DROP_SPEED_STEP`. Os dois lados fazem isso automaticamente
+(`ItemSpawner.advance` no jogo, `step_dropper` na simulacao), entao uma partida
+longa fica realmente dificil.
 
 ## Contrato de sincronia (leia antes de mexer)
 
@@ -246,9 +253,9 @@ treinada se comporta mal em jogo sem nenhum erro visivel:
 | o que | no jogo | na simulacao |
 | --- | --- | --- |
 | vetor de observacao | `ai/observation.ts` | `sim.py:observation()` |
-| mira do oponente | `face-smashing.ts:aimPoint()` | `dropper.py` |
-| rampa de dificuldade | `systems/item-spawner.ts` | `sim.py:step_dropper()` |
-| deriva lateral do objeto | `systems/item-spawner.ts` | `sim.py:spawn_item()` |
+| ponto de nascimento | `systems/item-spawner.ts:spawnItem()` | `sim.py:spawn_item()` |
+| perseguicao do item | `face-smashing.ts:updateSteering()` | `sim.py:steer_items()` |
+| rampa de dificuldade | `systems/item-spawner.ts:advance()` | `sim.py:step_dropper()` |
 | atrito no chao | `engine/physics/world.ts` | `sim.py:step_dodger()` |
 | sensores de colisao | `ai/observation.ts:senseCollisions()` | `sim.py:sense_collisions()` |
 
@@ -282,42 +289,32 @@ controle nem quando ele volta.
 
 Os numeros em si sao travados por `test_config_parity.py`, que le os dois
 arquivos e compara os 40 campos que precisam bater. Ele tambem recusa uma
-`lateralSpeed` grande demais: uma deriva que desloca o pouso por mais de meia
-arena descaracteriza a mira do oponente e degenera o treino (ver abaixo).
+guinada fraca demais: se o item nao alcancar a borda da arena, o jogo fica sem
+decisao real (ver abaixo).
 
-### A deriva lateral e um teto de dificuldade
+### A guinada e o teto de dificuldade
 
-`item.lateralSpeed` nao e so um enfeite visual: ela define se desviar vale a
-pena, porque e ela que carrega a informacao de onde o oponente mirou.
+`drop.steerSpeed` nao e so um enfeite visual: ela define se desviar vale a pena,
+porque e ela que decide se o item consegue chegar ate a borda da arena.
 
 O objeto cai de `SPAWN_Y` (88 px, logo abaixo do teto) ate o chao (352 px) com
-gravidade `ITEM_GRAVITY` = 900 px/s², partindo de `DROP_BASE_SPEED` = 140 px/s. A
+gravidade `ITEM_GRAVITY` = 700 px/s², partindo de `DROP_BASE_SPEED` = 120 px/s. A
 queda leva `t = (-v0 + sqrt(v0² + 2gh)) / g` ate a velocidade terminal
-(`ITEM_MAX_FALL` = 520 px/s) e depois segue reta: **0,66 s** partindo de 140 px/s
-e **0,51 s** no teto de 500 px/s.
+(`ITEM_MAX_FALL` = 420 px/s) e depois segue reta: **~0,75 s** partindo de
+120 px/s e **~0,63 s** no teto de 400 px/s.
 
-E esse tempo que a mira usa para antecipar o desviador, medindo a queda do **topo**
-do objeto (`floorTop - spawnY`), que e de onde o item comeca a cair. Usar
-`dropHeight / speed` ignora a gravidade e erra para cima em ate 0,19 s; medir ate o
-centro do objeto erra para baixo outros 0,05 s.
+Nesse tempo, guinar para um lado desloca o ponto de pouso em `t * steerSpeed`.
+Com `steerSpeed` = 340 px/s isso da ~255 px, o que cobre a meia arena de 256 px:
+o jogador consegue levar o item de uma borda a outra durante a queda.
 
-Uma deriva lateral de `v` desloca o ponto de pouso em `t * v` px, o que hoje da
-37 px com `v = 20` — folgado diante da meia arena de 256 px.
+O teste guarda exatamente esse limite: se a guinada nao cobrir a meia arena, o
+item nunca chega a borda, ficar parado passa a ser tao bom quanto desviar e o
+treino converge para uma politica constante que nao faz nada.
 
-O teste continua guardando o caso extremo: se uma deriva futura passar de meia
-arena, o pouso vira uniforme, a mira do oponente deixa de significar qualquer
-coisa e ficar parado passa a ser tao bom quanto desviar. Nesse regime o treino
-converge para uma politica constante que nao faz nada — foi o que aconteceu com a
-`lateralSpeed` de 160 na v1, quando a queda durava 2,34 s (375 px de deriva).
-
-Na v2 a dificuldade vem de outro lugar: o objeto **pousa e fica no chao**
-girando (`settleSeconds`), entao desviar deixou de ser so acertar a trajetoria
-de queda — a politica precisa escolher onde ficar entre varios objetos ja
-parados na arena.
-
-`DROP_AIM_JITTER` e `DROP_SCATTER` tambem corroem a mira e devem ficar
-pequenos (20 e 0.05). Se a politica treinada empacar perto da linha de base
-"parado", meça esses valores antes de mexer na rede ou no otimizador.
+Na v3 a dificuldade vem de outro lugar: o item **pousa e fica no chao**
+girando (`settleSeconds`) antes de sumir, entao desviar deixou de ser so acertar
+a trajetoria de queda — a politica precisa escolher onde ficar entre varios
+objetos ja parados na arena.
 
 O tamanho da observacao tambem e validado em tempo de execucao: o worker recusa
 um modelo cujo `inputSize` nao bata com `FACE_SMASHING.ai.observationSize` e
@@ -329,7 +326,6 @@ Para a politica ir bem em qualquer partida, cada ambiente sorteia:
 
 - a rota mais longa, `maxSpeed` e `jump` ja vem do nivel de dano (ver abaixo);
 - posicao inicial espalhada por 85% da arena;
-- deriva lateral do objeto (-20 a 20), como no jogo;
 - item sorteado por peso (arma leve, arma pesada ou um dos props antigos);
 - dano sorteado dentro da faixa do item, mais velocidade e giro no impacto;
 - cadencia e velocidade da chuva de objetos, que aumentam com o tempo.

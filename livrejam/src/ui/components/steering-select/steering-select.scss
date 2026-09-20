@@ -1,16 +1,5 @@
 @use '../../styles/ornaments' as ornaments;
 
-/* Pixel icon for a gesture: two shapes side by side, one of them "active". */
-%steering-icon {
-    position: relative;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    gap: 3px;
-    width: 1.9rem;
-    height: 1.4rem;
-}
-
 :host {
     display: block;
 }
@@ -82,48 +71,16 @@
 }
 
 .steering__icon {
-    @extend %steering-icon;
-
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 1.4rem;
+    height: 1.4rem;
     color: var(--lj-ink);
 }
 
-/* Hands: two raised palms, the taller one is the hand that steers. */
-.steering__palm {
-    width: 0.5rem;
-    background: currentcolor;
-    box-shadow: 0 0 0 2px var(--lj-shadow);
-
-    &--left {
-        height: 1.05rem;
-    }
-
-    &--right {
-        height: 0.7rem;
-        opacity: 0.55;
-    }
-}
-
-.steering__option--active .steering__palm--left {
-    opacity: 1;
-}
-
-/* Eyes: an open eye next to a winking one. */
-.steering__eye {
-    width: 0.62rem;
-    height: 0.62rem;
-    background: currentcolor;
-    box-shadow: 0 0 0 2px var(--lj-shadow);
-
-    &--left {
-        opacity: 0.55;
-    }
-
-    &--right {
-        height: 0.22rem;
-        background: currentcolor;
-    }
-}
-
-.steering__option--active .steering__eye--left {
-    opacity: 1;
+.steering__glyph {
+    width: 1.4rem;
+    height: 1.4rem;
+    shape-rendering: crispEdges;
 }

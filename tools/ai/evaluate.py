@@ -6,7 +6,6 @@ import json
 import torch
 
 import config as cfg
-from dropper import DropperPolicy
 from model import batched_forward, load_policy, stack_policies
 from sim import FaceSmashingSim
 
@@ -25,12 +24,11 @@ def parse_args():
 
 def run(actions_fn, args, seed_offset=0):
     sim = FaceSmashingSim(args.envs, device=args.device, seed=args.seed + seed_offset)
-    dropper = DropperPolicy(seed=args.seed + 500 + seed_offset)
     observation = sim.reset()
 
     for _ in range(args.steps):
         with torch.no_grad():
-            observation = sim.step(actions_fn(observation), dropper)
+            observation = sim.step(actions_fn(observation))
 
     metrics = sim.metrics()
     damage = metrics["damage_mean"]

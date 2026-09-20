@@ -7,8 +7,8 @@ import type { SteeringMode } from '../../../game/systems';
 
 /**
  * Picks how the falling item is steered. `67` reads the higher hand, `rizz`
- * reads a wink; each option carries a pixel icon of its gesture so the choice
- * is readable without the label.
+ * reads a wink; each option carries a hand or eye icon so the choice is
+ * readable without the label.
  */
 @Component({
     selector: 'app-steering-select',

@@ -24,7 +24,6 @@ import time
 import torch
 
 import config as cfg
-from dropper import DropperPolicy
 from model import batched_forward, export_json, initial_policy, stack_policies, unflatten_policy
 from plot import render_graph
 from sim import FaceSmashingSim
@@ -93,13 +92,12 @@ def evaluate(theta, perturbations, args, drop_cap=None):
     sim = FaceSmashingSim(total, device=args.device, seed=args.seed + 1000)
     if drop_cap is not None:
         sim.set_drop_cap(drop_cap)
-    dropper = DropperPolicy(seed=args.seed + 2000)
     observation = sim.reset()
 
     for _ in range(args.episode_steps):
         with torch.no_grad():
             scores = batched_forward(observation, stacked, sizes, population, args.envs)
-            observation = sim.step(torch.argmax(scores, dim=1), dropper)
+            observation = sim.step(torch.argmax(scores, dim=1))
 
     metrics = sim.metrics()
     damage = metrics["damage_mean"].view(population, args.envs)
@@ -137,14 +135,13 @@ def held_out(theta, args, seed):
     sim = FaceSmashingSim(args.eval_envs, device=args.device, seed=seed)
     if args.curriculum:
         sim.set_drop_cap(cfg.DROP_MAX_SPEED)
-    dropper = DropperPolicy(seed=seed + 31337)
     stacked = stack_policies([unflatten_policy(theta, sizes)])
     observation = sim.reset()
 
     for _ in range(args.episode_steps):
         with torch.no_grad():
             scores = batched_forward(observation, stacked, sizes, 1, args.eval_envs)
-            observation = sim.step(torch.argmax(scores, dim=1), dropper)
+            observation = sim.step(torch.argmax(scores, dim=1))
 
     damage = sim.metrics()["damage_mean"]
     return {

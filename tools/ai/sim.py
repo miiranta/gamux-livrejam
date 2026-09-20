@@ -424,7 +424,7 @@ class FaceSmashingSim:
     def set_drop_cap(self, cap):
         self.drop_cap = min(max(cap, cfg.DROP_BASE_SPEED), cfg.DROP_MAX_SPEED)
 
-    def step_dropper(self, policy):
+    def step_dropper(self):
         self.drop_ramp = self.drop_ramp + cfg.DT
         ramp = self.drop_ramp >= cfg.DROP_RAMP_SECONDS
         self.drop_speed = torch.where(
@@ -434,25 +434,31 @@ class FaceSmashingSim:
         )
         self.drop_ramp = torch.where(ramp, self.drop_ramp - cfg.DROP_RAMP_SECONDS, self.drop_ramp)
 
-        interval = torch.clamp(
-            (cfg.DROP_BASE_INTERVAL * cfg.DROP_BASE_SPEED) / self.drop_speed,
-            min=cfg.DROP_MIN_INTERVAL,
-        )
         self.drop_timer = self.drop_timer + cfg.DT
-        ready = self.drop_timer >= interval
+        ready = self.drop_timer >= cfg.DROP_INTERVAL
 
-        target = policy(
-            {
-                "pos_x": self.pos_x,
-                "vel_x": self.vel_x,
-                "max_speed": self.current_max_speed(),
-                "fall_speed": self.drop_speed,
-                "grounded": self.grounded,
-            }
-        )
-        self.spawn_item(target, ready, interval)
+        self.spawn_item(ready)
+        self.steer_items()
 
-    def spawn_item(self, target_x, ready, interval):
+    def steer_items(self):
+        """Os itens seguem o desviador enquanto caem.
+
+        O item nasce no centro do teto, mas nao cai reto: ele persegue a
+        posicao horizontal do desviador, entao a chuva continua caindo em cima
+        dele como antes. A perseguicao e limitada por `DROP_STEER_SPEED`, o
+        mesmo numero que o jogo usa para a guinada do jogador, entao a
+        dificuldade e a mesma das duas partes.
+        """
+        falling = self.obstacle_active & (self.obstacle_vy > 0)
+        half_width = self.item_half_width[self.obstacle_item]
+        item_center = self.obstacle_x + half_width
+        dodger_center = self.pos_x + cfg.DODGER_BOX[0] / 2
+        delta = dodger_center[:, None] - item_center
+        step = torch.clamp(delta, min=-cfg.DROP_STEER_SPEED * cfg.DT, max=cfg.DROP_STEER_SPEED * cfg.DT)
+
+        self.obstacle_vx = torch.where(falling, step / cfg.DT, self.obstacle_vx)
+
+    def spawn_item(self, ready):
         rows = torch.arange(self.envs, device=self.device)
         index = self.obstacle_cursor % self.slots
 
@@ -467,8 +473,7 @@ class FaceSmashingSim:
         half_width = self.item_half_width[picked]
         half_height = self.item_half_height[picked]
 
-        clamped = torch.minimum(torch.clamp(target_x, min=0.0), cfg.WIDTH - half_width * 2)
-        drift = (draw() * 2 - 1) * cfg.ITEM_LATERAL
+        center = cfg.WIDTH / 2 - half_width
         spin = self.item_spin_min[picked] + draw() * (
             self.item_spin_max[picked] - self.item_spin_min[picked]
         )
@@ -477,11 +482,13 @@ class FaceSmashingSim:
         angle = draw() * HALF_TURN
 
         self.obstacle_item[rows, index] = torch.where(ready, picked, self.obstacle_item[rows, index])
-        self.obstacle_x[rows, index] = torch.where(ready, clamped, self.obstacle_x[rows, index])
+        self.obstacle_x[rows, index] = torch.where(ready, center, self.obstacle_x[rows, index])
         self.obstacle_y[rows, index] = torch.where(
             ready, cfg.SPAWN_Y - half_height * 2, self.obstacle_y[rows, index]
         )
-        self.obstacle_vx[rows, index] = torch.where(ready, drift, self.obstacle_vx[rows, index])
+        self.obstacle_vx[rows, index] = torch.where(
+            ready, torch.zeros_like(center), self.obstacle_vx[rows, index]
+        )
         self.obstacle_vy[rows, index] = torch.where(
             ready, self.drop_speed, self.obstacle_vy[rows, index]
         )
@@ -494,21 +501,35 @@ class FaceSmashingSim:
         self.obstacle_roll[rows, index] = torch.where(ready, roll, self.obstacle_roll[rows, index])
         self.obstacle_active[rows, index] = self.obstacle_active[rows, index] | ready
         self.obstacle_settle[rows, index] = torch.where(
-            ready, torch.zeros_like(clamped), self.obstacle_settle[rows, index]
+            ready, torch.zeros_like(center), self.obstacle_settle[rows, index]
         )
         self.obstacle_scored[rows, index] = self.obstacle_scored[rows, index] & ~ready
         self.obstacle_hit[rows, index] = self.obstacle_hit[rows, index] & ~ready
         self.obstacle_cursor = self.obstacle_cursor + ready.to(torch.long)
-        self.drop_timer = torch.where(ready, self.drop_timer - interval, self.drop_timer)
+        self.drop_timer = torch.where(ready, self.drop_timer - cfg.DROP_INTERVAL, self.drop_timer)
 
     def step_items(self):
         falling = self.obstacle_active & (self.obstacle_vy > 0)
         half_width = self.item_half_width[self.obstacle_item]
         half_height = self.item_half_height[self.obstacle_item]
 
-        gravity = self.obstacle_active & (self.obstacle_vy > 0)
+        # A queda e o `integrateAxis` do jogo: capacidade terminal -> empurrao
+        # proprio do item -> gravidade, nesta ordem. A ordem importa perto do
+        # teto de velocidade.
         self.obstacle_vy = torch.where(
-            gravity,
+            falling,
+            torch.clamp(self.obstacle_vy, max=cfg.ITEM_MAX_FALL),
+            self.obstacle_vy,
+        )
+        self.obstacle_vy = torch.where(
+            falling,
+            torch.clamp(
+                self.obstacle_vy + cfg.DROPPED_ACCELERATION * cfg.DT, max=cfg.DROP_MAX_SPEED
+            ),
+            self.obstacle_vy,
+        )
+        self.obstacle_vy = torch.where(
+            falling,
             torch.clamp(self.obstacle_vy + self.item_gravity_step, max=cfg.ITEM_MAX_FALL),
             self.obstacle_vy,
         )
@@ -688,7 +709,7 @@ class FaceSmashingSim:
         self.obstacle_scored = self.obstacle_scored | dodge
         return dodge.any(dim=1), near.any(dim=1)
 
-    def step(self, actions, dropper):
+    def step(self, actions):
         self.round_elapsed = self.round_elapsed + cfg.DT
         self.step_dodger(actions)
         self.step_items()
@@ -696,7 +717,7 @@ class FaceSmashingSim:
         dodge, near = self.detect_dodges()
         self.dodges = self.dodges + dodge.to(self.dtype)
         self.near_misses = self.near_misses + near.to(self.dtype)
-        self.step_dropper(dropper)
+        self.step_dropper()
         self.finish_rounds(self.round_elapsed >= cfg.ROUND_SECONDS)
         return self.observation()
 

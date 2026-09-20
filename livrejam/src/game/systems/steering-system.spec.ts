@@ -170,3 +170,48 @@ describe('SteeringSystem', () => {
         expect(steering.intent('67', centerX())).toEqual({ axis: 0, active: false });
     });
 });
+
+describe('SteeringSystem aim', () => {
+    it('is centred without a frame', () => {
+        const steering = new SteeringSystem(createLevel());
+
+        expect(steering.aim('67')).toBe(0);
+        expect(steering.aim('rizz')).toBe(0);
+    });
+
+    it('leans towards the higher hand and stays within -1..1', () => {
+        const steering = new SteeringSystem(createLevel());
+
+        steering.update(handFrame('left'));
+        expect(steering.aim('67')).toBeGreaterThan(0);
+
+        steering.update(handFrame('right'));
+        expect(steering.aim('67')).toBeLessThan(0);
+    });
+
+    it('clamps a large hand margin', () => {
+        const steering = new SteeringSystem(createLevel());
+        const frame = handFrame('left');
+        frame.gestures.topHand.margin = 5;
+
+        steering.update(frame);
+        expect(steering.aim('67')).toBe(1);
+    });
+
+    it('swings fully to the winked side in rizz mode', () => {
+        const steering = new SteeringSystem(createLevel());
+
+        steering.update(eyeFrame(true, false));
+        expect(steering.aim('rizz')).toBe(-1);
+
+        steering.update(eyeFrame(false, true));
+        expect(steering.aim('rizz')).toBe(1);
+    });
+
+    it('is centred when both eyes are open', () => {
+        const steering = new SteeringSystem(createLevel());
+        steering.update(eyeFrame(false, false));
+
+        expect(steering.aim('rizz')).toBe(0);
+    });
+});

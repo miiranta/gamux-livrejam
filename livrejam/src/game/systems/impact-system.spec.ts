@@ -137,6 +137,22 @@ describe('ImpactSystem', () => {
         expect(outcome.hits).toBe(0);
     });
 
+    it('stops hurting once the item has settled and is fading out', () => {
+        const impacts = new ImpactSystem();
+        const dodger = buildDodger();
+        const item = placeItem(dodger, 0);
+
+        expect(impacts.evaluate([item], dodger).hits).toBe(1);
+
+        dodger.advanceReaction(FACE_SMASHING.reaction.invulnerableSeconds + 0.01);
+        item.state = 'settled';
+
+        const outcome = impacts.evaluate([item], dodger);
+
+        expect(outcome.hits).toBe(0);
+        expect(outcome.damage).toBe(0);
+    });
+
     it('forgets scored items after a reset', () => {
         const impacts = new ImpactSystem();
         const dodger = buildDodger();

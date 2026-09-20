@@ -29,8 +29,8 @@
         "steering": {
             "label": "Controle do item",
             "hint": "Escolha o gesto que guia o item na queda.",
-            "67": "Mãos",
-            "rizz": "Olhos"
+            "67": "67",
+            "rizz": "Rizz"
         }
     },
     "credits": {

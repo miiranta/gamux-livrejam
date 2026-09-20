@@ -59,6 +59,7 @@ PAIRS = (
     ("drop.maxSpeed", cfg.DROP_MAX_SPEED, "drop.maxSpeed"),
     ("drop.speedStep", cfg.DROP_SPEED_STEP, "drop.speedStep"),
     ("drop.rampSeconds", cfg.DROP_RAMP_SECONDS, "drop.rampSeconds"),
+    ("drop.thrust", cfg.DROPPED_ACCELERATION, "drop.thrust"),
     ("round.seconds", cfg.ROUND_SECONDS, "round.seconds"),
     ("ai.observeRadius", cfg.OBSERVE_RADIUS, "ai.observeRadius"),
     ("ai.observationSize", cfg.OBSERVATION_SIZE, "ai.observationSize"),

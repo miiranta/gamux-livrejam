@@ -60,8 +60,8 @@ livrejam/src/
     entities/        Dodger (o personagem), Item (os objetos que caem)
     level/           layout da sala + colisores
     render/          desenho da cena
-    systems/         spawner e deteccao de impacto/pontuacao
-    dungeon-drop.ts  orquestrador
+    systems/         spawner, guinada do item e deteccao de impacto/pontuacao
+  face-smashing.ts   orquestrador
   ui/components/     componentes Angular (canvas, camera)
 tools/
   assets/            download/geracao dos assets
@@ -70,9 +70,10 @@ tools/
 
 ## A IA
 
-A politica e um MLP `24 -> 64 -> 64 -> 6` treinado com Evolution Strategies.
+A politica e um MLP `77 -> 96 -> 96 -> 8` treinado com Evolution Strategies.
 Ela recebe posicao/velocidade do personagem, a velocidade maxima da rodada
-(que varia a cada partida) e os tres objetos mais ameacadores proximos.
+(que varia a cada partida), os sensores de colisao e os objetos mais
+ameacadores proximos.
 
 Detalhes de treino, avaliacao e o formato da observacao estao em
 [`tools/ai/README.md`](tools/ai/README.md).
@@ -158,3 +159,7 @@ python3 tools/fetch_assets.py livrejam/public/assets
 
 Os metadados coletados (pacote, licenca, contagem de arquivos) ficam em
 `tools/assets_sources.json`.
+
+## Train the AI
+
+cd /home/lucas-miranda/Desktop/LivreJam && .venv/bin/python -u tools/ai/train.py --generations 600 --population 64 --envs 1536 --episode-steps 3660 --sigma 0.05 --learning-rate 0.06 --worst-weight 0.5 --dodge-weight 0.1 --curriculum 1 --eval-every 10 --seed 71 --checkpoint-every 5 2>&1 | tee /tmp/train.log

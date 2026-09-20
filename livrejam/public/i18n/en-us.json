@@ -29,8 +29,8 @@
         "steering": {
             "label": "Item control",
             "hint": "Choose the gesture that steers the falling item.",
-            "67": "Hands",
-            "rizz": "Eyes"
+            "67": "67",
+            "rizz": "Rizz"
         }
     },
     "credits": {

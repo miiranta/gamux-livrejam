@@ -12,6 +12,7 @@ import { FACE_SMASHING } from '../config';
 import { BackdropPainter } from './backdrop-painter';
 import { ParticleSystem } from './particle-system';
 import { PropPainter } from './prop-painter';
+import { SpawnMarkerPainter } from './spawn-marker-painter';
 import { TerrainRenderer } from './terrain-renderer';
 
 const CHARACTER_FRAME_SIZE = 64;
@@ -26,6 +27,8 @@ export interface SceneDebug {
 
 export interface SceneFrame {
     deltaSeconds: number;
+    /** -1..1, where the next item will be pushed as it falls. */
+    aim: number;
 }
 
 export class SceneRenderer {
@@ -33,6 +36,7 @@ export class SceneRenderer {
     private readonly backdrop: BackdropPainter;
     private readonly props: PropPainter;
     private readonly particles: ParticleSystem;
+    private readonly spawnMarker = new SpawnMarkerPainter();
     private worldLayer: HTMLCanvasElement | null = null;
     private worldSignature = '';
     private elapsed = 0;
@@ -49,6 +53,10 @@ export class SceneRenderer {
 
     get camera(): Camera {
         return this.renderer.camera;
+    }
+
+    reset(): void {
+        this.spawnMarker.reset();
     }
 
     render(
@@ -88,6 +96,7 @@ export class SceneRenderer {
         this.props.paint(ctx, level, this.camera, this.elapsed, 2);
         this.renderEffects(debug.effects);
         this.renderScorePopups(debug.scorePopups);
+        this.spawnMarker.paint(ctx, level, this.camera, frame.aim, frame.deltaSeconds);
 
         if (debug.colliders) {
             this.renderColliders(level, items, dodger);

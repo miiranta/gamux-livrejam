@@ -40,7 +40,7 @@ export class ImpactSystem {
         const invulnerable = dodger.isInvulnerable;
 
         for (const item of items) {
-            if (item.expired) {
+            if (item.expired || item.state === 'settled') {
                 continue;
             }
 

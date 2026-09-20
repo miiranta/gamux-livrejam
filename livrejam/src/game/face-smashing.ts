@@ -67,7 +67,6 @@ const KEY_BINDINGS: Record<string, DashAction> = {
 };
 
 const DODGER_ANIMATIONS = CHARACTER_CLIPS;
-const DROPPED_ACCELERATION = 400;
 
 export class FaceSmashing {
     private readonly level: DungeonLevel;
@@ -220,6 +219,7 @@ export class FaceSmashing {
         this.effects.clear();
         this.scorePopups.clear();
         this.steering.reset();
+        this.scene?.reset();
         this.respawn();
         this.releaseItem();
         this.publishStats();
@@ -266,7 +266,7 @@ export class FaceSmashing {
 
         body.velocity.x = intent.axis * FACE_SMASHING.drop.steerSpeed;
         body.velocity.y = Math.min(
-            body.velocity.y + DROPPED_ACCELERATION * dt,
+            body.velocity.y + FACE_SMASHING.drop.thrust * dt,
             FACE_SMASHING.drop.maxSpeed,
         );
     }
@@ -497,7 +497,10 @@ export class FaceSmashing {
                 effects: this.effects.active,
                 scorePopups: this.scorePopups.active,
             },
-            { deltaSeconds: this.frameDelta },
+            {
+                deltaSeconds: this.frameDelta,
+                aim: this.steering.aim(this.steeringMode),
+            },
         );
     }
 }
