@@ -234,11 +234,34 @@ export class FaceSmashing {
 
     resume(): void {
         this.running = true;
+        // "A" both confirms "Resume" and jumps, and it is still down when the
+        // match comes back, so the edge detectors are armed with it here too.
+        this.clearInput();
     }
 
+    /**
+     * Drops every held action, then arms the one-shot edges (jump, dash) with
+     * whatever the controllers are holding *right now*.
+     *
+     * The button that starts a match is the button that jumps — "A" on a pad
+     * confirms the menu and is bound to jump — and pads are read as live
+     * state, not as events: a button still down when the match begins reads
+     * as a fresh press on the very first frame, and the character jumped out
+     * of the gate. Starting the latches down means the hold only counts once
+     * it has been released.
+     *
+     * The keyboard needs no such care: it is event-driven, so a key held
+     * across the clear sends no new `keydown` and stays out.
+     */
     private clearInput(): void {
         this.playerInput.clear();
         this.gamepads.clear();
+        this.gamepads.sample();
+
+        const held = readPlayerIntent([this.playerInput, this.gamepads]);
+        this.jumpLatch = held.jump;
+        this.playerDashLatch = held.dash;
+        this.dashLatch = held.dash;
     }
 
     setMatchDuration(seconds: number): void {
@@ -263,9 +286,6 @@ export class FaceSmashing {
         this.nearMisses = 0;
         this.score = 0;
         this.running = true;
-        this.dashLatch = false;
-        this.jumpLatch = false;
-        this.playerDashLatch = false;
         this.playerAction = { axis: 0, jump: false, dash: false, fastFall: false };
         this.clearInput();
         this.spawner.reset();

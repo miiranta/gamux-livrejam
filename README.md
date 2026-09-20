@@ -42,7 +42,18 @@ ser usados ao mesmo tempo, inclusive por duas pessoas).
 | correr | `Ctrl` (qualquer) ou `E` | botao da esquerda ("X" no Xbox) |
 | avanco (dash) | `Shift` (qualquer) | botao da direita ("B" no Xbox) |
 | queda rapida | `S` ou `v` | d-pad para baixo |
-| soltar | `Enter` | Start, Back, gatilhos |
+| soltar | `Enter` | gatilhos |
+
+O botao que comeca a partida e o mesmo que pula ("A" confirma o menu **e**
+esta ligado a `jump`), e o controle e lido por **estado**, nao por evento:
+segurar "A" na hora que a partida comeca valeria como um toque novo e o
+personagem pulava sozinho. `FaceSmashing.clearInput` arma o detector de borda
+com o que esta pressionado naquele instante, entao o botao so conta depois de
+ser solto. Vale ao comecar, ao reiniciar e ao sair da pausa.
+
+Start nao entra nessa tabela de proposito: ele **pausa** a partida (e sai da
+pausa), como o `Esc` do teclado. Vale durante o jogo, quando nenhum menu esta
+na tela para reivindicar o botao.
 
 Soltar uma direcao da um passo; segurar `Ctrl` (ou "X") corre na velocidade
 maxima. Os botoes do controle sao lidos pela **posicao** (padrao W3C), entao
@@ -59,6 +70,16 @@ pelo foco, o botao de baixo ("A") confirma e o botao da direita ("B") volta
 
 Num controle de volume (as barras de audio nas opcoes), esquerda e direita
 mudam o valor em vez de sair dele; cima e baixo continuam andando pelo foco.
+A barra focada mostra setas ao lado da porcentagem para dizer isso.
+
+"A" e "B" so valem enquanto um menu esta na tela (`topLayer`): durante a
+partida eles sao pulo e avanco, e nao podem ativar um botao do HUD que ficou
+com o foco. O foco tambem volta sozinho para o menu visivel quando o controle
+que o tinha some (ao abrir um painel, por exemplo), senao o anel desaparece e
+o proximo toque no d-pad parece nao fazer nada.
+
+Campos de texto (o de tempo de partida) ficam fora do caminho do controle: o
+pad nao digita, e os botoes "-" e "+" ao lado fazem o mesmo trabalho.
 
 A tela de fim de jogo ignora "A" e "B" por ~1,8s depois de abrir. A partida
 acaba sozinha, entao quem estava pulando ("A") reiniciaria a rodada antes de
@@ -69,6 +90,14 @@ O anel de foco usa `:focus` **e** `:focus-visible` de proposito (mixin
 `:focus-visible` depois de teclado ou mouse, e o controle foca o elemento via
 codigo — com `:focus-visible` sozinho, a navegacao no controle parece nao
 fazer nada porque nada fica destacado.
+
+Esse anel e um `box-shadow: inset`, nao um `outline`. Todo quadro do jogo e
+cortado com `clip-path`, e o corte acontece **depois** do outline: o anel
+antigo era jogado fora junto com os cantos, entao nada ficava destacado em
+lugar nenhum. Botoes com host proprio (`app-pixel-button` e os dois botoes de
+canto — tela cheia e info) ganham tambem um anel externo duro, o mixin
+`pixel-ring`, desenhado no host porque um `filter` no elemento cortado some
+com ele.
 
 ## Testes
 

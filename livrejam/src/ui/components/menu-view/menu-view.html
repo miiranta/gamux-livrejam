@@ -82,7 +82,12 @@
                 }
             </nav>
         } @else {
-            <div class="menu-view__panel">
+            <!--
+                `data-gamepad-first` so the ring starts inside the panel: the
+                first focusable of the layer is the corner toggle, which is
+                nowhere near what was just opened.
+            -->
+            <div class="menu-view__panel" data-gamepad-first>
                 <app-pixel-panel [titleKey]="panelTitleKey()">
                     <!--
                         Only the contents scroll: the frame, the title and the

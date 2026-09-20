@@ -2,7 +2,7 @@ import { DestroyRef, Injectable, inject } from '@angular/core';
 import { GAMEPAD_BUTTON } from '../../engine/input';
 
 /** A menu action the pad can trigger, matching the common non-Xbox labels. */
-export type GamepadMenuAction = 'confirm' | 'back';
+export type GamepadMenuAction = 'confirm' | 'back' | 'pause';
 
 /**
  * Menu navigation plate for a gamepad.
@@ -29,7 +29,15 @@ export class GamepadNavigation {
      */
     onBack: (() => void) | null = null;
 
-    /** While `performance.now()` is below this, confirm and back are ignored. */
+    /**
+     * Registered once by the shell: the pad's start button pauses a running
+     * match and leaves the pause menu again. Unlike {@link onBack} it does not
+     * belong to a layer — it is what the player reaches for while playing,
+     * when no menu is on screen at all.
+     */
+    onPause: (() => void) | null = null;
+
+    /** While `performance.now()` is below this, the pad's buttons are ignored. */
     private deafUntil = 0;
 
     constructor() {
@@ -42,7 +50,7 @@ export class GamepadNavigation {
     }
 
     /**
-     * Swallows confirm and back for `seconds`. A screen that appears on its
+     * Swallows the button actions for `seconds`. A screen that appears on its
      * own — the result screen at the end of a match — uses it so a press
      * aimed at the match does not fall straight through into it. Focus still
      * moves, so the player can pick a button while they read the score.
@@ -88,18 +96,52 @@ export class GamepadNavigation {
             }
         }
 
+        this.keepRingOnScreen();
         this.readDirections(pad);
     };
 
+    /**
+     * Puts the focus ring back on the visible menu whenever it falls outside
+     * of it — the control it was on got replaced (a panel opened), or a click
+     * on the backdrop dropped it on `<body>`.
+     *
+     * Without this the ring simply vanishes and the next d-pad press seems to
+     * do nothing, because it only lands the focus back on the first control.
+     * It runs from the poll, so it costs nothing until a pad is connected.
+     */
+    private keepRingOnScreen(): void {
+        const layer = topLayer();
+        const active = document.activeElement;
+
+        // `<body>` is where the focus lands when its element is removed, and
+        // no layer ever contains it.
+        if (!layer || (active && layer.contains(active))) {
+            return;
+        }
+
+        focusFirst();
+    }
+
     private trigger(action: GamepadMenuAction): void {
+        if (action === 'pause') {
+            this.onPause?.();
+            return;
+        }
+
+        // Confirm and back belong to the menus. During a match the same
+        // buttons are jump and dash, so without a menu on screen they must
+        // not reach a control that happens to still hold the focus — the HUD
+        // pause button, for one.
+        if (!topLayer()) {
+            return;
+        }
+
         if (action === 'confirm') {
             confirmFocused();
             return;
         }
 
-        if (this.onBack) {
-            this.onBack();
-        }
+        this.onBack?.();
     }
 
     /** D-pad and left stick nudge the browser's focus ring around. */
@@ -240,14 +282,17 @@ function round(value: number): number {
 /** Runs the focused control, or focuses the first one if nothing is. */
 export function confirmFocused(): void {
     const active = document.activeElement as HTMLElement | null;
-    const confirmable = active?.closest?.(CONFIRMABLE);
 
-    if (confirmable) {
-        (confirmable as HTMLElement).click();
+    if (!active || active === document.body) {
+        focusFirst();
         return;
     }
 
-    focusFirst();
+    // Focused but not something a press can run (a readout field, say): the
+    // press does nothing. Sending the focus back to the first control instead
+    // would throw the player out of the list they were walking.
+    const confirmable = active.closest?.(CONFIRMABLE) as HTMLElement | null;
+    confirmable?.click();
 }
 
 /** Focuses the first control of the topmost menu layer. */
@@ -263,12 +308,17 @@ export function firstFocusable(): HTMLElement | null {
 
     // A screen can name the control the pad should start on; without it the
     // first focusable might be a corner toggle rather than the main action.
-    const preferred = layer.querySelector<HTMLElement>(`[data-gamepad-first] ${FOCUSABLE}`);
-    if (preferred) {
-        return preferred;
-    }
+    // The marked container is looked up first and searched on its own: a
+    // `[data-gamepad-first] ${FOCUSABLE}` selector would only bind the marker
+    // to the first entry of that list, leaving the rest layer-wide.
+    const marked = layer.querySelector<HTMLElement>('[data-gamepad-first]');
 
-    return layer.querySelector<HTMLElement>(FOCUSABLE);
+    return (marked && pick(marked)) ?? pick(layer);
+}
+
+/** The first control inside `scope` the pad can actually use. */
+function pick(scope: HTMLElement): HTMLElement | null {
+    return Array.from(scope.querySelectorAll<HTMLElement>(FOCUSABLE)).find(padUsable) ?? null;
 }
 
 /**
@@ -278,8 +328,28 @@ export function firstFocusable(): HTMLElement | null {
  */
 export function focusableItems(): HTMLElement[] {
     const layer = topLayer();
-    return layer ? Array.from(layer.querySelectorAll<HTMLElement>(FOCUSABLE)) : [];
+    if (!layer) {
+        return [];
+    }
+
+    return Array.from(layer.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(padUsable);
 }
+
+/**
+ * Fields that need letters or digits typed into them (the match-time readout)
+ * are skipped: a pad cannot type, so stopping on one is a dead end. Every such
+ * field has buttons next to it that do the same job.
+ */
+function padUsable(element: HTMLElement): boolean {
+    if (element.tagName !== 'INPUT') {
+        return true;
+    }
+
+    return PAD_INPUT_TYPES.has((element as HTMLInputElement).type);
+}
+
+/** Input types a pad can operate on its own. */
+const PAD_INPUT_TYPES = new Set(['range', 'checkbox', 'radio', 'button', 'submit', 'reset']);
 
 /** The last opened layer, which is the one the pad is "inside". */
 function topLayer(): HTMLElement | null {
@@ -330,4 +400,5 @@ function firstConnectedPad(): Gamepad | null {
 const PAD_ACTIONS: ReadonlyArray<readonly [number, GamepadMenuAction]> = [
     [GAMEPAD_BUTTON.bottom, 'confirm'],
     [GAMEPAD_BUTTON.right, 'back'],
+    [GAMEPAD_BUTTON.start, 'pause'],
 ];

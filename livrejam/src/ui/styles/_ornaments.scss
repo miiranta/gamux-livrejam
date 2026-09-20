@@ -49,7 +49,13 @@
     filter: drop-shadow(0 #{$offset} 0 #{$color});
 }
 
-/// Ring around the focused control.
+/// Ring around the focused control: its frame lights up in accent.
+///
+/// An *inset* shadow, not an `outline`. Every control in the game is cut with
+/// `clip-path`, and clipping happens after the outline is drawn, so an
+/// outlined ring is thrown away with the corners — it showed nothing at all.
+/// The inset ring lands in the gap between the frame edge and the inner rim
+/// (`inset: 3px` on every `__rim`), which is the frame line itself.
 ///
 /// `:focus` and `:focus-visible` are matched together on purpose: browsers only
 /// set `:focus-visible` after keyboard or pointer input, and a gamepad moves
@@ -58,11 +64,26 @@
 ///
 /// `:is()` keeps it to one selector: several components `@extend` a shared
 /// placeholder, and a second selector would be duplicated per `@extend`.
-@mixin focus-ring($offset: 2px) {
+@mixin focus-ring($width: 3px) {
     &:is(:focus, :focus-visible) {
-        outline: 2px solid var(--lj-accent-hi);
-        outline-offset: $offset;
+        outline: none;
+        box-shadow: inset 0 0 0 #{$width} var(--lj-accent-hi);
     }
+}
+
+/// Hard pixel ring that hugs the element's own silhouette.
+///
+/// The frames are cut with `clip-path`, which takes the corners off an
+/// `outline` too, so the ring is drawn as four offset shadows instead — no
+/// blur, so it stays as hard-edged as everything else. Apply it to the *host*
+/// of a clipped element: a filter on the clipped element itself is cut away
+/// with it.
+/// `$drop` re-states the offset shadow of {@link pixel-drop}, because both
+/// live in `filter` and the second declaration would drop the first.
+@mixin pixel-ring($color: var(--lj-accent-hi), $width: 2px, $drop: 4px) {
+    filter: drop-shadow(#{$width} 0 0 #{$color}) drop-shadow(-#{$width} 0 0 #{$color})
+        drop-shadow(0 #{$width} 0 #{$color}) drop-shadow(0 -#{$width} 0 #{$color})
+        drop-shadow(0 #{$drop} 0 var(--lj-shadow));
 }
 
 /// Scroll area that keeps the overflow inside the panel it belongs to.

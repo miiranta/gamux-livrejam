@@ -79,10 +79,53 @@
     cursor: pointer;
 }
 
-/* `:focus` as well as `:focus-visible`: a gamepad focuses the input
-   programmatically, which never matches `:focus-visible`. */
-.pixel-slider:has(.pixel-slider__input:is(:focus, :focus-visible)) .pixel-slider__track {
-    box-shadow:
-        inset 0 0 0 2px var(--lj-shadow),
-        inset 0 0 0 3px var(--lj-accent-hi);
+/* --- Focused ------------------------------------------------------------
+   A slider is the one control the pad changes in place, so it has to look
+   picked up rather than merely outlined. `:focus` as well as `:focus-visible`:
+   a gamepad focuses the input programmatically, which never matches
+   `:focus-visible`. */
+.pixel-slider:has(.pixel-slider__input:is(:focus, :focus-visible)) {
+    .pixel-slider__track {
+        box-shadow:
+            inset 0 0 0 2px var(--lj-shadow),
+            inset 0 0 0 3px var(--lj-accent-hi);
+    }
+
+    .pixel-slider__thumb {
+        height: 1.7rem;
+        background: var(--lj-accent-hi);
+        box-shadow:
+            0 0 0 2px var(--lj-shadow),
+            2px 0 0 2px var(--lj-shadow),
+            0 0 0 4px var(--lj-accent);
+    }
+
+    .pixel-slider__label {
+        color: var(--lj-accent-hi);
+    }
+
+    /* Triangles around the percentage: the pad's left/right changes the value
+       instead of leaving the control, which nothing else on screen says.
+       Drawn in CSS rather than typed as "<" and ">" so the pixel font cannot
+       render them at a different size. */
+    .pixel-slider__value {
+        &::before,
+        &::after {
+            display: inline-block;
+            width: 0.4rem;
+            height: 0.55rem;
+            margin: 0 0.4rem;
+            background: var(--lj-accent-hi);
+            vertical-align: -1px;
+            content: '';
+        }
+
+        &::before {
+            clip-path: polygon(100% 0, 100% 100%, 0 50%);
+        }
+
+        &::after {
+            clip-path: polygon(0 0, 0 100%, 100% 50%);
+        }
+    }
 }
