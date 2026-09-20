@@ -22,100 +22,129 @@ function settle(
     hands: HandState[],
     frames = 5,
     startTime = 0,
-): { time: number; side: string | null } {
+): { time: number; value: number } {
     let time = startTime;
-    let side: string | null = null;
+    let value = 0;
 
     for (let index = 0; index < frames; index++) {
-        side = stream.update(hands, time).side;
+        value = stream.update(hands, time).value;
         time += STEP_MS;
     }
 
-    return { time, side };
+    return { time, value };
 }
 
 describe('TopHandStream', () => {
-    it('reports the left hand when it is higher in the frame', () => {
+    it('goes negative when the left hand is higher in the frame', () => {
         const stream = new TopHandStream();
-        const { side } = settle(stream, pair(0.3, 0.5));
+        const { value } = settle(stream, pair(0.3, 0.5));
 
-        expect(side).toBe('left');
+        expect(value).toBeLessThan(0);
     });
 
-    it('reports the right hand when it is higher in the frame', () => {
+    it('goes positive when the right hand is higher in the frame', () => {
         const stream = new TopHandStream();
-        const { side } = settle(stream, pair(0.5, 0.3));
+        const { value } = settle(stream, pair(0.5, 0.3));
 
-        expect(side).toBe('right');
+        expect(value).toBeGreaterThan(0);
     });
 
-    it('reports nothing when the hands are level', () => {
+    it('scales continuously with how far apart the hands are held', () => {
         const stream = new TopHandStream();
-        const { side } = settle(stream, pair(0.4, 0.4));
+        const shallow = settle(new TopHandStream(), pair(0.38, 0.5)).value;
+        const deep = settle(stream, pair(0.3, 0.5)).value;
 
-        expect(side).toBeNull();
+        expect(shallow).toBeLessThan(0);
+        expect(deep).toBeLessThan(shallow);
+        expect(deep).toBeGreaterThanOrEqual(-1);
     });
 
-    it('reports nothing when only one hand is in frame', () => {
-        const stream = new TopHandStream();
-        const { side } = settle(stream, [hand('Left', 0.2)]);
-
-        expect(side).toBeNull();
+    it('reaches -1 and 1 at a full swing', () => {
+        expect(settle(new TopHandStream(), pair(0.25, 0.6)).value).toBe(-1);
+        expect(settle(new TopHandStream(), pair(0.6, 0.25)).value).toBe(1);
     });
 
-    it('reports nothing when no hands are in frame', () => {
+    it('reads exactly 0 when the hands are level', () => {
         const stream = new TopHandStream();
-        const { side } = settle(stream, []);
+        const { value } = settle(stream, pair(0.4, 0.4));
 
-        expect(side).toBeNull();
+        expect(value).toBe(0);
     });
 
-    it('reports nothing when a handedness is unknown', () => {
+    it('reads 0 through landmark jitter around level', () => {
         const stream = new TopHandStream();
-        const { side } = settle(stream, [hand('Left', 0.2), hand('Unknown', 0.6)]);
+        const { value } = settle(stream, pair(0.4, 0.41));
 
-        expect(side).toBeNull();
+        expect(value).toBe(0);
     });
 
-    it('reports nothing before enough samples accumulate', () => {
+    it('is inactive when only one hand is in frame', () => {
+        const stream = new TopHandStream();
+        const { value } = settle(stream, [hand('Left', 0.2)]);
+
+        expect(value).toBe(0);
+        expect(stream.update([hand('Left', 0.2)], 999).active).toBe(false);
+    });
+
+    it('is inactive when no hands are in frame', () => {
+        const stream = new TopHandStream();
+        const observation = stream.update([], 0);
+
+        expect(observation.value).toBe(0);
+        expect(observation.active).toBe(false);
+        expect(observation.confidence).toBe(0);
+    });
+
+    it('is inactive when a handedness is unknown', () => {
+        const stream = new TopHandStream();
+        const observation = stream.update([hand('Left', 0.2), hand('Unknown', 0.6)], 0);
+
+        expect(observation.active).toBe(false);
+        expect(observation.value).toBe(0);
+    });
+
+    it('is inactive before enough samples accumulate', () => {
         const stream = new TopHandStream();
         const observation = stream.update(pair(0.3, 0.5), 0);
 
-        expect(observation.side).toBeNull();
         expect(observation.active).toBe(false);
+        expect(observation.value).toBe(0);
     });
 
-    it('keeps the current side through a brief crossing', () => {
+    it('follows a brief crossing instead of sticking to the old side', () => {
         const stream = new TopHandStream();
         const { time } = settle(stream, pair(0.3, 0.5));
-        const { side } = settle(stream, pair(0.47, 0.5), 2, time);
+        const { value } = settle(stream, pair(0.47, 0.5), 5, time);
 
-        expect(side).toBe('left');
+        expect(value).toBeGreaterThan(0);
     });
 
-    it('switches once the other hand stays higher', () => {
+    it('tracks the other direction once the hands swap', () => {
         const stream = new TopHandStream();
         const { time } = settle(stream, pair(0.3, 0.5));
-        const { side } = settle(stream, pair(0.5, 0.3), 5, time);
+        const { value } = settle(stream, pair(0.5, 0.3), 5, time);
 
-        expect(side).toBe('right');
+        expect(value).toBeGreaterThan(0);
     });
 
-    it('drops the side when a hand leaves the frame', () => {
+    it('drops the reading when a hand leaves the frame', () => {
         const stream = new TopHandStream();
         const { time } = settle(stream, pair(0.3, 0.5));
-        const { side } = settle(stream, [hand('Left', 0.3)], 5, time);
+        const { value } = settle(stream, [hand('Left', 0.3)], 5, time);
 
-        expect(side).toBeNull();
+        expect(value).toBe(0);
     });
 
-    it('reports confidence from the height margin', () => {
+    it('reports confidence from how far the hands are held apart', () => {
         const stream = new TopHandStream();
         const { time } = settle(stream, pair(0.3, 0.5));
         const observation = stream.update(pair(0.3, 0.5), time);
 
         expect(observation.confidence).toBe(1);
-        expect(observation.margin).toBeGreaterThan(0);
+
+        const level = new TopHandStream();
+        expect(settle(level, pair(0.4, 0.4)).value).toBe(0);
+        expect(level.update(pair(0.4, 0.4), 999).confidence).toBe(0);
     });
 
     it('resets every accumulated value', () => {
@@ -125,7 +154,7 @@ describe('TopHandStream', () => {
 
         const observation = stream.update(pair(0.3, 0.5), 0);
 
-        expect(observation.side).toBeNull();
+        expect(observation.value).toBe(0);
         expect(observation.active).toBe(false);
         expect(observation.confidence).toBe(0);
     });

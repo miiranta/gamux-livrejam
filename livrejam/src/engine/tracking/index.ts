@@ -18,7 +18,6 @@ export type {
     Point2D,
     Point3D,
     TopHandObservation,
-    TopHandSide,
     TrackingFrame,
     TrackingThresholds,
 } from './types';

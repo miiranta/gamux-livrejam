@@ -34,11 +34,13 @@ export interface SigmaObservation extends Observation {
     score: number;
 }
 
-export type TopHandSide = 'left' | 'right' | null;
-
 export interface TopHandObservation extends Observation {
-    side: TopHandSide;
-    margin: number;
+    /**
+     * -1 with the left hand fully raised and the right fully lowered, 0 with
+     * both hands level, 1 with the right hand fully raised. Continuous, so it
+     * can drive proportional steering instead of a binary side.
+     */
+    value: number;
 }
 
 export interface GestureObservations {

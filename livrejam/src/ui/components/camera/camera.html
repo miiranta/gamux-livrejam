@@ -57,10 +57,10 @@
                         67
                         <b>{{ sixtySevenLevel() }}%</b>
                     </span>
-                    <span class="camera__pill" [class.camera__pill--gesture]="topHandSide() !== null">
+                    <span class="camera__pill" [class.camera__pill--gesture]="topHandValue() !== null">
                         <i class="camera__dot"></i>
                         Top hand
-                        <b>{{ topHandSide() ?? 'none' }}</b>
+                        <b>{{ topHandLabel() }}</b>
                     </span>
                     <span class="camera__pill camera__pill--delegate">
                         {{ usingGpu() ? 'GPU' : 'CPU' }}

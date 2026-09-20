@@ -6,7 +6,6 @@ import type {
     MouthObservation,
     MouthState,
     TopHandObservation,
-    TopHandSide,
 } from './streams/types';
 
 export type {
@@ -17,7 +16,6 @@ export type {
     Point2D,
     Point3D,
     TopHandObservation,
-    TopHandSide,
 };
 
 export type Handedness = 'Left' | 'Right' | 'Unknown';

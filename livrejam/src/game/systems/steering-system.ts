@@ -12,8 +12,8 @@ export interface SteeringIntent {
 
 const NEUTRAL: SteeringIntent = { axis: 0, active: false };
 
-/** Hand offset that rotates the marker to full deflection, in normalized units. */
-const AIM_RANGE = 0.15;
+/** Fraction of the raised hand's travel that is ignored, so "level" reads exact. */
+const LEVEL = 0.1;
 
 const ARENA_MARGIN = 0.06;
 
@@ -23,8 +23,7 @@ const ARENA_MARGIN = 0.06;
  * The direction is continuous and it is the very same number that rotates the
  * aim marker, so the item always flies exactly where the arrow points. Bringing
  * the hands level, or opening both eyes, settles it back to a straight drop.
- */
-export class SteeringSystem {
+ */export class SteeringSystem {
     private frame: TrackingFrame | null = null;
 
     constructor(private readonly level: DungeonLevel) {}
@@ -90,26 +89,27 @@ function direction(mode: SteeringMode, frame: TrackingFrame): SteeringIntent {
 }
 
 /**
- * Scales with how far the hands are held apart, so a level pair drops the item
- * straight while a raised hand pulls it that way. Left/right is the player's
- * own hand: the camera preview is mirrored but MediaPipe's handedness is not.
- *
- * The SIDE comes from the stream's hysteresis and the LEAN from the raw margin.
- * Reading the sign off the margin instead makes the arrow flicker: near level
- * the margin's sign is pure noise, so it flips the direction every frame while
- * the stabilized side stays put.
+ * Proportional steering from how far apart the hands are held. The stream
+ * reports 0 with both hands level and -1/1 with one hand fully raised, so the
+ * item drops perfectly straight when the hands are level instead of snapping
+ * sideways the moment the sign of the jitter flips. The bow returns the level
+ * point to exact zero, keeping small raises away from the direction reversal.
  */
 function steerWithHands(frame: TrackingFrame): SteeringIntent {
     const observation = frame.gestures.topHand;
 
-    if (!observation.active || observation.side === null) {
+    if (!observation.active) {
         return NEUTRAL;
     }
 
-    const lean = clamp(Math.abs(observation.margin) / AIM_RANGE, 0, 1);
-    const axis = lean === 0 ? 0 : observation.side === 'left' ? -lean : lean;
+    const lean = bow(Math.abs(observation.value));
+    const axis = lean === 0 ? 0 : Math.sign(observation.value) * lean;
 
     return { axis, active: true };
+}
+
+function bow(lean: number): number {
+    return clamp((lean - LEVEL) / (1 - LEVEL), 0, 1);
 }
 
 /** Closing one eye steers that way; both open lets the item drop straight. */

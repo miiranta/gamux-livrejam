@@ -16,5 +16,4 @@ export type {
     SixtySevenObservation,
     Stream,
     TopHandObservation,
-    TopHandSide,
 } from './types';
