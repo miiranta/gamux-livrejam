@@ -597,6 +597,83 @@ describe('GamepadNavigation', () => {
 
         expect(press('Enter')).toBe(true);
     });
+
+    /**
+     * jsdom has no layout, so an overflowing panel has to be described by
+     * hand: a box that is taller than it is deep, with a `scrollTop` the
+     * service can move.
+     */
+    function withScrollPanel(): HTMLElement {
+        document.body.innerHTML = `
+            <app-welcome-screen>
+                <div id="story" style="overflow-y: auto">Long story</div>
+                <button id="start">Start</button>
+            </app-welcome-screen>
+        `;
+
+        const panel = document.getElementById('story') as HTMLElement;
+        Object.defineProperty(panel, 'scrollHeight', { value: 2000 });
+        Object.defineProperty(panel, 'clientHeight', { value: 400 });
+        // jsdom's own `scrollTop` refuses to move without a layout box, so
+        // the panel gets a plain writable one instead.
+        Object.defineProperty(panel, 'scrollTop', { value: 0, writable: true });
+        Object.defineProperty(panel, 'scrollLeft', { value: 0, writable: true });
+
+        return panel;
+    }
+
+    it('scrolls the panel under the focus with the right stick', () => {
+        const panel = withScrollPanel();
+        // The scroll speed is measured in real time, so the clock has to move.
+        let now = 0;
+        vi.spyOn(performance, 'now').mockImplementation(() => (now += 16));
+
+        create();
+        (document.getElementById('start') as HTMLElement).focus();
+
+        pad.axes[3] = 1;
+        runFrames(3);
+
+        // The focused button does not scroll itself, so the stick reaches the
+        // layer's own scrolling area.
+        expect(panel.scrollTop).toBeGreaterThan(0);
+    });
+
+    it('leaves the panel alone while the right stick is centred', () => {
+        const panel = withScrollPanel();
+        create();
+
+        runFrames(3);
+
+        expect(panel.scrollTop).toBe(0);
+    });
+
+    it('ignores the right stick while no menu layer is on screen', () => {
+        withScrollPanel();
+        const panel = document.getElementById('story') as HTMLElement;
+        // Unwrapped: the same panel, with the match on screen instead of a menu.
+        document.body.innerHTML = '';
+        document.body.append(panel);
+        create();
+
+        pad.axes[3] = 1;
+        runFrames(3);
+
+        // During a match the right stick is the game's.
+        expect(panel.scrollTop).toBe(0);
+    });
+
+    it('does not scroll the focus ring with the right stick', () => {
+        withScrollPanel();
+        create();
+        const start = document.getElementById('start') as HTMLElement;
+        start.focus();
+
+        pad.axes[3] = 1;
+        runFrames(3);
+
+        expect(document.activeElement).toBe(start);
+    });
 });
 
 describe('focusFirst', () => {

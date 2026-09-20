@@ -1,5 +1,5 @@
 import { DestroyRef, Injectable, inject } from '@angular/core';
-import { GAMEPAD_BUTTON } from '../../engine/input';
+import { GAMEPAD_AXIS, GAMEPAD_BUTTON } from '../../engine/input';
 
 /** A menu action the pad can trigger, matching the common non-Xbox labels. */
 export type GamepadMenuAction = 'confirm' | 'back' | 'pause';
@@ -39,6 +39,9 @@ export class GamepadNavigation {
 
     /** While `performance.now()` is below this, the pad's buttons are ignored. */
     private deafUntil = 0;
+
+    /** When the right stick was last read, so scrolling runs at a real speed. */
+    private lastScrollAt = 0;
 
     constructor() {
         if (typeof window === 'undefined') {
@@ -102,6 +105,7 @@ export class GamepadNavigation {
 
         this.keepRingOnScreen();
         this.readDirections(pad);
+        this.readScroll(pad);
     };
 
     /**
@@ -243,6 +247,46 @@ export class GamepadNavigation {
     }
 
     /**
+     * The right stick scrolls the panel the focus is inside, at a speed that
+     * follows how far it is pushed.
+     *
+     * Scrolling is kept off the d-pad and the left stick on purpose: those
+     * walk the focus ring, and on a screen whose controls are few — the
+     * welcome story, with its single button — walking the ring is the only
+     * navigation there is, so spending a direction on scrolling would break
+     * it. The right stick is free in every menu.
+     */
+    private readScroll(pad: Gamepad): void {
+        const now = performance.now();
+        // The first read, and any read after the poll skipped frames (no pad
+        // connected, a backgrounded tab), has a long gap behind it; the clamp
+        // keeps that one ordinary step instead of a jump to the panel's end.
+        const elapsed = Math.min(now - this.lastScrollAt, MAX_SCROLL_FRAME);
+        this.lastScrollAt = now;
+
+        const x = stickAmount(pad.axes[GAMEPAD_AXIS.rightX]);
+        const y = stickAmount(pad.axes[GAMEPAD_AXIS.rightY]);
+
+        // During a match the right stick belongs to the game, so it only
+        // scrolls while a menu layer is on screen.
+        if ((x === 0 && y === 0) || !topLayer()) {
+            return;
+        }
+
+        const area = scrollArea();
+        if (!area) {
+            return;
+        }
+
+        const distance = (SCROLL_SPEED * elapsed) / 1000;
+        // Assigned rather than `scrollBy`, so the step lands instantly even
+        // where a stylesheet asked for smooth scrolling; the browser clamps
+        // both ends for us.
+        area.scrollTop += y * distance;
+        area.scrollLeft += x * distance;
+    }
+
+    /**
      * Sideways is the one axis a slider wants for itself: on the volume
      * sliders it drags the value, everywhere else it walks the focus ring.
      * Up and down still leave the slider, so the pad never gets stuck on one.
@@ -296,6 +340,13 @@ type Direction = 'up' | 'down' | 'left' | 'right';
 const FOCUS_REPEAT_DELAY = 350;
 const FOCUS_REPEAT_INTERVAL = 130;
 const STICK_DEAD_ZONE = 0.5;
+
+/** Pixels per second the right stick scrolls a panel when pushed all the way. */
+const SCROLL_SPEED = 900;
+/** Longest frame a single scroll step is allowed to stand for, in ms. */
+const MAX_SCROLL_FRAME = 50;
+/** The right stick idles further from centre than the left one is read at. */
+const SCROLL_DEAD_ZONE = 0.2;
 
 /** Keyboard arrows, mapped onto the directions the focus ring understands. */
 const ARROW_KEYS: Readonly<Record<string, Direction | undefined>> = {
@@ -463,6 +514,68 @@ const FOCUSABLE =
 
 /** What a pad "confirm" press can activate. */
 const CONFIRMABLE = 'button:not([disabled]), [role="radio"], a[href], input[type="range"]';
+
+/**
+ * How far past its dead zone a stick axis is pushed, from 0 to 1 with the
+ * sign of the push. Unlike {@link axisDirection}, which only answers "is it
+ * pushed", scrolling wants the analog value: a nudge creeps, a full push
+ * flies.
+ */
+function stickAmount(value: number | undefined): number {
+    if (value === undefined || Number.isNaN(value) || Math.abs(value) < SCROLL_DEAD_ZONE) {
+        return 0;
+    }
+
+    const past = (Math.abs(value) - SCROLL_DEAD_ZONE) / (1 - SCROLL_DEAD_ZONE);
+
+    return Math.sign(value) * Math.min(past, 1);
+}
+
+/**
+ * The element the right stick scrolls: the scrolling box the focus sits in,
+ * or the layer's own one when the focus is somewhere that does not scroll —
+ * a footer button below the story, which is exactly where the welcome screen
+ * leaves it.
+ */
+function scrollArea(): HTMLElement | null {
+    const layer = topLayer();
+    if (!layer) {
+        return null;
+    }
+
+    const active = document.activeElement as HTMLElement | null;
+
+    if (active && layer.contains(active)) {
+        for (let node: HTMLElement | null = active; node; node = node.parentElement) {
+            if (scrolls(node)) {
+                return node;
+            }
+
+            if (node === layer) {
+                break;
+            }
+        }
+    }
+
+    // Nothing around the focus scrolls, so the layer's own scrolling area is
+    // what the player means. The walk only runs while the stick is pushed,
+    // so its cost never shows up on an idle menu.
+    return Array.from(layer.querySelectorAll<HTMLElement>('*')).find(scrolls) ?? null;
+}
+
+/** True for an element that has somewhere to scroll to, on either axis. */
+function scrolls(element: HTMLElement): boolean {
+    const style = getComputedStyle(element);
+
+    return (
+        (element.scrollHeight > element.clientHeight + 1 && scrollable(style.overflowY)) ||
+        (element.scrollWidth > element.clientWidth + 1 && scrollable(style.overflowX))
+    );
+}
+
+function scrollable(overflow: string): boolean {
+    return overflow === 'auto' || overflow === 'scroll' || overflow === 'overlay';
+}
 
 function axisDirection(value: number | undefined): number {
     if (value === undefined || Number.isNaN(value)) {
