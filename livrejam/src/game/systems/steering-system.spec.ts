@@ -78,6 +78,19 @@ function handFrame(value: number, active = true): TrackingFrame {
     });
 }
 
+function mouthFrame(open: boolean): TrackingFrame {
+    const base = eyeFrame(false, false);
+    const face = base.face as NonNullable<TrackingFrame['face']>;
+
+    return {
+        ...base,
+        face: {
+            ...face,
+            mouth: { state: open ? 'open' : 'closed', openness: open ? 1 : 0 },
+        },
+    };
+}
+
 describe('SteeringSystem', () => {
     it('stays neutral until a tracking frame arrives', () => {
         const steering = new SteeringSystem(createLevel());
@@ -263,5 +276,40 @@ describe('SteeringSystem aim', () => {
         steering.update(eyeFrame(false, false));
 
         expect(steering.aim('rizz')).toBe(0);
+    });
+
+    it('never asks for a dash without a tracking frame', () => {
+        const steering = new SteeringSystem(createLevel());
+
+        expect(steering.consumeMouthDash()).toBe(false);
+    });
+
+    it('asks for a dash once per mouth opening', () => {
+        const steering = new SteeringSystem(createLevel());
+
+        steering.update(mouthFrame(true));
+        expect(steering.consumeMouthDash()).toBe(true);
+        expect(steering.consumeMouthDash()).toBe(false);
+
+        steering.update(mouthFrame(true));
+        expect(steering.consumeMouthDash()).toBe(false);
+
+        steering.update(mouthFrame(false));
+        expect(steering.consumeMouthDash()).toBe(false);
+
+        steering.update(mouthFrame(true));
+        expect(steering.consumeMouthDash()).toBe(true);
+    });
+
+    it('forgets a held mouth on reset', () => {
+        const steering = new SteeringSystem(createLevel());
+        steering.update(mouthFrame(true));
+
+        expect(steering.consumeMouthDash()).toBe(true);
+
+        steering.reset();
+        steering.update(mouthFrame(true));
+
+        expect(steering.consumeMouthDash()).toBe(true);
     });
 });

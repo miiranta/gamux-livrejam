@@ -1,1 +1,1 @@
-export const MECHANICS_VERSION = 3;
+export const MECHANICS_VERSION = 4;

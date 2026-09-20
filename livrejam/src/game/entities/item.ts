@@ -7,6 +7,12 @@ import { FACE_SMASHING, ITEMS, ITEM_WEIGHT_TOTAL } from '../config';
 
 export type ItemState = 'falling' | 'landed' | 'settled';
 
+export interface ItemTrailPoint {
+    x: number;
+    y: number;
+    angle: number;
+}
+
 export interface ItemOptions {
     x: number;
     y: number;
@@ -25,6 +31,11 @@ export class Item {
     settleTimer = 0;
     fadeTimer = 0;
     appearTimer = 0;
+    dashTimer = 0;
+    dashGlow = 0;
+    dashed = false;
+    dashAngle = 0;
+    readonly dashTrail: ItemTrailPoint[] = [];
 
     constructor(options: ItemOptions) {
         const config = FACE_SMASHING.item;
@@ -123,6 +134,7 @@ export class Item {
 
     update(dt: number): void {
         this.appearTimer = Math.min(this.appearTimer + dt, FACE_SMASHING.item.appearSeconds);
+        this.advanceDash(dt);
 
         if (this.state === 'settled') {
             this.fadeTimer += dt;
@@ -164,6 +176,85 @@ export class Item {
 
     get expired(): boolean {
         return this.fade >= 1;
+    }
+
+    get dashing(): boolean {
+        return this.dashTimer > 0;
+    }
+
+    get dashable(): boolean {
+        return !this.dashed && this.state === 'falling';
+    }
+
+    get steerable(): boolean {
+        return !this.dashed;
+    }
+
+    get dashProgress(): number {
+        return clamp(1 - this.dashTimer / Math.max(FACE_SMASHING.itemDash.seconds, 1e-3), 0, 1);
+    }
+
+    get dashGlowRatio(): number {
+        const config = FACE_SMASHING.itemDash;
+        return clamp(this.dashGlow / Math.max(config.seconds + config.trailAfter, 1e-3), 0, 1);
+    }
+
+    dash(): boolean {
+        if (!this.dashable) {
+            return false;
+        }
+
+        const config = FACE_SMASHING.itemDash;
+        const { body } = this.physics;
+        const speed = Math.hypot(body.velocity.x, body.velocity.y);
+        const dirX = speed > 1e-3 ? body.velocity.x / speed : 0;
+        const dirY = speed > 1e-3 ? body.velocity.y / speed : 1;
+
+        this.dashed = true;
+        this.dashAngle = Math.atan2(dirY, dirX);
+        this.dashTimer = config.seconds;
+        this.dashGlow = config.seconds + config.trailAfter;
+        this.dashTrail.length = 0;
+        body.velocity.x = dirX * config.speed;
+        body.velocity.y = dirY * config.speed;
+        body.maxSpeed.y = config.speed;
+        body.angularVelocity *= config.spinBoost;
+        return true;
+    }
+
+    private sampleDashTrail(): void {
+        this.dashTrail.push({ x: this.centerX, y: this.centerY, angle: this.angle });
+
+        while (this.dashTrail.length > FACE_SMASHING.itemDash.ghostCount + 1) {
+            this.dashTrail.shift();
+        }
+    }
+
+    private advanceDash(dt: number): void {
+        if (this.dashGlow > 0) {
+            this.dashGlow = Math.max(this.dashGlow - dt, 0);
+        }
+
+        if (!this.dashing) {
+            return;
+        }
+
+        this.sampleDashTrail();
+        this.dashTimer = Math.max(this.dashTimer - dt, 0);
+
+        if (this.dashing) {
+            return;
+        }
+
+        const { body } = this.physics;
+        const config = FACE_SMASHING.item;
+        body.maxSpeed.y = config.maxFallSpeed;
+        body.velocity.y = Math.min(body.velocity.y, config.maxFallSpeed);
+        body.velocity.x = clamp(
+            body.velocity.x,
+            -FACE_SMASHING.drop.steerSpeed,
+            FACE_SMASHING.drop.steerSpeed,
+        );
     }
 }
 

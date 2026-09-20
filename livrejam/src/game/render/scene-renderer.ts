@@ -36,6 +36,7 @@ export interface SceneFrame {
     deltaSeconds: number;
     /** -1..1, where the next item will be pushed as it falls. */
     aim: number;
+    aimTracked: boolean;
 }
 
 export class SceneRenderer {
@@ -103,7 +104,14 @@ export class SceneRenderer {
         this.props.paint(ctx, level, this.camera, this.elapsed, 2);
         this.renderEffects(debug.effects);
         this.renderScorePopups(debug.scorePopups);
-        this.spawnMarker.paint(ctx, level, this.camera, frame.aim, frame.deltaSeconds);
+        this.spawnMarker.paint(
+            ctx,
+            level,
+            this.camera,
+            frame.aim,
+            frame.aimTracked,
+            frame.deltaSeconds,
+        );
 
         if (debug.colliders) {
             this.renderColliders(level, items, dodger);
@@ -152,6 +160,12 @@ export class SceneRenderer {
             return;
         }
 
+        const glow = item.dashGlowRatio;
+
+        if (glow > 0 && item.dashTrail.length > 1) {
+            this.renderItemDashTrail(item, image, screenWidth, screenHeight, glow);
+        }
+
         const scale = item.appearScale;
         const half = scale / 2;
 
@@ -166,6 +180,45 @@ export class SceneRenderer {
             screenWidth * scale,
             screenHeight * scale,
         );
+        ctx.restore();
+    }
+
+    private renderItemDashTrail(
+        item: Item,
+        image: CanvasImageSource,
+        screenWidth: number,
+        screenHeight: number,
+        glow: number,
+    ): void {
+        const config = FACE_SMASHING.itemDash;
+        const { camera } = this.renderer;
+        const ctx = this.renderer.context;
+        const points = item.dashTrail;
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+
+        for (let index = 0; index < points.length - 1; index++) {
+            const age = index / Math.max(points.length - 1, 1);
+            const fade = age * config.trailAlpha * glow;
+
+            if (fade <= 0.01) {
+                continue;
+            }
+
+            const point = points[index];
+            const stretch = 1 + (1 - age) * config.stretch;
+
+            ctx.save();
+            ctx.globalAlpha = fade;
+            ctx.translate(camera.toScreenX(point.x), camera.toScreenY(point.y));
+            ctx.rotate(item.dashAngle);
+            ctx.scale(stretch, 1 - config.stretch * (1 - age) * 0.5);
+            ctx.rotate(point.angle - item.dashAngle);
+            ctx.drawImage(image, -screenWidth / 2, -screenHeight / 2, screenWidth, screenHeight);
+            ctx.restore();
+        }
+
         ctx.restore();
     }
 

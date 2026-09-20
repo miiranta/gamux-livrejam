@@ -41,13 +41,17 @@ export class SpawnMarkerPainter {
         level: DungeonLevel,
         camera: Camera,
         aim: number,
+        tracked: boolean,
         dt: number,
     ): void {
         const config = FACE_SMASHING.spawnMarker;
-        const clamped = Math.max(-1, Math.min(1, aim));
-        const blend = 1 - Math.exp(-dt / config.smoothingSeconds);
 
-        this.angle += (-clamped * config.maxAngle - this.angle) * blend;
+        if (tracked) {
+            const clamped = Math.max(-1, Math.min(1, aim));
+            const blend = 1 - Math.exp(-dt / config.smoothingSeconds);
+
+            this.angle += (-clamped * config.maxAngle - this.angle) * blend;
+        }
 
         const centerX = level.grid.left + level.grid.width / 2;
         const x = camera.toScreenX(centerX);

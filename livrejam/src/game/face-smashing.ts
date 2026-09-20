@@ -313,8 +313,17 @@ export class FaceSmashing {
         this.spawner.advance(dt);
 
         const active = this.active;
+        const dashRequested = this.steering.consumeMouthDash();
 
         if (!active || active.state !== 'falling') {
+            return;
+        }
+
+        if (dashRequested && active.dash()) {
+            return;
+        }
+
+        if (!active.steerable) {
             return;
         }
 
@@ -580,6 +589,11 @@ export class FaceSmashing {
         };
     }
 
+    private get aimTracked(): boolean {
+        const active = this.active;
+        return active !== null && active.steerable;
+    }
+
     private render(): void {
         const scene = this.scene;
         const dodger = this.dodger;
@@ -599,6 +613,7 @@ export class FaceSmashing {
             {
                 deltaSeconds: this.frameDelta,
                 aim: this.steering.aim(this.steeringMode),
+                aimTracked: this.aimTracked,
             },
         );
     }

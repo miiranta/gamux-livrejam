@@ -425,6 +425,114 @@ describe('Item', () => {
     });
 });
 
+describe('item dash', () => {
+    it('starts steerable and unflung', () => {
+        const item = createTestItem();
+
+        expect(item.dashed).toBe(false);
+        expect(item.dashable).toBe(true);
+        expect(item.steerable).toBe(true);
+        expect(item.dashing).toBe(false);
+    });
+
+    it('keeps the heading it had and multiplies the speed', () => {
+        const item = createTestItem();
+        const before = item.physics.body.velocity;
+        const heading = Math.atan2(before.y, before.x);
+        const speedBefore = item.impactSpeed;
+
+        expect(item.dash()).toBe(true);
+
+        const after = item.physics.body.velocity;
+
+        expect(Math.atan2(after.y, after.x)).toBeCloseTo(heading, 6);
+        expect(item.impactSpeed).toBeCloseTo(FACE_SMASHING.itemDash.speed, 4);
+        expect(item.impactSpeed).toBeGreaterThan(speedBefore);
+        expect(item.dashAngle).toBeCloseTo(heading, 6);
+        expect(item.dashing).toBe(true);
+    });
+
+    it('dives straight down when it had no heading', () => {
+        const item = new Item({
+            x: 0,
+            y: 0,
+            velocityX: 0,
+            velocityY: 0,
+            definition: ITEMS[0],
+        });
+
+        expect(item.dash()).toBe(true);
+        expect(item.physics.body.velocity.x).toBeCloseTo(0, 6);
+        expect(item.physics.body.velocity.y).toBeCloseTo(FACE_SMASHING.itemDash.speed, 4);
+    });
+
+    it('outruns the ordinary fall cap while the burst lasts', () => {
+        const item = createTestItem();
+        item.dash();
+
+        for (let step = 0; step < 8; step++) {
+            const result = new PhysicsWorld().step(item.physics, 1 / 60);
+            item.applyCollision(result);
+            item.update(1 / 60);
+            expect(item.impactSpeed).toBeGreaterThan(FACE_SMASHING.item.maxFallSpeed);
+        }
+    });
+
+    it('gives the speed caps back once the burst is spent', () => {
+        const item = createTestItem();
+        item.dash();
+        item.update(FACE_SMASHING.itemDash.seconds + 0.01);
+
+        expect(item.dashing).toBe(false);
+        expect(item.physics.body.maxSpeed.y).toBe(FACE_SMASHING.item.maxFallSpeed);
+        expect(item.physics.body.velocity.y).toBeLessThanOrEqual(FACE_SMASHING.item.maxFallSpeed);
+        expect(Math.abs(item.physics.body.velocity.x)).toBeLessThanOrEqual(
+            FACE_SMASHING.drop.steerSpeed,
+        );
+    });
+
+    it('never returns to the steering, and never dashes twice', () => {
+        const item = createTestItem();
+
+        expect(item.dash()).toBe(true);
+        expect(item.dash()).toBe(false);
+
+        item.update(FACE_SMASHING.itemDash.seconds + FACE_SMASHING.itemDash.trailAfter + 0.1);
+
+        expect(item.dashed).toBe(true);
+        expect(item.steerable).toBe(false);
+        expect(item.dashable).toBe(false);
+        expect(item.dash()).toBe(false);
+    });
+
+    it('refuses to dash once it has landed', () => {
+        const item = createTestItem();
+        item.applyCollision({ grounded: true, hitWall: null, hitCeiling: false, layer: null });
+
+        expect(item.state).toBe('landed');
+        expect(item.dashable).toBe(false);
+        expect(item.dash()).toBe(false);
+    });
+
+    it('samples a capped ghost trail that fades out after the burst', () => {
+        const item = createTestItem();
+        item.dash();
+
+        for (let step = 0; step < 24; step++) {
+            item.update(1 / 120);
+        }
+
+        expect(item.dashTrail.length).toBeGreaterThan(1);
+        expect(item.dashTrail.length).toBeLessThanOrEqual(FACE_SMASHING.itemDash.ghostCount + 1);
+        expect(item.dashGlowRatio).toBeGreaterThan(0);
+        expect(item.dashProgress).toBeGreaterThan(0);
+
+        item.update(FACE_SMASHING.itemDash.seconds + FACE_SMASHING.itemDash.trailAfter);
+
+        expect(item.dashGlowRatio).toBe(0);
+    });
+});
+
 describe('pickItem', () => {
     it('always returns a known item', () => {
         const keys = new Set(ITEMS.map((item) => item.key));

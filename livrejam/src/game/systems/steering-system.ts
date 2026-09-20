@@ -25,6 +25,7 @@ const ARENA_MARGIN = 0.06;
  * the hands level, or opening both eyes, settles it back to a straight drop.
  */export class SteeringSystem {
     private frame: TrackingFrame | null = null;
+    private mouthLatch = false;
 
     constructor(private readonly level: DungeonLevel) {}
 
@@ -34,6 +35,15 @@ const ARENA_MARGIN = 0.06;
 
     reset(): void {
         this.frame = null;
+        this.mouthLatch = false;
+    }
+
+    consumeMouthDash(): boolean {
+        const open = this.frame?.face?.mouth.state === 'open';
+        const opened = open && !this.mouthLatch;
+
+        this.mouthLatch = open;
+        return opened;
     }
 
     /**
