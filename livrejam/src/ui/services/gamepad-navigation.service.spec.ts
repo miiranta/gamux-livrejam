@@ -437,6 +437,166 @@ describe('GamepadNavigation', () => {
 
         expect(document.activeElement?.id).toBe('one');
     });
+
+    /** Sends a key to the window, and reports whether it kept its default. */
+    function press(key: string): boolean {
+        const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+        window.dispatchEvent(event);
+        return !event.defaultPrevented;
+    }
+
+    it('walks the focus ring with the keyboard arrows', () => {
+        document.body.innerHTML = `
+            <app-main-menu>
+                <button id="one">One</button>
+                <button id="two">Two</button>
+            </app-main-menu>
+        `;
+        create();
+        (document.getElementById('one') as HTMLButtonElement).focus();
+
+        press('ArrowDown');
+        expect(document.activeElement?.id).toBe('two');
+
+        press('ArrowUp');
+        expect(document.activeElement?.id).toBe('one');
+
+        // Sideways walks the same list, and the ends wrap around.
+        press('ArrowLeft');
+        expect(document.activeElement?.id).toBe('two');
+    });
+
+    it('leaves the arrows to the match while no menu is on screen', () => {
+        document.body.innerHTML = '<div><button id="one">One</button></div>';
+        create();
+        (document.getElementById('one') as HTMLButtonElement).focus();
+
+        expect(press('ArrowDown')).toBe(true);
+        expect(document.activeElement?.id).toBe('one');
+    });
+
+    it('steps a focused slider sideways, and leaves it with up or down', () => {
+        document.body.innerHTML = `
+            <app-main-menu>
+                <input id="volume" type="range" min="0" max="1" step="0.05" value="0.5" />
+                <button id="one">One</button>
+            </app-main-menu>
+        `;
+        create();
+        const volume = document.getElementById('volume') as HTMLInputElement;
+        const changed = vi.fn();
+        volume.addEventListener('input', changed);
+        volume.focus();
+
+        press('ArrowRight');
+        expect(volume.value).toBe('0.55');
+        expect(changed).toHaveBeenCalledTimes(1);
+        expect(document.activeElement?.id).toBe('volume');
+
+        press('ArrowLeft');
+        expect(volume.value).toBe('0.5');
+
+        // Only the slider's own axis is its: the ring still gets off it.
+        press('ArrowDown');
+        expect(document.activeElement?.id).toBe('one');
+    });
+
+    it('leaves the arrows to a field being typed into', () => {
+        document.body.innerHTML = `
+            <app-main-menu>
+                <input id="readout" type="text" />
+                <button id="one">One</button>
+            </app-main-menu>
+        `;
+        create();
+        (document.getElementById('readout') as HTMLInputElement).focus();
+
+        expect(press('ArrowDown')).toBe(true);
+        expect(document.activeElement?.id).toBe('readout');
+    });
+
+    it('confirms the focused control on Enter, exactly once', () => {
+        const clicked = withButton();
+        create();
+
+        // The default is taken over, so the browser cannot also run the
+        // button and click it a second time.
+        expect(press('Enter')).toBe(false);
+        expect(clicked).toHaveBeenCalledTimes(1);
+    });
+
+    it('lands the ring on the first control when Enter finds nothing focused', () => {
+        withLayer();
+        create();
+        (document.activeElement as HTMLElement | null)?.blur();
+
+        press('Enter');
+
+        expect(document.activeElement?.id).toBe('one');
+    });
+
+    it('ignores Enter while the actions are held', () => {
+        const clicked = withButton();
+        let now = 0;
+        vi.spyOn(performance, 'now').mockImplementation(() => now);
+
+        const navigation = create();
+        navigation.holdActions(1);
+        press('Enter');
+        expect(clicked).not.toHaveBeenCalled();
+
+        now = 1100;
+        press('Enter');
+        expect(clicked).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(['Escape', 'Backspace'])('goes back on %s', (key) => {
+        withLayer();
+        const navigation = create();
+        const back = vi.fn();
+        navigation.onBack = back;
+
+        // Backspace must not reach the browser's history either.
+        expect(press(key)).toBe(false);
+        expect(back).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves Esc to the shell while a match is on screen', () => {
+        document.body.innerHTML = '<div><button id="one">One</button></div>';
+        const navigation = create();
+        const back = vi.fn();
+        navigation.onBack = back;
+
+        // No layer: Esc is the shell's, and it pauses the match.
+        expect(press('Escape')).toBe(true);
+        expect(back).not.toHaveBeenCalled();
+    });
+
+    it('ignores back while the actions are held', () => {
+        withLayer();
+        let now = 0;
+        vi.spyOn(performance, 'now').mockImplementation(() => now);
+
+        const navigation = create();
+        const back = vi.fn();
+        navigation.onBack = back;
+        navigation.holdActions(1);
+        press('Escape');
+        expect(back).not.toHaveBeenCalled();
+
+        now = 1100;
+        press('Escape');
+        expect(back).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves Enter to a field being typed into', () => {
+        document.body.innerHTML =
+            '<app-main-menu><input id="readout" type="text" /></app-main-menu>';
+        create();
+        (document.getElementById('readout') as HTMLInputElement).focus();
+
+        expect(press('Enter')).toBe(true);
+    });
 });
 
 describe('focusFirst', () => {
