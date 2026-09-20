@@ -92,6 +92,18 @@
     color: var(--lj-ink-dim);
     font-size: 0.9rem;
     line-height: 1.5;
+
+    /* Bodies are bound as HTML, so a link can live inside one. */
+    a {
+        color: var(--lj-accent-hi);
+        text-decoration: underline;
+
+        &:hover {
+            filter: brightness(1.2);
+        }
+
+        @include ornaments.focus-ring;
+    }
 }
 
 .welcome__glyph {
@@ -105,6 +117,44 @@
         fill: currentColor;
         shape-rendering: crispEdges;
     }
+}
+
+/* --- Repository shortcut ------------------------------------------------- */
+
+/* Same silhouette as the menu toggles, parked in the top-right corner. */
+.welcome__github {
+    position: absolute;
+    top: calc(0.75rem + env(safe-area-inset-top));
+    right: calc(0.75rem + env(safe-area-inset-right));
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    color: var(--lj-accent-hi);
+    background: linear-gradient(180deg, var(--lj-line-hi), var(--lj-line));
+    cursor: pointer;
+
+    @include ornaments.octagon(6px);
+    @include ornaments.studs(var(--lj-accent), 4px, 3px);
+    @include ornaments.pixel-drop(3px);
+    @include ornaments.focus-ring;
+
+    &:hover {
+        filter: brightness(1.2);
+    }
+
+    &:active {
+        transform: translateY(2px);
+    }
+}
+
+.welcome__github-icon svg {
+    display: block;
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: currentColor;
+    shape-rendering: crispEdges;
 }
 
 /* --- Footer -------------------------------------------------------------- */

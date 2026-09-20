@@ -29,8 +29,12 @@ const ACHIEVEMENT_IDS: readonly string[] = [
     'altControl',
     'onesAndZeros',
     'libre',
+    'libreSquared',
     'joymaxxing',
 ];
+
+/** Repository behind the "libreSquared" achievement. */
+const REPO_URL = 'https://github.com/miiranta/gamux-livrejam';
 
 /**
  * Welcome screen: it introduces the project and lists the jam achievements.
@@ -49,6 +53,7 @@ export class WelcomeScreen {
 
     protected readonly introKeys = INTRO_KEYS;
     protected readonly achievements = ACHIEVEMENT_IDS;
+    protected readonly repoUrl = REPO_URL;
 
     protected titleKey(id: string): string {
         return `welcome.achievements.${id}.title`;

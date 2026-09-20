@@ -99,11 +99,16 @@
                 "title": "Livre",
                 "body": "Mesmo usando IA generativa, o modelo escolhido foi o DeepSeek. Fora isso, VSCode, Linux (Ubuntu), Angular, Audacity…"
             },
+            "libreSquared": {
+                "title": "Livre² e Livr3",
+                "body": "Confira nosso código no <a href=\"https://github.com/miiranta/gamux-livrejam\" target=\"_blank\" rel=\"noopener noreferrer\">github</a>! O projeto inteiro é aberto e licenciado sob a GPL 3.0."
+            },
             "joymaxxing": {
                 "title": "Joymaxxing",
                 "body": "Não temos dúvida de que nos divertimos bastante! Esperamos que você também se divirta com essa obra maluca que construímos. Obrigado por jogar!"
             }
-        }
+        },
+        "githubLabel": "Abrir o código do jogo no GitHub"
     },
     "language": {
         "title": "Idioma",
