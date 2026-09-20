@@ -1,3 +1,4 @@
+export * from './camera-gate/camera-gate';
 export * from './crack-overlay/crack-overlay';
 export * from './fullscreen-toggle/fullscreen-toggle';
 export * from './language-select/language-select';

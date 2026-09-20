@@ -36,6 +36,22 @@ export const TEST_EN = {
         'pt-br': 'Português (BR)',
     },
     fullscreen: { enter: 'Enter fullscreen', exit: 'Exit fullscreen' },
+    camera: {
+        gate: {
+            title: 'Camera needed',
+            hint: 'Face Smashing controls the character with your face.',
+            retry: 'Check again',
+            checking: 'Checking…',
+            back: 'Back to menu',
+            reason: {
+                blocked: 'Camera access is blocked.',
+                missing: 'No camera was found on this device.',
+                busy: 'The camera is busy in another app or tab.',
+                unsupported: 'The camera does not support the settings the game needs.',
+                unknown: 'The camera could not be started.',
+            },
+        },
+    },
     hud: {
         score: 'Score',
         best: 'Best',

@@ -204,7 +204,13 @@ quando o objeto chegar ao chao (antecipando a velocidade dele), com erro de
 mira. Em 5% dos lancamentos ele joga aleatorio, para a politica aprender a
 lidar com objetos que ela nao previu.
 
-Isso e um espelho de `dungeon-drop.ts:aimPoint()` + `ItemSpawner.spawn()`. Se
+A previsao usa duas correcoes que faltavam antes: o tempo de queda e balistico
+(nao `altura / velocidade`, que ignora a gravidade) e a velocidade lateral do
+desviador e limitada ao `maxSpeed` do nivel. Sem esse teto, um avanco de
+1000 px/s projetava 900 px numa arena de 512 px e a mira era jogada contra a
+parede — foi assim que "os objetos deixaram de cair na cabeca" do jogador.
+
+Isso e um espelho de `face-smashing.ts:aimPoint()` + `ItemSpawner.spawn()`. Se
 mudar um lado, mude o outro — senao o jogo cobra situacoes que o treino nunca
 mostrou.
 
@@ -237,13 +243,13 @@ aceleracao, todo quadro em que o desviador esta no chao. Com o atrito na frente,
 a aceleracao continua empurrando e o limite de projeto e alcancavel:
 
 ```
-v_terminal = maxSpeed = 314 px/s (nivel 0) e 150 px/s (nivel 7)
+v_terminal = maxSpeed = 220 px/s (nivel 0) e 150 px/s (nivel 7)
 ```
 
 O que **nao** funciona e aplicar o atrito depois de limitar a velocidade: nesse
-caso o teto real vira `maxSpeed * f` (257 px/s), a velocidade maxima do nivel deixa
+caso o teto real vira `maxSpeed * f` (180 px/s), a velocidade maxima do nivel deixa
 de ser alcancavel e a observacao passa a mentir sobre a propria capacidade. A
-aceleracao de 4136 foi escolhida para vencer o atrito e ainda chegar aos 314.
+aceleracao de 2898 foi escolhida para vencer o atrito e ainda chegar aos 220.
 
 O avanco (dash) ignora o atrito e o limite de velocidade: e um pico de 0,16 s que
 chega a 1000 px/s no nivel 0, com 2,5 s de recarga. Ele exige o chao e e recusado
@@ -265,16 +271,19 @@ arena descaracteriza a mira do oponente e degenera o treino (ver abaixo).
 `item.lateralSpeed` nao e so um enfeite visual: ela define se desviar vale a
 pena, porque e ela que carrega a informacao de onde o oponente mirou.
 
-O objeto cai de `SPAWN_Y` (24 px) ate o chao (352 px) com gravidade
-`ITEM_GRAVITY` = 900 px/s², partindo de `DROP_BASE_SPEED` = 140 px/s. A queda
-leva `t = (-v0 + sqrt(v0² + 2gh)) / g` ate a velocidade terminal
-(`ITEM_MAX_FALL` = 520 px/s) e depois segue reta: **0,82 s** partindo de 140 px/s
-e **0,67 s** no teto de 500 px/s. E esse tempo que a mira usa para antecipar o
-desviador, nao `dropHeight / speed`, que ignora a gravidade e erra para cima em
-ate 0,19 s.
+O objeto cai de `SPAWN_Y` (88 px, logo abaixo do teto) ate o chao (352 px) com
+gravidade `ITEM_GRAVITY` = 900 px/s², partindo de `DROP_BASE_SPEED` = 140 px/s. A
+queda leva `t = (-v0 + sqrt(v0² + 2gh)) / g` ate a velocidade terminal
+(`ITEM_MAX_FALL` = 520 px/s) e depois segue reta: **0,66 s** partindo de 140 px/s
+e **0,51 s** no teto de 500 px/s.
+
+E esse tempo que a mira usa para antecipar o desviador, medindo a queda do **topo**
+do objeto (`floorTop - spawnY`), que e de onde o item comeca a cair. Usar
+`dropHeight / speed` ignora a gravidade e erra para cima em ate 0,19 s; medir ate o
+centro do objeto erra para baixo outros 0,05 s.
 
 Uma deriva lateral de `v` desloca o ponto de pouso em `t * v` px, o que hoje da
-16 px com `v = 20` — folgado diante da meia arena de 256 px.
+37 px com `v = 20` — folgado diante da meia arena de 256 px.
 
 O teste continua guardando o caso extremo: se uma deriva futura passar de meia
 arena, o pouso vira uniforme, a mira do oponente deixa de significar qualquer
@@ -329,8 +338,8 @@ Cada nivel enfraquece a mobilidade de forma linear, do nivel 0 ao 7:
 
 | nivel | velocidade maxima | pulo (px de subida) | arrancada do avanco |
 | --- | --- | --- | --- |
-| 0 | 314 | 192 | 1000 |
-| 3 | 244 | 124 | 657 |
+| 0 | 220 | 192 | 1000 |
+| 3 | 190 | 124 | 657 |
 | 7 | 150 | 57 | 400 |
 
 A subida vem de `v^2 / 2g`, nao do valor cru do pulo. No nivel 0 ela e de 192 px,

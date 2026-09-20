@@ -1,9 +1,16 @@
 import { loadImage, type SpriteSheet } from '../../engine/render';
 import { FACE_SMASHING, ITEMS } from '../config';
+import { DAMAGE_LEVELS } from '../damage';
+import {
+    PROP_SPRITES,
+    TREASURE_HUNTERS_PLATFORMS,
+    TREASURE_HUNTERS_SHEET,
+    TREASURE_HUNTERS_TILE,
+    type PropSpriteKey,
+} from './treasure-hunters';
 
 export type CharacterAnimationKey = 'walk' | 'run' | 'jump' | 'hurt';
-export type EffectKey = 'impact' | 'slash' | 'dust';
-import { DAMAGE_LEVELS } from '../damage';
+export type EffectKey = 'impact' | 'slash' | 'dust' | 'explosion';
 
 export interface LoadedSpriteSheet extends SpriteSheet {
     frames: number;
@@ -16,56 +23,18 @@ export interface CharacterTierSprites {
     jump?: LoadedSpriteSheet;
 }
 
-export type GroundKey = 'stone' | 'grate' | 'plate' | 'rubble' | 'cobble';
-
-export type CeilingKey = 'panel' | 'slab' | 'lattice' | 'girder';
-
-export type StrutKey = 'pillar' | 'segment' | 'capital' | 'pier';
-
 export interface TerrainSprites {
-    ground: Record<GroundKey, HTMLImageElement>;
-    ceiling: Record<CeilingKey, HTMLImageElement>;
-    strut: Record<StrutKey, HTMLImageElement>;
+    autotile: HTMLImageElement;
+    platforms: HTMLImageElement;
+    tileSize: number;
 }
 
 export interface DungeonSprites extends TerrainSprites {
+    props: Map<PropSpriteKey, HTMLImageElement>;
     items: Map<string, HTMLImageElement>;
     character: CharacterTierSprites[];
     effects: Record<EffectKey, LoadedSpriteSheet>;
 }
-
-const DUNGEON_TILE_DIR = 'assets/tiles/kenney-tiny-dungeon/Tiles';
-const TOWN_TILE_DIR = 'assets/tiles/kenney-tiny-town/Tiles';
-
-function dungeonTile(index: number): string {
-    return `${DUNGEON_TILE_DIR}/tile_${index.toString().padStart(4, '0')}.png`;
-}
-
-function townTile(index: number): string {
-    return `${TOWN_TILE_DIR}/tile_${index.toString().padStart(4, '0')}.png`;
-}
-
-const GROUND_TILE_PATHS: Record<GroundKey, string> = {
-    stone: dungeonTile(37),
-    grate: townTile(97),
-    plate: dungeonTile(39),
-    rubble: dungeonTile(40),
-    cobble: townTile(121),
-};
-
-const CEILING_TILE_PATHS: Record<CeilingKey, string> = {
-    panel: dungeonTile(36),
-    slab: townTile(96),
-    lattice: townTile(120),
-    girder: dungeonTile(38),
-};
-
-const STRUT_TILE_PATHS: Record<StrutKey, string> = {
-    pillar: dungeonTile(58),
-    segment: dungeonTile(56),
-    capital: dungeonTile(41),
-    pier: dungeonTile(39),
-};
 
 const CHARACTER_ANIMATIONS: Record<CharacterAnimationKey, number> = {
     walk: 9,
@@ -93,9 +62,15 @@ const EFFECT_PATHS: Record<EffectKey, string> = {
     impact: 'assets/effects/impact.png',
     slash: 'assets/effects/slash.png',
     dust: 'assets/effects/dust.png',
+    explosion: 'assets/effects/explosion.png',
 };
 
-const EFFECT_FRAME_SIZE = 16;
+const EFFECT_FRAME_SIZE: Record<EffectKey, number> = {
+    impact: 16,
+    slash: 16,
+    dust: 16,
+    explosion: 40,
+};
 
 const CHARACTER_FRAME_SIZE = 64;
 
@@ -153,54 +128,64 @@ function loadManifest(): Promise<CharacterManifest> {
 }
 
 export function loadDungeonSprites(): Promise<DungeonSprites> {
-    return Promise.all([loadManifest(), loadTerrain(), loadEffects()]).then(([manifest, terrain, effects]) =>
+    return Promise.all([
+        loadManifest(),
+        loadTerrain(),
+        loadProps(),
+        loadEffects(),
+        loadItems(),
+    ]).then(([manifest, terrain, props, effects, items]) =>
         Promise.all(
             manifest.character.tiers.map((tier) => loadTier(tier.path, tier.animations)),
-        ).then((character) => ({ ...terrain, effects, character })),
+        ).then((character) => ({ ...terrain, props, effects, items, character })),
     );
 }
 
-interface LoadedTerrain extends TerrainSprites {
-    items: Map<string, HTMLImageElement>;
+function loadItems(): Promise<Map<string, HTMLImageElement>> {
+    return Promise.all(
+        ITEMS.map((item) => loadImage(item.sprite).then((image) => [item.key, image] as const)),
+    ).then((loaded) => new Map(loaded));
 }
 
-function loadGroup<TKey extends string>(
-    paths: Record<TKey, string>,
-): Promise<Record<TKey, HTMLImageElement>> {
-    const entries = Object.entries(paths) as [TKey, string][];
+function loadProps(): Promise<Map<PropSpriteKey, HTMLImageElement>> {
+    const entries = Object.entries(PROP_SPRITES) as [PropSpriteKey, { path: string }][];
 
     return Promise.all(
-        entries.map(([key, url]) => loadImage(url).then((image) => [key, image] as const)),
-    ).then((loaded) => Object.fromEntries(loaded) as Record<TKey, HTMLImageElement>);
+        entries.map(([key, sprite]) => loadImage(sprite.path).then((image) => [key, image] as const)),
+    ).then((loaded) => new Map(loaded));
 }
 
-function loadTerrain(): Promise<LoadedTerrain> {
+function loadTerrain(): Promise<TerrainSprites> {
     return Promise.all([
-        loadGroup(GROUND_TILE_PATHS),
-        loadGroup(CEILING_TILE_PATHS),
-        loadGroup(STRUT_TILE_PATHS),
-        Promise.all(
-            ITEMS.map((item) => loadImage(item.sprite).then((image) => [item.key, image] as const)),
-        ),
-    ]).then(([ground, ceiling, strut, items]) => ({
-        ground,
-        ceiling,
-        strut,
-        items: new Map(items),
+        loadImage(TREASURE_HUNTERS_SHEET),
+        loadImage(TREASURE_HUNTERS_PLATFORMS),
+    ]).then(([autotile, platforms]) => ({
+        autotile,
+        platforms,
+        tileSize: TREASURE_HUNTERS_TILE,
     }));
 }
 
 function loadEffects(): Promise<Record<EffectKey, LoadedSpriteSheet>> {
-    return loadGroup(EFFECT_PATHS).then((effects) =>
-        Object.fromEntries(
-            Object.entries(effects).map(([key, image]) => [
-                key,
-                {
-                    image,
-                    frameSize: EFFECT_FRAME_SIZE,
-                    frames: FACE_SMASHING.effects[key as EffectKey].frames,
-                },
-            ]),
-        ) as Record<EffectKey, LoadedSpriteSheet>,
-    );
+    const entries = Object.entries(EFFECT_PATHS) as [EffectKey, string][];
+
+    return Promise.all(
+        entries.map(([key, url]) =>
+            loadImage(url).then(
+                (image) =>
+                    [
+                        key,
+                        {
+                            image,
+                            frameSize: EFFECT_FRAME_SIZE[key],
+                            frames: FACE_SMASHING.effects[key].frames,
+                        },
+                    ] as const,
+            ),
+        ),
+    ).then((loaded) => Object.fromEntries(loaded) as Record<EffectKey, LoadedSpriteSheet>);
+}
+
+export function damageTierCount(): number {
+    return DAMAGE_LEVELS;
 }

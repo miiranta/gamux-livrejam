@@ -376,7 +376,7 @@ export class FaceSmashing {
         const { velocity, grounded } = dodger.physics.body;
         const size = ITEM_MAX_EXTENT * 2;
         const config = FACE_SMASHING;
-        const dropHeight = this.level.floorTop - (this.level.spawnY - size / 2);
+        const dropHeight = this.level.floorTop - this.level.spawnY;
         const speed = Math.max(this.spawner.speed, 1);
         const lead = Math.min(fallSeconds(speed, dropHeight), config.drop.maxLead);
         const topSpeed = dodger.maxSpeedX;
@@ -453,17 +453,10 @@ export class FaceSmashing {
 
         const scale = dodger.size.width;
         this.effects.spawn({
-            kind: 'impact',
+            kind: 'explosion',
             x: dodger.feet.x,
             y: dodger.feet.y - dodger.size.height / 2,
-            size: scale * 1.8,
-        });
-        this.effects.spawn({
-            kind: 'slash',
-            x: dodger.feet.x,
-            y: dodger.feet.y - dodger.size.height / 2,
-            size: scale * 2.2,
-            angle: strongest.direction > 0 ? 0 : Math.PI,
+            size: scale * 1.4,
         });
         this.effects.spawn({
             kind: 'dust',

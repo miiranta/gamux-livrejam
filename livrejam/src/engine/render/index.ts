@@ -6,3 +6,4 @@ export * from './palette';
 export * from './post-processor';
 export * from './screen';
 export * from './sprite-animation';
+export * from './sprite-fx';

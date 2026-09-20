@@ -57,7 +57,7 @@ class DropperPolicy:
         dodger_vx = torch.where(grounded, vel_x, vel_x * 0.5)
         dodger_vx = torch.clamp(dodger_vx, min=-top_speed, max=top_speed)
 
-        drop_height = cfg.FLOOR_TOP - (cfg.SPAWN_Y - size)
+        drop_height = cfg.FLOOR_TOP - cfg.SPAWN_Y
         lead = torch.clamp(
             fall_seconds(fall_speed, drop_height), max=cfg.DROP_MAX_LEAD
         )

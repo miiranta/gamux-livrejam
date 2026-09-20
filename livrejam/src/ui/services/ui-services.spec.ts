@@ -3,6 +3,9 @@ import { TranslateService } from '@ngx-translate/core';
 import { describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_VOICE_SET } from '../../game/audio';
+import { useReadyCamera } from '../testing/camera-testing';
+import { CameraStatusService, cameraFailureReason } from './camera-status.service';
+import { DebugModeService } from './debug-mode.service';
 import { GameFlowService } from './game-flow.service';
 import { GameSettingsService, formatDuration, parseDuration } from './game-settings.service';
 import { LanguageService } from './language.service';
@@ -111,6 +114,9 @@ describe('parseDuration', () => {
 describe('GameFlowService', () => {
     function createFlow(): GameFlowService {
         TestBed.configureTestingModule({});
+        const camera = useReadyCamera();
+        expect(camera.isReady()).toBe(true);
+
         return TestBed.inject(GameFlowService);
     }
 
@@ -188,6 +194,203 @@ describe('GameFlowService', () => {
         flow.togglePause();
         expect(flow.isPlaying()).toBe(true);
     });
+
+    it('refuses to start a match when the camera is blocked', () => {
+        TestBed.configureTestingModule({});
+        const camera = TestBed.inject(CameraStatusService);
+        camera.markBlocked('blocked', 'denied');
+        const flow = TestBed.inject(GameFlowService);
+
+        flow.startMatch();
+
+        expect(flow.isPlaying()).toBe(false);
+        expect(flow.isMenu()).toBe(true);
+        expect(flow.cameraGate()).toBe(true);
+    });
+
+    it('starts the match once the camera becomes ready', () => {
+        TestBed.configureTestingModule({});
+        const camera = TestBed.inject(CameraStatusService);
+        const flow = TestBed.inject(GameFlowService);
+
+        flow.startMatch();
+        expect(flow.isPlaying()).toBe(false);
+        expect(flow.cameraGate()).toBe(false);
+
+        camera.markReady();
+        TestBed.tick();
+
+        expect(flow.isPlaying()).toBe(true);
+    });
+
+    it('shows the gate instead of starting when the camera fails while warming up', () => {
+        TestBed.configureTestingModule({});
+        const camera = TestBed.inject(CameraStatusService);
+        const flow = TestBed.inject(GameFlowService);
+
+        camera.markStarting();
+        flow.startMatch();
+        expect(flow.isPlaying()).toBe(false);
+
+        camera.markBlocked('busy', 'busy');
+        TestBed.tick();
+
+        expect(flow.cameraGate()).toBe(true);
+        expect(flow.isPlaying()).toBe(false);
+    });
+
+    it('closes the gate and returns to the menu when the camera recovers', () => {
+        TestBed.configureTestingModule({});
+        const camera = TestBed.inject(CameraStatusService);
+        camera.markBlocked('blocked', 'denied');
+        const flow = TestBed.inject(GameFlowService);
+        flow.startMatch();
+        expect(flow.cameraGate()).toBe(true);
+
+        camera.markStarting();
+        expect(flow.cameraGate()).toBe(true);
+
+        camera.markReady();
+        TestBed.tick();
+
+        expect(flow.cameraGate()).toBe(false);
+        expect(flow.isMenu()).toBe(true);
+    });
+
+    it('starts a match on the next Play once the camera recovered', () => {
+        TestBed.configureTestingModule({});
+        const camera = TestBed.inject(CameraStatusService);
+        camera.markBlocked('blocked', 'denied');
+        const flow = TestBed.inject(GameFlowService);
+        flow.startMatch();
+        camera.markReady();
+        TestBed.tick();
+
+        flow.startMatch();
+
+        expect(flow.cameraGate()).toBe(false);
+        expect(flow.isPlaying()).toBe(true);
+    });
+
+    it('closes the gate when the player goes back to the menu', () => {
+        TestBed.configureTestingModule({});
+        const camera = TestBed.inject(CameraStatusService);
+        camera.markBlocked('missing', 'no device');
+        const flow = TestBed.inject(GameFlowService);
+        flow.startMatch();
+
+        flow.abandon();
+
+        expect(flow.cameraGate()).toBe(false);
+        expect(flow.isMenu()).toBe(true);
+    });
+
+    it('skips the camera gate in debug mode', () => {
+        TestBed.configureTestingModule({});
+        const camera = TestBed.inject(CameraStatusService);
+        camera.markBlocked('blocked', 'denied');
+        TestBed.inject(DebugModeService).toggle();
+        const flow = TestBed.inject(GameFlowService);
+
+        flow.startMatch();
+
+        expect(flow.cameraGate()).toBe(false);
+        expect(flow.isPlaying()).toBe(true);
+    });
+
+    it('starts a match straight away in debug mode, before the camera is ready', () => {
+        TestBed.configureTestingModule({});
+        TestBed.inject(DebugModeService).toggle();
+        const flow = TestBed.inject(GameFlowService);
+
+        flow.startMatch();
+
+        expect(flow.cameraGate()).toBe(false);
+        expect(flow.isPlaying()).toBe(true);
+    });
+
+    it('opens the match when debug mode is switched on while the gate is open', () => {
+        TestBed.configureTestingModule({});
+        const camera = TestBed.inject(CameraStatusService);
+        camera.markBlocked('blocked', 'denied');
+        const flow = TestBed.inject(GameFlowService);
+        flow.startMatch();
+        expect(flow.cameraGate()).toBe(true);
+
+        TestBed.inject(DebugModeService).toggle();
+        TestBed.tick();
+
+        expect(flow.cameraGate()).toBe(false);
+        expect(flow.isPlaying()).toBe(true);
+    });
+});
+
+describe('CameraStatusService', () => {
+    function createService(): CameraStatusService {
+        TestBed.configureTestingModule({});
+        return TestBed.inject(CameraStatusService);
+    }
+
+    it('starts idle and neither ready nor blocked', () => {
+        const camera = createService();
+
+        expect(camera.status()).toBe('idle');
+        expect(camera.isReady()).toBe(false);
+        expect(camera.isBlocked()).toBe(false);
+    });
+
+    it('maps DOMException names to failure reasons', () => {
+        const camera = createService();
+
+        camera.markBlocked('busy', 'busy');
+
+        expect(camera.reason()).toBe('busy');
+        expect(camera.failure()?.detail).toBe('busy');
+    });
+
+    it('clears the failure once the camera is ready', () => {
+        const camera = createService();
+        camera.markBlocked('blocked', 'denied');
+
+        camera.markReady();
+
+        expect(camera.failure()).toBeNull();
+        expect(camera.isReady()).toBe(true);
+    });
+
+    it('reports a new starting attempt before the retry token moves', () => {
+        const camera = createService();
+        camera.markBlocked('blocked', 'denied');
+        const before = camera.retryToken();
+
+        camera.requestRetry();
+
+        expect(camera.retryToken()).toBe(before + 1);
+        expect(camera.status()).toBe('blocked');
+
+        camera.markStarting();
+
+        expect(camera.status()).toBe('starting');
+        expect(camera.failure()).toBeNull();
+    });
+});
+
+describe('cameraFailureReason', () => {
+    it('maps the errors browsers raise for camera access', () => {
+        expect(cameraFailureReason(new DOMException('', 'NotAllowedError'))).toBe('blocked');
+        expect(cameraFailureReason(new DOMException('', 'SecurityError'))).toBe('blocked');
+        expect(cameraFailureReason(new DOMException('', 'NotFoundError'))).toBe('missing');
+        expect(cameraFailureReason(new DOMException('', 'NotReadableError'))).toBe('busy');
+        expect(cameraFailureReason(new DOMException('', 'AbortError'))).toBe('busy');
+        expect(cameraFailureReason(new DOMException('', 'OverconstrainedError'))).toBe(
+            'unsupported',
+        );
+    });
+
+    it('falls back to unknown for anything else', () => {
+        expect(cameraFailureReason(new Error('nope'))).toBe('unknown');
+        expect(cameraFailureReason(undefined)).toBe('unknown');
+    });
 });
 
 describe('LanguageService', () => {
@@ -241,3 +444,69 @@ describe('LanguageService', () => {
         expect(setItem).toHaveBeenCalledWith('livrejam.language', 'pt-br');
     });
 });
+
+describe('DebugModeService', () => {
+    function createService(): DebugModeService {
+        TestBed.configureTestingModule({});
+        return TestBed.inject(DebugModeService);
+    }
+
+    it('is disabled by default', () => {
+        expect(createService().isEnabled()).toBe(false);
+    });
+
+    it('toggles when the L key is pressed', () => {
+        const service = createService();
+
+        pressKey('l');
+        expect(service.isEnabled()).toBe(true);
+
+        pressKey('L');
+        expect(service.isEnabled()).toBe(false);
+    });
+
+    it('ignores other keys and key repeats', () => {
+        const service = createService();
+
+        pressKey('k');
+        pressKey('l', { repeat: true });
+        expect(service.isEnabled()).toBe(false);
+    });
+
+    it('toggles from anywhere, including inside an element', () => {
+        const service = createService();
+        const button = attachElement(document.createElement('button'));
+
+        button.dispatchEvent(new KeyboardEvent('keydown', { key: 'l', bubbles: true }));
+
+        expect(service.isEnabled()).toBe(true);
+    });
+
+    it('ignores the key while typing in a text field', () => {
+        const service = createService();
+        const input = attachElement(document.createElement('input'));
+
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'l', bubbles: true }));
+
+        expect(service.isEnabled()).toBe(false);
+    });
+
+    it('stops listening once destroyed', () => {
+        TestBed.configureTestingModule({});
+        TestBed.inject(DebugModeService);
+
+        TestBed.resetTestingModule();
+        pressKey('l');
+
+        expect(TestBed.inject(DebugModeService).isEnabled()).toBe(false);
+    });
+});
+
+function pressKey(key: string, options: KeyboardEventInit = {}): void {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key, ...options }));
+}
+
+function attachElement<T extends HTMLElement>(element: T): T {
+    document.body.append(element);
+    return element;
+}

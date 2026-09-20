@@ -17,7 +17,14 @@ import { IdlePolicy, RemoteDodgerPolicy, type PolicyLike } from '../../../game/a
 import { FACE_SMASHING } from '../../../game/config';
 import { FaceSmashing, type MatchStats } from '../../../game/face-smashing';
 import { HoverSound } from '../../directives';
-import { AudioService, formatDuration, GameFlowService, GameSettingsService, type GameScreen } from '../../services';
+import {
+    AudioService,
+    DebugModeService,
+    formatDuration,
+    GameFlowService,
+    GameSettingsService,
+    type GameScreen,
+} from '../../services';
 
 type CanvasStatus = 'loading' | 'ready' | 'error';
 type ModelStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -50,6 +57,7 @@ export class GameCanvas {
     private readonly flow = inject(GameFlowService);
     private readonly settings = inject(GameSettingsService);
     private readonly audio = inject(AudioService);
+    private readonly debug = inject(DebugModeService);
     private readonly inference = new InferenceWorkerClient({
         url: FACE_SMASHING.ai.modelUrl,
         expectedInputSize: FACE_SMASHING.ai.observationSize,
@@ -67,6 +75,7 @@ export class GameCanvas {
     protected readonly modelStatus = signal<ModelStatus>('idle');
     protected readonly modelMessage = signal('');
     protected readonly stats = signal<MatchStats>(INITIAL_STATS);
+    protected readonly debugMode = this.debug.isEnabled;
     private readonly matchReady = signal(false);
 
     protected readonly showHud = computed(
@@ -177,8 +186,7 @@ export class GameCanvas {
 
         const restarting = token !== this.lastRestartToken;
         const startingMatch =
-            screen === 'playing' &&
-            (this.lastScreen === 'menu' || this.lastScreen === 'game-over');
+            screen === 'playing' && (this.lastScreen === 'menu' || this.lastScreen === 'game-over');
         this.lastRestartToken = token;
         this.lastScreen = screen;
 

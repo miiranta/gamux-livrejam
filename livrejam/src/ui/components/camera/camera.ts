@@ -4,8 +4,11 @@ import {
     DestroyRef,
     ElementRef,
     afterNextRender,
+    booleanAttribute,
     computed,
+    effect,
     inject,
+    input,
     signal,
     viewChild,
 } from '@angular/core';
@@ -17,6 +20,7 @@ import {
     type TrackingFrame,
 } from '../../../engine/tracking';
 import { TrackingWorkerClient } from '../../../engine/tracking/workers';
+import { CameraStatusService, DebugModeService, cameraFailureReason } from '../../services';
 
 type CameraStatus = 'idle' | 'starting' | 'running' | 'error';
 
@@ -41,6 +45,9 @@ interface EyeMarker {
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Camera {
+    /** Hide the built-in veil, for hosts that render their own messaging. */
+    readonly embedded = input(false, { transform: booleanAttribute });
+
     private readonly videoRef = viewChild<ElementRef<HTMLVideoElement>>('video');
     private readonly tracker = new TrackingWorkerClient({
         onFrame: (frame) => this.frame.set(frame),
@@ -48,6 +55,8 @@ export class Camera {
         onReady: (usingGpu) => this.usingGpu.set(usingGpu),
     });
     private readonly destroyRef = inject(DestroyRef);
+    private readonly debug = inject(DebugModeService);
+    private readonly cameraStatus = inject(CameraStatusService);
 
     private stream: MediaStream | null = null;
     private animationFrameId: number | null = null;
@@ -60,6 +69,7 @@ export class Camera {
     protected readonly usingGpu = signal(false);
     protected readonly videoSize = signal({ width: 16, height: 9 });
     protected readonly isRunning = computed(() => this.status() === 'running');
+    protected readonly debugMode = this.debug.isEnabled;
     protected readonly leftEyeClosed = computed(
         () => this.frame()?.face?.leftEye.state === 'closed',
     );
@@ -83,6 +93,15 @@ export class Camera {
     constructor() {
         afterNextRender(() => void this.start());
         this.destroyRef.onDestroy(() => this.stop());
+
+        effect(() => {
+            const retry = this.cameraStatus.retryToken();
+            if (retry === 0 || this.status() === 'starting') {
+                return;
+            }
+
+            void this.start();
+        });
     }
 
     protected async start(): Promise<void> {
@@ -94,6 +113,7 @@ export class Camera {
         this.releaseStream();
         this.status.set('starting');
         this.errorMessage.set('');
+        this.cameraStatus.markStarting();
 
         try {
             const stream = await this.openCamera(session);
@@ -122,6 +142,7 @@ export class Camera {
             }
 
             this.status.set('running');
+            this.cameraStatus.markReady();
             this.loop();
         } catch (error) {
             if (session !== this.session) {
@@ -130,6 +151,7 @@ export class Camera {
             this.releaseStream();
             this.status.set('error');
             this.errorMessage.set(describeError(error));
+            this.cameraStatus.markBlocked(cameraFailureReason(error), describeError(error));
         }
     }
 
@@ -261,6 +283,7 @@ export class Camera {
 
     private fail(message: string): void {
         this.errorMessage.set(message);
+        this.cameraStatus.markBlocked('unknown', message);
         this.stop();
     }
 }

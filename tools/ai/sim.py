@@ -482,7 +482,7 @@ class FaceSmashingSim:
         self.obstacle_item[rows, index] = torch.where(ready, picked, self.obstacle_item[rows, index])
         self.obstacle_x[rows, index] = torch.where(ready, clamped, self.obstacle_x[rows, index])
         self.obstacle_y[rows, index] = torch.where(
-            ready, cfg.SPAWN_Y - half_height, self.obstacle_y[rows, index]
+            ready, cfg.SPAWN_Y - half_height * 2, self.obstacle_y[rows, index]
         )
         self.obstacle_vx[rows, index] = torch.where(ready, drift, self.obstacle_vx[rows, index])
         self.obstacle_vy[rows, index] = torch.where(

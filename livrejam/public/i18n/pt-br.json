@@ -1,77 +1,93 @@
 {
-  "app": {
-    "title": "Quebrando a Cara",
-    "subtitle": "LivreJam 2026"
-  },
-  "menu": {
-    "play": "Jogar",
-    "resume": "Continuar",
-    "restart": "Reiniciar",
-    "abandon": "Abandonar",
-    "configuration": "Configuração",
-    "credits": "Créditos",
-    "language": "Idioma",
-    "back": "Voltar"
-  },
-  "settings": {
-    "audio": "Áudio",
-    "music": "Música",
-    "sfx": "Efeitos sonoros",
-    "voice": "Voz",
-    "voicePreview": "Ouvir uma amostra",
-    "voiceSet": {
-      "set_a": "Normal",
-      "set_b": "Rouco"
+    "app": {
+        "title": "Quebrando a Cara",
+        "subtitle": "LivreJam 2026"
     },
-    "match": "Partida",
-    "matchTime": "Tempo de partida",
-    "matchTimeHint": "Quanto tempo dura cada partida."
-  },
-  "credits": {
-    "title": "Créditos",
-    "empty": "Nada por aqui ainda."
-  },
-  "language": {
-    "title": "Idioma",
-    "en-us": "English (US)",
-    "pt-br": "Português (BR)"
-  },
-  "fullscreen": {
-    "enter": "Entrar em tela cheia",
-    "exit": "Sair da tela cheia"
-  },
-  "hud": {
-    "score": "Pontos",
-    "best": "Recorde",
-    "survived": "Sobreviveu",
-    "dodges": "Desvios",
-    "nearMisses": "Quase",
-    "maxSpeed": "Vel. máxima",
-    "dropSpeed": "Queda",
-    "ai": "IA",
-    "policy": "política",
-    "pause": "Pausar",
-    "loading": "Carregando a masmorra…",
-    "hint": "A / D mover · S acelerar queda · Espaço soltar · a IA pilota o personagem",
-    "state": {
-      "idle": "ociosa",
-      "loading": "carregando",
-      "error": "erro"
+    "menu": {
+        "play": "Jogar",
+        "resume": "Continuar",
+        "restart": "Reiniciar",
+        "abandon": "Abandonar",
+        "configuration": "Configuração",
+        "credits": "Créditos",
+        "language": "Idioma",
+        "back": "Voltar"
     },
-    "dev": {
-      "reloadAi": "Recarregar IA",
-      "faster": "Rapido",
-      "colliders": "Colisores"
+    "settings": {
+        "audio": "Áudio",
+        "music": "Música",
+        "sfx": "Efeitos sonoros",
+        "voice": "Voz",
+        "voicePreview": "Ouvir uma amostra",
+        "voiceSet": {
+            "set_a": "Normal",
+            "set_b": "Rouco"
+        },
+        "match": "Partida",
+        "matchTime": "Tempo de partida",
+        "matchTimeHint": "Quanto tempo dura cada partida."
     },
-    "damage": "Dano",
-    "tier": "Nivel",
-    "dash": "Avanco"
-  },
-  "end": {
-    "title": "It's over...",
-    "subtitle": "Não sobra nada",
-    "score": "Pontos",
-    "retry": "Tentar de novo",
-    "exit": "Sair"
-  }
+    "credits": {
+        "title": "Créditos",
+        "empty": "Nada por aqui ainda."
+    },
+    "language": {
+        "title": "Idioma",
+        "en-us": "English (US)",
+        "pt-br": "Português (BR)"
+    },
+    "fullscreen": {
+        "enter": "Entrar em tela cheia",
+        "exit": "Sair da tela cheia"
+    },
+    "camera": {
+        "gate": {
+            "title": "Câmera necessária",
+            "hint": "Quebrando a Cara controla o personagem com o seu rosto. Permita o acesso à câmera para jogar.",
+            "retry": "Verificar de novo",
+            "checking": "Verificando…",
+            "back": "Voltar ao menu",
+            "reason": {
+                "blocked": "O acesso à câmera está bloqueado. Permita nas configurações do site no navegador e verifique de novo.",
+                "missing": "Nenhuma câmera foi encontrada neste dispositivo. Conecte uma e verifique de novo.",
+                "busy": "A câmera está em uso por outro app ou aba. Feche-o e verifique de novo.",
+                "unsupported": "A câmera não suporta as configurações que o jogo precisa.",
+                "unknown": "Não foi possível iniciar a câmera."
+            }
+        }
+    },
+    "hud": {
+        "score": "Pontos",
+        "best": "Recorde",
+        "survived": "Sobreviveu",
+        "dodges": "Desvios",
+        "nearMisses": "Quase",
+        "maxSpeed": "Vel. máxima",
+        "dropSpeed": "Queda",
+        "ai": "IA",
+        "policy": "política",
+        "pause": "Pausar",
+        "loading": "Carregando a masmorra…",
+        "hint": "A / D mover · S acelerar queda · Espaço soltar · a IA pilota o personagem",
+        "state": {
+            "idle": "ociosa",
+            "loading": "carregando",
+            "error": "erro"
+        },
+        "dev": {
+            "reloadAi": "Recarregar IA",
+            "faster": "Rapido",
+            "colliders": "Colisores"
+        },
+        "damage": "Dano",
+        "tier": "Nivel",
+        "dash": "Avanco"
+    },
+    "end": {
+        "title": "It's over...",
+        "subtitle": "Não sobra nada",
+        "score": "Pontos",
+        "retry": "Tentar de novo",
+        "exit": "Sair"
+    }
 }

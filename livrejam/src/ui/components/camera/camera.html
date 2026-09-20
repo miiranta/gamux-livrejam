@@ -29,63 +29,65 @@
     }
 
     @if (isRunning()) {
-        <div class="camera__hud">
-            <div class="camera__pills">
-                <span class="camera__pill" [class.camera__pill--alert]="leftEyeClosed()">
-                    <i class="camera__dot"></i>
-                    Left eye
-                    <b>{{ leftEyeClosed() ? 'closed' : 'open' }}</b>
-                </span>
-                <span class="camera__pill" [class.camera__pill--alert]="rightEyeClosed()">
-                    <i class="camera__dot"></i>
-                    Right eye
-                    <b>{{ rightEyeClosed() ? 'closed' : 'open' }}</b>
-                </span>
-                <span class="camera__pill" [class.camera__pill--alert]="mouthOpen()">
-                    <i class="camera__dot"></i>
-                    Mouth
-                    <b>{{ mouthOpen() ? 'open' : 'closed' }}</b>
-                </span>
-                <span class="camera__pill" [class.camera__pill--gesture]="sigmaActive()">
-                    <i class="camera__dot"></i>
-                    Sigma
-                    <b>{{ sigmaActive() ? 'yes' : 'no' }}</b>
-                </span>
-                <span class="camera__pill" [class.camera__pill--gesture]="sixtySevenActive()">
-                    <i class="camera__dot"></i>
-                    67
-                    <b>{{ sixtySevenLevel() }}%</b>
-                </span>
-                <span class="camera__pill camera__pill--delegate">
-                    {{ usingGpu() ? 'GPU' : 'CPU' }}
-                </span>
-            </div>
-
-            <div class="camera__hands">
-                <span class="camera__hands-title">
-                    Hands
-                    <b>{{ frame()?.hands?.length ?? 0 }}</b>
-                </span>
-
-                @for (hand of frame()?.hands ?? []; track $index) {
-                    <span class="camera__hand-chip">
-                        <i class="camera__hand-dot"></i>
-                        {{ hand.handedness }}
-                        <em>{{ formatPosition(hand.center) }}</em>
+        @if (debugMode()) {
+            <div class="camera__hud">
+                <div class="camera__pills">
+                    <span class="camera__pill" [class.camera__pill--alert]="leftEyeClosed()">
+                        <i class="camera__dot"></i>
+                        Left eye
+                        <b>{{ leftEyeClosed() ? 'closed' : 'open' }}</b>
                     </span>
-                }
+                    <span class="camera__pill" [class.camera__pill--alert]="rightEyeClosed()">
+                        <i class="camera__dot"></i>
+                        Right eye
+                        <b>{{ rightEyeClosed() ? 'closed' : 'open' }}</b>
+                    </span>
+                    <span class="camera__pill" [class.camera__pill--alert]="mouthOpen()">
+                        <i class="camera__dot"></i>
+                        Mouth
+                        <b>{{ mouthOpen() ? 'open' : 'closed' }}</b>
+                    </span>
+                    <span class="camera__pill" [class.camera__pill--gesture]="sigmaActive()">
+                        <i class="camera__dot"></i>
+                        Sigma
+                        <b>{{ sigmaActive() ? 'yes' : 'no' }}</b>
+                    </span>
+                    <span class="camera__pill" [class.camera__pill--gesture]="sixtySevenActive()">
+                        <i class="camera__dot"></i>
+                        67
+                        <b>{{ sixtySevenLevel() }}%</b>
+                    </span>
+                    <span class="camera__pill camera__pill--delegate">
+                        {{ usingGpu() ? 'GPU' : 'CPU' }}
+                    </span>
+                </div>
+
+                <div class="camera__hands">
+                    <span class="camera__hands-title">
+                        Hands
+                        <b>{{ frame()?.hands?.length ?? 0 }}</b>
+                    </span>
+
+                    @for (hand of frame()?.hands ?? []; track $index) {
+                        <span class="camera__hand-chip">
+                            <i class="camera__hand-dot"></i>
+                            {{ hand.handedness }}
+                            <em>{{ formatPosition(hand.center) }}</em>
+                        </span>
+                    }
+                </div>
             </div>
-        </div>
+        }
     }
 
-    @if (status() === 'starting') {
+    @if (status() === 'starting' && !embedded()) {
         <div class="camera__veil">
             <span class="camera__spinner"></span>
             <p>Starting camera…</p>
         </div>
     }
 
-    @if (status() === 'error') {
+    @if (status() === 'error' && !embedded()) {
         <div class="camera__veil camera__veil--error">
             <p>{{ errorMessage() }}</p>
             <button type="button" (click)="retry()">Try again</button>

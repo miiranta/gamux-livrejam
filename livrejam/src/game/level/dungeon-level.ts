@@ -1,12 +1,16 @@
 import type { SolidBox } from '../../engine/physics';
 import { solidBox } from '../../engine/physics';
 import { TileGrid } from '../../engine/level';
+import type { AutotileCell } from '../../engine/level';
+import { planAutotiles } from '../../engine/level';
+import { TREASURE_HUNTERS_AUTOTILE } from '../assets';
+import { FACE_SMASHING } from '../config';
 import type { DecorationPlan } from './decoration-plan';
 import { planDecorations } from './decoration-plan';
-import { FACE_SMASHING } from '../config';
 
 export interface DungeonLevel {
     grid: TileGrid;
+    tiles: AutotileCell[];
     decorations: DecorationPlan;
     colliders: SolidBox[];
     solid: ReadonlySet<string>;
@@ -41,26 +45,16 @@ export function createDungeonLevel(): DungeonLevel {
         }
     }
 
+    const isSolid = (column: number, row: number): boolean => solid.has(`${column},${row}`);
     const floorTop = grid.rowY(floorRow);
     const ceilingRows = Math.min(CEILING_ROWS, Math.max(0, floorRow - 2));
     const ceilingBottom = grid.rowY(ceilingRows);
 
     const level: DungeonLevel = {
         grid,
-        decorations: {
-            ceiling: [],
-            ground: [],
-            struts: [],
-        },
-        colliders: mergeColliders(
-            solid,
-            columns,
-            rows,
-            grid.tileSize,
-            LAYER_WALL,
-            LAYER_FLOOR,
-            floorRow,
-        ),
+        tiles: planAutotiles(columns, rows, isSolid, TREASURE_HUNTERS_AUTOTILE),
+        decorations: { props: [], emitters: [] },
+        colliders: mergeColliders(solid, columns, rows, grid.tileSize, floorRow),
         solid,
         ceilingRows,
         ceilingBottom,
@@ -81,8 +75,6 @@ function mergeColliders(
     columns: number,
     rows: number,
     tileSize: number,
-    wallLayer: number,
-    floorLayer: number,
     floorRow: number,
 ): SolidBox[] {
     const colliders: SolidBox[] = [];
@@ -104,7 +96,7 @@ function mergeColliders(
                             width: (column - runStart) * tileSize,
                             height: tileSize,
                         },
-                        row >= floorRow ? floorLayer : wallLayer,
+                        row >= floorRow ? LAYER_FLOOR : LAYER_WALL,
                     ),
                 );
                 runStart = -1;

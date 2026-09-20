@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
 
 import { Camera } from '../ui/components/camera/camera';
+import { CameraGate } from '../ui/components/camera-gate/camera-gate';
 import { GameCanvas } from '../ui/components/game-canvas/game-canvas';
 import { EndGame } from '../ui/pages/end-game/end-game';
 import { MainMenu } from '../ui/pages/main-menu/main-menu';
@@ -17,7 +18,7 @@ import { GameFlowService } from '../ui/services';
  */
 @Component({
     selector: 'app-root',
-    imports: [Camera, EndGame, GameCanvas, MainMenu, PauseMenu],
+    imports: [Camera, CameraGate, EndGame, GameCanvas, MainMenu, PauseMenu],
     templateUrl: './app.html',
     styleUrl: './app.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,

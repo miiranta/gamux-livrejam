@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AudioEngine, type AudioChannel } from '../../game/audio';
+import { useReadyCamera } from '../testing/camera-testing';
 import { AudioService, SOUND_EFFECTS } from './audio.service';
 import { GameFlowService } from './game-flow.service';
 import { GameSettingsService } from './game-settings.service';
@@ -39,6 +40,7 @@ describe('AudioService', () => {
 
     beforeEach(() => {
         TestBed.configureTestingModule({});
+        useReadyCamera();
         service = TestBed.inject(AudioService);
         settings = TestBed.inject(GameSettingsService);
         flow = TestBed.inject(GameFlowService);

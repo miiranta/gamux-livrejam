@@ -36,24 +36,46 @@ describe('createDungeonLevel', () => {
         expect(level.despawnY).toBeGreaterThan(level.grid.bottom);
     });
 
-    it('reaches past the play area so no seam shows at the arena border', () => {
-        const ground = level.decorations.ground;
-        const first = level.grid.columnAt(level.playLeft) - 1;
-        const last = level.grid.columnAt(level.playRight);
+    it('resolves one autotile variant per solid cell', () => {
+        const solidCells = level.tiles.length;
+        const solidCount = level.solid.size;
 
-        expect(ground[0].column).toBe(first);
-        expect(ground[ground.length - 1].column).toBe(last);
+        expect(solidCells).toBe(solidCount);
+        expect(new Set(level.tiles.map((tile) => `${tile.column},${tile.row}`)).size).toBe(solidCells);
     });
 
-    it('leaves vertical gaps in the struts so they do not read as a solid wall', () => {
-        const columns = new Set(level.decorations.struts.map((piece) => piece.column));
+    it('uses the left-wall variant for a wall tile with a solid right side', () => {
+        const leftEdge = level.tiles.find((tile) => tile.column === 0 && tile.row === 1);
+
+        expect(leftEdge).toBeDefined();
+        expect(leftEdge!.index).toBe(39);
+    });
+
+    it('uses the floor surface variant for the top of the floor slab', () => {
         const floorRow = level.grid.rowAt(level.floorTop);
+        const surface = level.tiles.find((tile) => tile.column === 5 && tile.row === floorRow);
 
-        expect(columns.size).toBeGreaterThan(0);
-        for (const column of columns) {
-            const rows = level.decorations.struts.filter((piece) => piece.column === column);
+        expect(surface).toBeDefined();
+        expect(surface!.index).toBe(97);
+    });
 
-            expect(rows.length).toBeLessThan(floorRow - level.ceilingRows);
+    it('keeps the arena a solid U shape with no gaps in the floor', () => {
+        const floorRow = level.grid.rowAt(level.floorTop);
+        const thickness = level.grid.columnAt(level.playLeft);
+
+        for (let column = thickness; column < level.grid.columns - thickness; column++) {
+            expect(level.solid.has(`${column},${floorRow}`)).toBe(true);
+        }
+    });
+
+    it('has no floating platforms inside the arena', () => {
+        const floorRow = level.grid.rowAt(level.floorTop);
+        const thickness = level.grid.columnAt(level.playLeft);
+
+        for (let row = level.ceilingRows; row < floorRow; row++) {
+            for (let column = thickness; column < level.grid.columns - thickness; column++) {
+                expect(level.solid.has(`${column},${row}`)).toBe(false);
+            }
         }
     });
 

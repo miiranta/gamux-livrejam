@@ -3,7 +3,8 @@ import { TranslateService } from '@ngx-translate/core';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { provideTestTranslate, useTestTranslations } from '../ui/testing/i18n-testing';
-import { GameFlowService } from '../ui/services';
+import { useReadyCamera } from '../ui/testing/camera-testing';
+import { CameraStatusService, GameFlowService } from '../ui/services';
 import { App } from './app';
 
 describe('App', () => {
@@ -13,6 +14,7 @@ describe('App', () => {
             providers: provideTestTranslate(),
         }).compileComponents();
         useTestTranslations(TestBed.inject(TranslateService));
+        useReadyCamera();
     });
 
     it('should create the app', () => {
@@ -61,7 +63,9 @@ describe('App', () => {
         const shell = host(fixture);
         expect(shell.querySelector('app-main-menu')).toBeNull();
         expect(
-            shell.querySelector('.app-shell__match')!.classList.contains('app-shell__match--hidden'),
+            shell
+                .querySelector('.app-shell__match')!
+                .classList.contains('app-shell__match--hidden'),
         ).toBe(false);
     });
 
@@ -87,6 +91,23 @@ describe('App', () => {
         fixture.detectChanges();
 
         expect(host(fixture).querySelector('app-end-game')).not.toBeNull();
+    });
+
+    it('shows the camera popup instead of the match when the camera is blocked', () => {
+        const fixture = TestBed.createComponent(App);
+        TestBed.inject(CameraStatusService).markBlocked('blocked', 'denied');
+        const flow = TestBed.inject(GameFlowService);
+
+        flow.startMatch();
+        fixture.detectChanges();
+
+        const shell = host(fixture);
+        expect(shell.querySelector('app-camera-gate')).not.toBeNull();
+        expect(
+            shell
+                .querySelector('.app-shell__match')!
+                .classList.contains('app-shell__match--hidden'),
+        ).toBe(true);
     });
 });
 

@@ -1,161 +1,172 @@
 import { valueNoise } from '../../engine/math';
-import type { CeilingKey, GroundKey, StrutKey } from '../assets';
+import { PROP_SPRITES, type PropSpriteKey } from '../assets';
 import type { DungeonLevel } from './dungeon-level';
 
-const GROUND_KINDS: readonly GroundKey[] = ['stone', 'grate', 'plate', 'rubble', 'cobble'];
-const GROUND_WEIGHTS = [31, 22, 17, 16, 14];
-const CEILING_KINDS: readonly CeilingKey[] = ['panel', 'slab', 'lattice', 'girder'];
-const CEILING_WEIGHTS = [42, 31, 15, 12];
-const STRUT_KINDS: readonly StrutKey[] = ['pillar', 'segment', 'capital', 'pier'];
-const STRUT_WEIGHTS = [36, 26, 22, 16];
+export type PropKind = PropSpriteKey;
+export type PropAnchor = 'floor' | 'ceiling' | 'wall';
+export type ParticleKind = 'dust' | 'sparkle' | 'ember';
 
-const GROUND_KIND_SEED = 0x9e3779b1;
-const GROUND_SPILL_SEED = 0x7ed55d16;
-const CEILING_KIND_SEED = 0x1b873593;
-const CEILING_SHADE_SEED = 0x5bf03635;
-const STRUT_KIND_SEED = 0x2f1a9c3d;
-const STRUT_PLACE_SEED = 0x6d2b79f5;
-const STRUT_RUN_SEED = 0x3c6ef372;
-
-const STRUT_STRIDE = 3;
-const STRUT_MARGIN = 1;
-const STRUT_CHANCE = 0.42;
-const STRUT_GAP_MIN = 1;
-const STRUT_GAP_MAX = 4;
-const STRUT_RUN_MIN = 3;
-const STRUT_RUN_MAX = 8;
-const CEILING_LIT_ROWS = 1;
-
-export interface GroundPiece {
-    column: number;
-    row: number;
-    kind: GroundKey;
-    spill: GroundKey;
+export interface PropPlacement {
+    kind: PropKind;
+    x: number;
+    y: number;
+    anchor: PropAnchor;
+    scale: number;
+    flip: boolean;
+    depth: number;
+    glow: number;
+    sway: number;
 }
 
-export interface CeilingPiece {
-    column: number;
-    row: number;
-    kind: CeilingKey;
-}
-
-export interface StrutPiece {
-    column: number;
-    row: number;
-    kind: StrutKey;
+export interface ParticleEmitter {
+    kind: ParticleKind;
+    x: number;
+    y: number;
+    rate: number;
+    spread: number;
+    rise: number;
 }
 
 export interface DecorationPlan {
-    ceiling: CeilingPiece[];
-    ground: GroundPiece[];
-    struts: StrutPiece[];
+    props: PropPlacement[];
+    emitters: ParticleEmitter[];
+}
+
+const PROP_SEED = 0x51ed270b;
+const EMITTER_SEED = 0x2545f491;
+
+const FLOOR_KINDS: readonly PropKind[] = ['crate', 'candle', 'bottles'];
+const WALL_KINDS: readonly PropKind[] = ['cannon'];
+const CEILING_KINDS: readonly PropKind[] = ['chainSmall', 'chainBig', 'chainSmall', 'chainBig'];
+
+const FLOOR_SLOTS = 9;
+const WALL_SLOTS = 4;
+const CEILING_SLOTS = 7;
+const CEILING_INSET = 0.06;
+
+/** Distance from the ceiling row to the visible bottom of the beam plank. */
+const BEAM_PLANK_BOTTOM = 11;
+
+export function propSprite(kind: PropKind): { width: number; height: number } {
+    const sprite = PROP_SPRITES[kind];
+
+    return { width: sprite.width, height: sprite.height };
 }
 
 export function planDecorations(level: DungeonLevel): DecorationPlan {
-    const { grid, floorTop } = level;
-    const floorRow = grid.rowAt(floorTop);
-    const thickness = grid.columnAt(level.playLeft);
+    const props: PropPlacement[] = [
+        ...planFloor(level),
+        ...planWalls(level),
+        ...planCeiling(level),
+    ];
 
-    return {
-        ceiling: planCeiling(level, thickness),
-        ground: planGround(level, floorRow, thickness),
-        struts: planStruts(level, floorRow),
-    };
+    return { props, emitters: planEmitters(level) };
 }
 
-function planGround(level: DungeonLevel, floorRow: number, thickness: number): GroundPiece[] {
+function planFloor(level: DungeonLevel): PropPlacement[] {
     const { grid } = level;
-    const pieces: GroundPiece[] = [];
-    const first = thickness - 1;
-    const last = grid.columns - thickness;
+    const tile = grid.tileSize;
+    const props: PropPlacement[] = [];
+    const leftBandEnd = level.playLeft + (level.playRight - level.playLeft) * 0.32;
+    const rightBandStart = level.playLeft + (level.playRight - level.playLeft) * 0.68;
 
-    for (let column = first; column <= last; column++) {
-        pieces.push({
-            column,
-            row: floorRow,
-            kind: pick(GROUND_KINDS, GROUND_WEIGHTS, column, floorRow, GROUND_KIND_SEED),
-            spill: pick(GROUND_KINDS, GROUND_WEIGHTS, column, floorRow, GROUND_SPILL_SEED),
+    for (let index = 0; index < FLOOR_SLOTS; index++) {
+        const kind = FLOOR_KINDS[index % FLOOR_KINDS.length];
+        const onLeft = index % 2 === 0;
+        const band = onLeft ? level.playLeft : rightBandStart;
+        const bandEnd = onLeft ? leftBandEnd : level.playRight;
+        const jitter = valueNoise(index, 1, PROP_SEED);
+        const x = band + jitter * (bandEnd - band);
+        const scale = 1.05 + valueNoise(index, 2, PROP_SEED) * 0.5;
+        const candle = kind === 'candle';
+
+        props.push({
+            kind,
+            x,
+            y: level.floorTop - tile * 0.06,
+            anchor: 'floor',
+            scale,
+            flip: valueNoise(index, 3, PROP_SEED) < 0.5,
+            depth: 2,
+            glow: candle ? 0.85 : 0,
+            sway: 0,
         });
     }
 
-    return pieces;
+    return props;
 }
 
-function planCeiling(level: DungeonLevel, thickness: number): CeilingPiece[] {
+function planWalls(level: DungeonLevel): PropPlacement[] {
     const { grid } = level;
-    const rows = Math.min(level.ceilingRows, Math.max(0, grid.rowAt(level.floorTop) - 1));
-    const pieces: CeilingPiece[] = [];
-    const first = thickness - 1;
-    const last = grid.columns - thickness;
+    const tile = grid.tileSize;
+    const props: PropPlacement[] = [];
+    const span = level.floorTop - level.ceilingBottom;
 
-    for (let row = 0; row < rows; row++) {
-        const seed = row < CEILING_LIT_ROWS ? CEILING_KIND_SEED : CEILING_SHADE_SEED;
+    for (let index = 0; index < WALL_SLOTS; index++) {
+        const kind = WALL_KINDS[index % WALL_KINDS.length];
+        const onLeft = index % 2 === 0;
+        const x = onLeft ? level.playLeft - tile * 0.25 : level.playRight + tile * 0.25;
+        const slot = valueNoise(index, 4, PROP_SEED);
+        const y = level.ceilingBottom + tile + slot * Math.max(span - tile * 2, tile);
+        const scale = 1.2 + valueNoise(index, 5, PROP_SEED) * 0.4;
 
-        for (let column = first; column <= last; column++) {
-            pieces.push({
-                column,
-                row,
-                kind: pick(CEILING_KINDS, CEILING_WEIGHTS, column, row, seed),
-            });
-        }
+        props.push({
+            kind,
+            x,
+            y,
+            anchor: 'wall',
+            scale,
+            flip: !onLeft,
+            depth: 1,
+            glow: 0,
+            sway: 0,
+        });
     }
 
-    return pieces;
+    return props;
 }
 
-function planStruts(level: DungeonLevel, floorRow: number): StrutPiece[] {
+function planCeiling(level: DungeonLevel): PropPlacement[] {
     const { grid } = level;
-    const pieces: StrutPiece[] = [];
-    const first = -STRUT_MARGIN;
-    const last = grid.columns + STRUT_MARGIN;
-    const top = level.ceilingRows;
-    const span = Math.max(1, floorRow - top);
-    let column = first;
+    const props: PropPlacement[] = [];
+    const span = level.playRight - level.playLeft;
+    const inset = span * CEILING_INSET;
+    const hang = level.ceilingBottom - grid.tileSize + BEAM_PLANK_BOTTOM;
 
-    while (column <= last) {
-        const present = valueNoise(column, 1, STRUT_PLACE_SEED) < STRUT_CHANCE;
+    for (let index = 0; index < CEILING_SLOTS; index++) {
+        const kind = CEILING_KINDS[index % CEILING_KINDS.length];
+        const x = level.playLeft + inset + valueNoise(index, 6, PROP_SEED) * (span - inset * 2);
+        const scale = 0.9 + valueNoise(index, 7, PROP_SEED) * 0.7;
 
-        if (!present) {
-            column +=
-                STRUT_GAP_MIN +
-                Math.floor(valueNoise(column, 2, STRUT_PLACE_SEED) * (STRUT_GAP_MAX - STRUT_GAP_MIN + 1));
-            continue;
-        }
-
-        const kind = pick(STRUT_KINDS, STRUT_WEIGHTS, column, 0, STRUT_KIND_SEED);
-        const run =
-            STRUT_RUN_MIN +
-            Math.floor(valueNoise(column, 3, STRUT_RUN_SEED) * (STRUT_RUN_MAX - STRUT_RUN_MIN + 1));
-        const height = Math.min(run, span);
-        const offset = Math.floor(valueNoise(column, 4, STRUT_RUN_SEED) * Math.max(1, span - height + 1));
-        const start = top + offset;
-
-        for (let row = start; row < start + height; row++) {
-            pieces.push({ column, row, kind });
-        }
-
-        column += 1;
+        props.push({
+            kind,
+            x,
+            y: hang,
+            anchor: 'ceiling',
+            scale,
+            flip: valueNoise(index, 8, PROP_SEED) < 0.5,
+            depth: 0,
+            glow: 0,
+            sway: 0.5 + valueNoise(index, 9, PROP_SEED) * 0.8,
+        });
     }
 
-    return pieces;
+    return props;
 }
 
-function pick<TKey extends string>(
-    kinds: readonly TKey[],
-    weights: readonly number[],
-    column: number,
-    row: number,
-    seed: number,
-): TKey {
-    const total = weights.reduce((sum, weight) => sum + weight, 0);
-    let threshold = valueNoise(column, row, seed) * total;
+function planEmitters(level: DungeonLevel): ParticleEmitter[] {
+    const emitters: ParticleEmitter[] = [];
 
-    for (let index = 0; index < kinds.length; index++) {
-        threshold -= weights[index];
-        if (threshold <= 0) {
-            return kinds[index];
-        }
+    for (let index = 0; index < 3; index++) {
+        emitters.push({
+            kind: 'sparkle',
+            x: level.playLeft + valueNoise(index, 13, EMITTER_SEED) * (level.playRight - level.playLeft),
+            y: level.floorTop - level.grid.tileSize * (1 + valueNoise(index, 14, EMITTER_SEED) * 2),
+            rate: 0.3 + valueNoise(index, 15, EMITTER_SEED) * 0.6,
+            spread: 26,
+            rise: 0.6,
+        });
     }
 
-    return kinds[kinds.length - 1];
+    return emitters;
 }

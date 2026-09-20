@@ -1,77 +1,93 @@
 {
-  "app": {
-    "title": "Face Smashing",
-    "subtitle": "LivreJam 2026"
-  },
-  "menu": {
-    "play": "Play",
-    "resume": "Resume",
-    "restart": "Restart",
-    "abandon": "Abandon",
-    "configuration": "Configuration",
-    "credits": "Credits",
-    "language": "Language",
-    "back": "Back"
-  },
-  "settings": {
-    "audio": "Audio",
-    "music": "Music",
-    "sfx": "Sound effects",
-    "voice": "Voice",
-    "voicePreview": "Listen to a sample",
-    "voiceSet": {
-      "set_a": "Normal",
-      "set_b": "Hoarse"
+    "app": {
+        "title": "Face Smashing",
+        "subtitle": "LivreJam 2026"
     },
-    "match": "Match",
-    "matchTime": "Match time",
-    "matchTimeHint": "How long each match lasts."
-  },
-  "credits": {
-    "title": "Credits",
-    "empty": "Nothing here yet."
-  },
-  "language": {
-    "title": "Language",
-    "en-us": "English (US)",
-    "pt-br": "Português (BR)"
-  },
-  "fullscreen": {
-    "enter": "Enter fullscreen",
-    "exit": "Exit fullscreen"
-  },
-  "hud": {
-    "score": "Score",
-    "best": "Best",
-    "survived": "Survived",
-    "dodges": "Dodges",
-    "nearMisses": "Near",
-    "maxSpeed": "Max speed",
-    "dropSpeed": "Drop",
-    "ai": "AI",
-    "policy": "policy",
-    "pause": "Pause",
-    "loading": "Loading the dungeon…",
-    "hint": "A / D move · S fast fall · Space drop · the AI drives the character",
-    "state": {
-      "idle": "idle",
-      "loading": "loading",
-      "error": "error"
+    "menu": {
+        "play": "Play",
+        "resume": "Resume",
+        "restart": "Restart",
+        "abandon": "Abandon",
+        "configuration": "Configuration",
+        "credits": "Credits",
+        "language": "Language",
+        "back": "Back"
     },
-    "dev": {
-      "reloadAi": "Reload AI",
-      "faster": "Faster",
-      "colliders": "Colliders"
+    "settings": {
+        "audio": "Audio",
+        "music": "Music",
+        "sfx": "Sound effects",
+        "voice": "Voice",
+        "voicePreview": "Listen to a sample",
+        "voiceSet": {
+            "set_a": "Normal",
+            "set_b": "Hoarse"
+        },
+        "match": "Match",
+        "matchTime": "Match time",
+        "matchTimeHint": "How long each match lasts."
     },
-    "damage": "Damage",
-    "tier": "Tier",
-    "dash": "Dash"
-  },
-  "end": {
-    "title": "It's over...",
-    "subtitle": "Não sobra nada",
-    "score": "Score",
-    "retry": "Retry",
-    "exit": "Exit"
-  }
+    "credits": {
+        "title": "Credits",
+        "empty": "Nothing here yet."
+    },
+    "language": {
+        "title": "Language",
+        "en-us": "English (US)",
+        "pt-br": "Português (BR)"
+    },
+    "fullscreen": {
+        "enter": "Enter fullscreen",
+        "exit": "Exit fullscreen"
+    },
+    "camera": {
+        "gate": {
+            "title": "Camera needed",
+            "hint": "Face Smashing controls the character with your face. Allow camera access to play.",
+            "retry": "Check again",
+            "checking": "Checking…",
+            "back": "Back to menu",
+            "reason": {
+                "blocked": "Camera access is blocked. Allow it in your browser's site settings, then check again.",
+                "missing": "No camera was found on this device. Connect one, then check again.",
+                "busy": "The camera is busy in another app or tab. Close it, then check again.",
+                "unsupported": "The camera does not support the settings the game needs.",
+                "unknown": "The camera could not be started."
+            }
+        }
+    },
+    "hud": {
+        "score": "Score",
+        "best": "Best",
+        "survived": "Survived",
+        "dodges": "Dodges",
+        "nearMisses": "Near",
+        "maxSpeed": "Max speed",
+        "dropSpeed": "Drop",
+        "ai": "AI",
+        "policy": "policy",
+        "pause": "Pause",
+        "loading": "Loading the dungeon…",
+        "hint": "A / D move · S fast fall · Space drop · the AI drives the character",
+        "state": {
+            "idle": "idle",
+            "loading": "loading",
+            "error": "error"
+        },
+        "dev": {
+            "reloadAi": "Reload AI",
+            "faster": "Faster",
+            "colliders": "Colliders"
+        },
+        "damage": "Damage",
+        "tier": "Tier",
+        "dash": "Dash"
+    },
+    "end": {
+        "title": "It's over...",
+        "subtitle": "Não sobra nada",
+        "score": "Score",
+        "retry": "Retry",
+        "exit": "Exit"
+    }
 }

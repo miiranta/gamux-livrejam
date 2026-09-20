@@ -1,7 +1,7 @@
 import type { SpriteTimeline } from '../../engine/render';
 import { stepOnce } from '../../engine/render';
 
-export type EffectKind = 'impact' | 'slash' | 'dust';
+export type EffectKind = 'impact' | 'slash' | 'dust' | 'explosion';
 
 export interface Effect {
     kind: EffectKind;

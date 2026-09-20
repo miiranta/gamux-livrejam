@@ -1,0 +1,81 @@
+:host {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    display: grid;
+    place-items: center;
+    overflow: auto;
+    padding: 1.5rem;
+}
+
+.camera-gate__backdrop {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 50% 40%, rgb(28 22 16 / 40%) 0%, transparent 62%),
+        rgb(4 3 3 / 96%);
+    animation: camera-gate-fade 0.25s ease-out both;
+}
+
+.camera-gate__panel {
+    position: relative;
+    width: min(90vw, 26rem);
+    animation: camera-gate-in 0.3s var(--lj-punch) both;
+}
+
+.camera-gate__body {
+    display: grid;
+    justify-items: center;
+    gap: 1rem;
+}
+
+.camera-gate__preview {
+    width: min(40vh, 12rem);
+}
+
+.camera-gate__copy {
+    display: grid;
+    gap: 0.5rem;
+    text-align: center;
+}
+
+.camera-gate__reason {
+    margin: 0;
+    color: var(--lj-ink);
+    font-size: 1.05rem;
+    line-height: 1.4;
+}
+
+.camera-gate__hint {
+    margin: 0;
+    color: var(--lj-ink-dim);
+    font-size: 0.85rem;
+    line-height: 1.45;
+}
+
+.camera-gate__detail {
+    margin: 0;
+    color: var(--lj-line-hi);
+    font-family: ui-monospace, monospace;
+    font-size: 0.7rem;
+    line-height: 1.4;
+}
+
+.camera-gate__actions {
+    display: grid;
+    gap: 0.6rem;
+    margin-top: 1.4rem;
+}
+
+@keyframes camera-gate-fade {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes camera-gate-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.75rem) scale(0.94);
+    }
+}

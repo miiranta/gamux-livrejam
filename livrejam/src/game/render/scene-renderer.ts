@@ -1,5 +1,5 @@
-import { CanvasRenderer, drawSheetSprite } from '../../engine/render';
-import type { Camera } from '../../engine/render';
+import { CanvasRenderer, applyFx, createFxState, drawSheetSprite, shakeOffset, wobble } from '../../engine/render';
+import type { Camera, SpriteFxState } from '../../engine/render';
 import { clampFrame } from '../../engine/entities';
 import { clamp } from '../../engine/math';
 import type { CharacterAnimationKey, CharacterTierSprites, DungeonSprites } from '../assets';
@@ -9,11 +9,13 @@ import type { DungeonLevel } from '../level';
 import type { Effect, ScorePopup } from '../systems';
 import { scorePopupPose } from '../systems';
 import { FACE_SMASHING } from '../config';
-import { BackdropPainter } from './backdrop-painter';
+import { ParticleSystem } from './particle-system';
+import { PropPainter } from './prop-painter';
 import { TerrainRenderer } from './terrain-renderer';
 
 const CHARACTER_FRAME_SIZE = 64;
 const FOOT_OFFSET = 62;
+const VOID_COLOR = '#0b0705';
 
 export interface SceneDebug {
     colliders: boolean;
@@ -26,17 +28,20 @@ export interface SceneFrame {
 }
 
 export class SceneRenderer {
-    private readonly backdrop: BackdropPainter;
     private readonly terrain: TerrainRenderer;
+    private readonly props: PropPainter;
+    private readonly particles: ParticleSystem;
     private worldLayer: HTMLCanvasElement | null = null;
     private worldSignature = '';
+    private elapsed = 0;
 
     constructor(
         private readonly renderer: CanvasRenderer,
         private readonly sprites: DungeonSprites,
     ) {
-        this.backdrop = new BackdropPainter();
         this.terrain = new TerrainRenderer(sprites);
+        this.props = new PropPainter(sprites);
+        this.particles = new ParticleSystem(sprites);
     }
 
     get camera(): Camera {
@@ -53,6 +58,13 @@ export class SceneRenderer {
     ): void {
         const ctx = this.renderer.context;
 
+        this.elapsed += frame.deltaSeconds;
+        this.particles.update(level, frame.deltaSeconds);
+
+        ctx.fillStyle = VOID_COLOR;
+        ctx.fillRect(0, 0, this.camera.viewportWidth, this.camera.viewportHeight);
+
+        this.props.paint(ctx, level, this.camera, this.elapsed, 0);
         ctx.drawImage(
             this.ensureWorldLayer(level),
             0,
@@ -60,6 +72,8 @@ export class SceneRenderer {
             this.camera.viewportWidth,
             this.camera.viewportHeight,
         );
+        this.props.paint(ctx, level, this.camera, this.elapsed, 1);
+        this.particles.paint(ctx, level, this.camera);
 
         for (const item of items) {
             if (!item.expired) {
@@ -68,6 +82,7 @@ export class SceneRenderer {
         }
 
         this.renderDodger(dodger);
+        this.props.paint(ctx, level, this.camera, this.elapsed, 2);
         this.renderEffects(debug.effects);
         this.renderScorePopups(debug.scorePopups);
         this.renderAim(level, aimX);
@@ -94,7 +109,7 @@ export class SceneRenderer {
 
         const ctx = canvas.getContext('2d');
         if (ctx) {
-            this.backdrop.paint(ctx, level, camera);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             this.terrain.paint(ctx, level, camera);
         }
 
@@ -133,12 +148,19 @@ export class SceneRenderer {
         const frame = clip ? clampFrame(clip, dodger.frame) : 0;
         const feet = dodger.feet;
         const row = dodger.spriteRow(CHARACTER_CLIPS);
+        const fx = this.dodgerFx(dodger);
 
         if (dodger.dashTrail.length > 0) {
             this.renderDashTrail(dodger, sheet, frame, row);
         }
 
-        drawSheetSprite(this.renderer.context, sheet, this.camera, {
+        const ctx = this.renderer.context;
+        const centerX = this.camera.toScreenX(feet.x);
+        const centerY = this.camera.toScreenY(feet.y - FOOT_OFFSET / 2);
+
+        ctx.save();
+        applyFx(ctx, fx, centerX, centerY);
+        drawSheetSprite(ctx, sheet, this.camera, {
             column: frame,
             row,
             worldX: feet.x - CHARACTER_FRAME_SIZE / 2,
@@ -146,10 +168,40 @@ export class SceneRenderer {
             width: CHARACTER_FRAME_SIZE,
             height: CHARACTER_FRAME_SIZE,
         });
+        ctx.restore();
 
-        if (dodger.flash > 0) {
-            this.renderFlash(dodger);
+        if (fx.flash > 0) {
+            this.renderFlash(dodger, fx);
         }
+    }
+
+    private dodgerFx(dodger: Dodger): SpriteFxState {
+        const fx = createFxState();
+        const config = FACE_SMASHING.reaction;
+        const hurt = clamp(dodger.flash / Math.max(config.flashSeconds, 1e-3), 0, 1);
+
+        fx.flash = hurt;
+        fx.scaleX = 1 + hurt * 0.16;
+        fx.scaleY = 1 - hurt * 0.12;
+        fx.skewX = hurt * 0.12;
+
+        if (dodger.stun > 0) {
+            const stun = clamp(dodger.stun / Math.max(config.stunSeconds, 1e-3), 0, 1);
+            const shake = shakeOffset(2.4 * stun, 34, this.elapsed, 0x51ed270b);
+
+            fx.offsetX += shake.x;
+            fx.offsetY += shake.y;
+            fx.rotation += wobble(0.05 * stun, 9, this.elapsed);
+        }
+
+        if (dodger.dashGlow > 0) {
+            const dash = clamp(dodger.dashGlow / FACE_SMASHING.dash.seconds, 0, 1);
+
+            fx.scaleX += dash * 0.3;
+            fx.scaleY -= dash * 0.14;
+        }
+
+        return fx;
     }
 
     private renderDashTrail(
@@ -196,19 +248,21 @@ export class SceneRenderer {
         return tier[requested] ? requested : FALLBACK_ANIMATION;
     }
 
-    private renderFlash(dodger: Dodger): void {
+    private renderFlash(dodger: Dodger, fx: SpriteFxState): void {
         const { camera } = this.renderer;
         const ctx = this.renderer.context;
         const config = FACE_SMASHING.reaction;
-        const alpha = Math.min(dodger.flash / Math.max(config.flashSeconds, 1e-3), 1) * 0.75;
         const feet = dodger.feet;
+        const centerX = camera.toScreenX(feet.x);
+        const centerY = camera.toScreenY(feet.y - FOOT_OFFSET / 2);
         const x = camera.toScreenX(feet.x - dodger.size.width / 2);
         const y = camera.toScreenY(feet.y - dodger.size.height);
         const width = camera.toScreenLength(dodger.size.width);
         const height = camera.toScreenLength(dodger.size.height);
 
         ctx.save();
-        ctx.globalAlpha = alpha;
+        applyFx(ctx, fx, centerX, centerY);
+        ctx.globalAlpha = fx.flash * 0.75;
         ctx.fillStyle = config.flashColor;
         ctx.fillRect(x, y, width, height);
         ctx.restore();
@@ -220,6 +274,18 @@ export class SceneRenderer {
 
         for (const effect of effects) {
             const sheet = this.sprites.effects[effect.kind];
+            const progress = effect.frame / Math.max(sheet.frames - 1, 1);
+            const centerX = camera.toScreenX(effect.x);
+            const centerY = camera.toScreenY(effect.y);
+            const fx = createFxState();
+
+            fx.scaleX = 1 + progress * 0.22;
+            fx.scaleY = 1 + progress * 0.22;
+            fx.rotation = effect.angle + wobble(0.04, 6, this.elapsed + effect.elapsed);
+            fx.flash = effect.kind === 'explosion' ? Math.max(0, 1 - progress * 3) : 0;
+
+            ctx.save();
+            applyFx(ctx, fx, centerX, centerY);
             drawSheetSprite(ctx, sheet, camera, {
                 column: effect.frame,
                 row: 0,
@@ -228,6 +294,7 @@ export class SceneRenderer {
                 width: effect.size,
                 height: effect.size,
             });
+            ctx.restore();
         }
     }
 
@@ -277,9 +344,9 @@ export class SceneRenderer {
         const side = camera.toScreenLength(size);
 
         ctx.save();
-        ctx.fillStyle = 'rgba(125, 200, 255, 0.35)';
+        ctx.fillStyle = 'rgba(224, 164, 74, 0.28)';
         ctx.fillRect(x, y, side, side);
-        ctx.strokeStyle = '#7dc8ff';
+        ctx.strokeStyle = '#e0a44a';
         ctx.lineWidth = 2;
         ctx.setLineDash([6, 4]);
         ctx.strokeRect(x + 1, y + 1, side - 2, side - 2);
@@ -292,7 +359,7 @@ export class SceneRenderer {
 
         ctx.save();
         ctx.lineWidth = 1;
-        ctx.strokeStyle = 'rgba(125, 200, 255, 0.55)';
+        ctx.strokeStyle = 'rgba(224, 164, 74, 0.55)';
 
         for (const collider of level.colliders) {
             ctx.strokeRect(
