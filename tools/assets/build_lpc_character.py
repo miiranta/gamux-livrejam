@@ -15,7 +15,7 @@ DEFS = {
     "boots":    ("feet/boots/feet_boots_basic.json", {}, None),
     "shirt":    ("torso/shirts/longsleeve/torso_clothes_longsleeve.json", {}, None),
     "head":     ("head/heads/human/heads_human_male.json", {}, None),
-    "hair":     ("hair/short/hair_unkempt.json", {}, None),
+    "hair":     ("hair/short/hair_bedhead.json", {}, None),
     "bandages": ("torso/torso_bandages.json", {}, "white"),
     "mouth":     ("body/wounds/wound_mouth.json", {}, None),
     "eye_right": ("body/wounds/wound_eye_right.json", {}, None),
@@ -23,6 +23,13 @@ DEFS = {
     "arm":       ("body/wounds/wound_arm.json", {1: 112}, None),
     "ribs":      ("body/wounds/wound_ribs.json", {1: 112}, None),
     "brain":     ("body/wounds/wound_brain.json", {1: 125}, "red"),
+}
+
+# Os PNGs crus vem numa paleta fixa (o cabelo, por exemplo, sai ruivo). Aqui
+# remapeamos a rampa de origem para outra rampa do proprio LPC, como o gerador faz.
+# chave -> (material da paleta, rampa de origem, rampa de destino)
+RECOLORS = {
+    "hair": ("hair", "orange", "black"),
 }
 
 BASE = ["body", "legs", "boots", "shirt", "head", "hair"]
@@ -59,10 +66,30 @@ def list_api(path):
         raise RuntimeError(f"{path}: {data.get('message')}")
     return data
 
+def palette_ramp(material, ramp):
+    rel = f"palette_definitions/{material}/{material}_ulpc.json"
+    p = fetch(f"{RAW}/{rel}", os.path.join(CACHE, rel))
+    pal = json.load(open(p))
+    if ramp not in pal:
+        raise RuntimeError(f"rampa '{ramp}' nao existe em {rel}; opcoes: {sorted(pal)}")
+    return [tuple(int(h.lstrip('#')[i:i + 2], 16) for i in (0, 2, 4)) for h in pal[ramp]]
+
+
+def recolor(im, mapping):
+    px = im.load()
+    for y in range(im.height):
+        for x in range(im.width):
+            r, g, b, a = px[x, y]
+            if a and (r, g, b) in mapping:
+                px[x, y] = mapping[(r, g, b)] + (a,)
+    return im
+
+
 class Plane:
 
-    def __init__(self, path, zpos, variant):
+    def __init__(self, path, zpos, variant, recolor_map=None):
         self.path, self.zpos, self.variant = path, zpos, variant
+        self.recolor_map = recolor_map
         self.anims = {}
         for e in list_api("spritesheets/" + path.rstrip("/")):
             if variant and e["type"] == "dir":
@@ -72,21 +99,26 @@ class Plane:
 
     def image(self, anim):
         rel = self.anims[anim]
-        return Image.open(fetch(f"{RAW}/spritesheets/{rel}",
-                                os.path.join(CACHE, "sheets", rel))).convert("RGBA")
+        im = Image.open(fetch(f"{RAW}/spritesheets/{rel}",
+                              os.path.join(CACHE, "sheets", rel))).convert("RGBA")
+        return recolor(im, self.recolor_map) if self.recolor_map else im
 
 class Layer:
     def __init__(self, key, def_rel, zoverrides, variant):
         self.key, self.def_rel, self.variant = key, def_rel, variant
         p = fetch(f"{RAW}/sheet_definitions/{def_rel}", os.path.join(CACHE, "defs", def_rel))
         self.d = json.load(open(p))
+        rmap = None
+        if key in RECOLORS:
+            material, src, dst = RECOLORS[key]
+            rmap = dict(zip(palette_ramp(material, src), palette_ramp(material, dst)))
         self.planes = []
         for i, k in enumerate(sorted(x for x in self.d if x.startswith("layer_")), start=1):
             sub = self.d[k]
             path = sub.get(BODY) or sub.get("male")
             if not path:
                 continue  # sublayer que nao existe para este tipo de corpo
-            self.planes.append(Plane(path, zoverrides.get(i, sub["zPos"]), variant))
+            self.planes.append(Plane(path, zoverrides.get(i, sub["zPos"]), variant, rmap))
         if not self.planes:
             raise RuntimeError(f"{def_rel}: nenhuma sublayer para corpo '{BODY}'")
         self.anims = set(self.planes[0].anims)
@@ -115,11 +147,11 @@ def build_character(out_root, layers):
             w, h = max(i.width for i in imgs), max(i.height for i in imgs)
             canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
             for im in imgs:
-                canvas.alpha_composite(im, ((w - im.width)
+                canvas.alpha_composite(im, ((w - im.width) // 2, (h - im.height) // 2))
             d = os.path.join(out_root, tier_key)
             os.makedirs(d, exist_ok=True)
             canvas.save(os.path.join(d, anim + ".png"))
-            info["animations"][anim] = {"columns": w
+            info["animations"][anim] = {"columns": w // 64, "rows": h // 64,
                                         "width": w, "height": h}
         info["tiers"].append({"key": tier_key, "label": label,
                               "layers": BASE + extra,
@@ -159,9 +191,29 @@ def collect_credits(layers, used_keys):
                 e["layers"].append(key)
     return out
 
+def check_recolors(layers):
+    """Falha alto se a rampa de origem nao casar com o PNG: senao o recolor vira no-op."""
+    for key, (material, src, dst) in RECOLORS.items():
+        pl = layers[key].planes[0]
+        rel = pl.anims[sorted(pl.anims)[0]]
+        raw = Image.open(fetch(f"{RAW}/spritesheets/{rel}",
+                               os.path.join(CACHE, "sheets", rel))).convert("RGBA")
+        ramp, px, hit, total = set(palette_ramp(material, src)), raw.load(), 0, 0
+        for y in range(raw.height):
+            for x in range(raw.width):
+                r, g, b, a = px[x, y]
+                if a:
+                    total += 1
+                    hit += (r, g, b) in ramp
+        print(f"  recolor {key}: {src} -> {dst}, {hit}/{total} pixels casaram")
+        if not hit:
+            raise RuntimeError(f"recolor de '{key}': nenhum pixel casou com a rampa '{src}'")
+
+
 def main():
     print("== baixando definicoes e descobrindo animacoes disponiveis")
     layers = {k: Layer(k, rel, zo, var) for k, (rel, zo, var) in DEFS.items()}
+    check_recolors(layers)
     for k in sorted(layers, key=lambda k: layers[k].planes[0].zpos):
         l = layers[k]
         print(f"  {k:10s} zPos={[pl.zpos for pl in l.planes]}  {len(l.anims):2d} anims  "

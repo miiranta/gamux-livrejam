@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 
+import { HoverSound } from '../../directives';
 import { LanguageService } from '../../services';
 import { type AppLang } from '../../i18n';
 
@@ -10,7 +11,7 @@ import { type AppLang } from '../../i18n';
  */
 @Component({
     selector: 'app-language-select',
-    imports: [TranslatePipe],
+    imports: [HoverSound, TranslatePipe],
     templateUrl: './language-select.html',
     styleUrl: './language-select.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,

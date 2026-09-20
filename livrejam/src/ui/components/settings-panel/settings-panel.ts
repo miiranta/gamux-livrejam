@@ -4,6 +4,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { GameSettingsService, formatDuration } from '../../services';
 import { PixelSlider } from '../pixel-slider/pixel-slider';
 import { PixelStepper } from '../pixel-stepper/pixel-stepper';
+import { VoiceSelect } from '../voice-select/voice-select';
 
 /**
  * Audio + match options. Shared by the main menu and the pause menu; the
@@ -11,7 +12,7 @@ import { PixelStepper } from '../pixel-stepper/pixel-stepper';
  */
 @Component({
     selector: 'app-settings-panel',
-    imports: [PixelSlider, PixelStepper, TranslatePipe],
+    imports: [PixelSlider, PixelStepper, TranslatePipe, VoiceSelect],
     templateUrl: './settings-panel.html',
     styleUrl: './settings-panel.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,

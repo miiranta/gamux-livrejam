@@ -2,6 +2,26 @@
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.2.
 
+## Audio
+
+Sons ficam em `public/assets/audio/`, divididos por pasta — a pasta define qual
+controle de volume manda no som:
+
+| pasta | volume |
+|---|---|
+| `soundtrack/` | Music |
+| `voices/<set>/` | Voice (set escolhido na configuracao) |
+| `sound_effects/<evento>/` | Sound effects |
+
+O `manifest.json` e gerado (nao edite na mao):
+
+```bash
+python3 ../tools/build_audio_manifest.py
+```
+
+Detalhes de como adicionar musica, set de voz ou efeito sonoro:
+[`public/assets/audio/README.md`](public/assets/audio/README.md).
+
 ## Development server
 
 To start a local development server, run:

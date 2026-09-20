@@ -17,6 +17,12 @@
     "audio": "Áudio",
     "music": "Música",
     "sfx": "Efeitos sonoros",
+    "voice": "Voz",
+    "voicePreview": "Ouvir uma amostra",
+    "voiceSet": {
+      "set_a": "Normal",
+      "set_b": "Rouco"
+    },
     "match": "Partida",
     "matchTime": "Tempo de partida",
     "matchTimeHint": "Quanto tempo dura cada partida."

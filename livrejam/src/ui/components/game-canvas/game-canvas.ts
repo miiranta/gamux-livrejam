@@ -16,7 +16,8 @@ import { InferenceWorkerClient } from '../../../engine/ai';
 import { IdlePolicy, RemoteDodgerPolicy, type PolicyLike } from '../../../game/ai';
 import { FACE_SMASHING } from '../../../game/config';
 import { FaceSmashing, type MatchStats } from '../../../game/face-smashing';
-import { formatDuration, GameFlowService, GameSettingsService, type GameScreen } from '../../services';
+import { HoverSound } from '../../directives';
+import { AudioService, formatDuration, GameFlowService, GameSettingsService, type GameScreen } from '../../services';
 
 type CanvasStatus = 'loading' | 'ready' | 'error';
 type ModelStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -38,7 +39,7 @@ const INITIAL_STATS: MatchStats = {
 
 @Component({
     selector: 'app-game-canvas',
-    imports: [TranslatePipe],
+    imports: [HoverSound, TranslatePipe],
     templateUrl: './game-canvas.html',
     styleUrl: './game-canvas.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -48,6 +49,7 @@ export class GameCanvas {
     private readonly destroyRef = inject(DestroyRef);
     private readonly flow = inject(GameFlowService);
     private readonly settings = inject(GameSettingsService);
+    private readonly audio = inject(AudioService);
     private readonly inference = new InferenceWorkerClient({
         url: FACE_SMASHING.ai.modelUrl,
         expectedInputSize: FACE_SMASHING.ai.observationSize,
@@ -108,6 +110,7 @@ export class GameCanvas {
                             dodges: result.dodges,
                             nearMisses: result.nearMisses,
                         }),
+                    onHit: () => this.audio.playVoice(this.settings.voiceSet()),
                 },
             });
 

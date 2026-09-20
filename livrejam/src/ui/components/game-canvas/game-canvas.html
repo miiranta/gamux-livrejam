@@ -81,15 +81,25 @@
             </div>
 
             <div class="game-canvas__controls">
-                <button type="button" class="game-canvas__button" (click)="accelerate()">
+                <button type="button" class="game-canvas__button" appHoverSound (click)="accelerate()">
                     {{ 'hud.dev.faster' | translate }}
                 </button>
-                <button type="button" class="game-canvas__button" (click)="toggleColliders()">
+                <button
+                    type="button"
+                    class="game-canvas__button"
+                    appHoverSound
+                    (click)="toggleColliders()"
+                >
                     {{ 'hud.dev.colliders' | translate }}
                 </button>
 
                 @if (modelStatus() === 'error') {
-                    <button type="button" class="game-canvas__button" (click)="reloadModel()">
+                    <button
+                        type="button"
+                        class="game-canvas__button"
+                        appHoverSound
+                        (click)="reloadModel()"
+                    >
                         {{ 'hud.dev.reloadAi' | translate }}
                     </button>
                 }
@@ -97,6 +107,7 @@
                 <button
                     type="button"
                     class="game-canvas__button game-canvas__button--pause"
+                    appHoverSound
                     [attr.aria-label]="'hud.pause' | translate"
                     [attr.title]="'hud.pause' | translate"
                     (click)="pause()"

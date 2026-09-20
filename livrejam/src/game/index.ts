@@ -1,5 +1,6 @@
 export * from './ai';
 export * from './assets';
+export * from './audio';
 export * from './config';
 export * from './face-smashing';
 export * from './entities';

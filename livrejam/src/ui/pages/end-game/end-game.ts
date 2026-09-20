@@ -5,6 +5,7 @@ import { CrackOverlay } from '../../components/crack-overlay/crack-overlay';
 import { ParticleBurst } from '../../components/particle-burst/particle-burst';
 import { PixelButton } from '../../components/pixel-button/pixel-button';
 import { PixelPanel } from '../../components/pixel-panel/pixel-panel';
+import { HoverSound } from '../../directives';
 import { GameFlowService } from '../../services';
 
 /**
@@ -14,7 +15,7 @@ import { GameFlowService } from '../../services';
  */
 @Component({
     selector: 'app-end-game',
-    imports: [CrackOverlay, ParticleBurst, PixelButton, PixelPanel, TranslatePipe],
+    imports: [CrackOverlay, HoverSound, ParticleBurst, PixelButton, PixelPanel, TranslatePipe],
     templateUrl: './end-game.html',
     styleUrl: './end-game.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,

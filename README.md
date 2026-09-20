@@ -55,6 +55,7 @@ livrejam/src/
   game/              regras especificas deste jogo
     ai/              observacao (24 floats) + politicas
     assets/          sprites da masmorra e do personagem
+    audio/           mixer (Web Audio) + catalogo de sons
     config/          todas as constantes de gameplay
     entities/        Dodger (o personagem), Item (os objetos que caem)
     level/           layout da sala + colisores

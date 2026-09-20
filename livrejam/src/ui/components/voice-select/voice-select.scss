@@ -1,0 +1,189 @@
+@use '../../styles/ornaments' as ornaments;
+
+/* Shared chrome for every button in the list. */
+%voice-button {
+    position: relative;
+    color: var(--lj-ink);
+    font: inherit;
+    font-size: 1rem;
+    text-align: left;
+    background: linear-gradient(180deg, var(--lj-line-hi), var(--lj-line));
+    border: 0;
+    cursor: pointer;
+
+    @include ornaments.octagon(8px);
+    @include ornaments.studs(transparent, 5px, 3px);
+
+    &:hover {
+        filter: brightness(1.15);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--lj-accent-hi);
+        outline-offset: 2px;
+    }
+}
+
+:host {
+    display: block;
+}
+
+.voice-select {
+    display: grid;
+    gap: 0.5rem;
+}
+
+/* Collapsed header: shows the set in use. */
+.voice-select__head {
+    @extend %voice-button;
+
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.55rem 0.9rem;
+}
+
+.voice-select__head-label {
+    position: relative;
+    color: var(--lj-ink-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.voice-select__head-value {
+    position: relative;
+    flex: 1;
+    color: var(--lj-accent-hi);
+    text-align: right;
+}
+
+/* Pixel chevron: a rotated corner that flips when the list opens. */
+.voice-select__chevron {
+    position: relative;
+    width: 0.6rem;
+    height: 0.6rem;
+    border-right: 3px solid var(--lj-accent-hi);
+    border-bottom: 3px solid var(--lj-accent-hi);
+    transform: rotate(45deg) translate(-1px, -1px);
+    transition: transform 0.16s ease-out;
+
+    &--open {
+        transform: rotate(-135deg) translate(-1px, -1px);
+    }
+}
+
+.voice-select__list {
+    display: grid;
+    gap: 0.4rem;
+    animation: voice-list-in 0.18s ease-out both;
+}
+
+.voice-select__option {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    gap: 0.35rem;
+    animation: voice-option-in 0.2s ease-out both;
+    /* Staggered reveal so a long list does not pop all at once. */
+    animation-delay: calc(var(--lj-index, 0) * 0.03s);
+}
+
+.voice-select__pick {
+    @extend %voice-button;
+
+    flex: 1;
+    padding: 0.5rem 0.9rem;
+}
+
+.voice-select__rim {
+    position: absolute;
+    inset: 3px;
+    background: linear-gradient(180deg, var(--lj-panel-hi), var(--lj-panel));
+    pointer-events: none;
+
+    @include ornaments.octagon(6px);
+}
+
+.voice-select__option--active {
+    .voice-select__rim {
+        background: linear-gradient(180deg, #3c2d1c, #2a1f14);
+    }
+
+    .voice-select__label {
+        color: var(--lj-accent-hi);
+
+        /* Selection marker drawn as a square: no icon font needed. */
+        &::before {
+            opacity: 1;
+        }
+    }
+}
+
+.voice-select__label {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    &::before {
+        width: 0.5rem;
+        height: 0.5rem;
+        background: var(--lj-accent-hi);
+        content: '';
+        opacity: 0;
+        box-shadow: 0 0 0 2px var(--lj-shadow);
+    }
+}
+
+/* Preview ("play") button: pixel triangle. */
+.voice-select__play {
+    @extend %voice-button;
+
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    padding: 0;
+
+    &:hover .voice-select__play-glyph {
+        border-left-color: var(--lj-accent-hi);
+    }
+
+    &:active {
+        transform: translateY(1px);
+    }
+}
+
+/* Pixel "play" triangle. */
+.voice-select__play-glyph {
+    position: relative;
+    width: 0;
+    height: 0;
+    border-top: 0.42rem solid transparent;
+    border-bottom: 0.42rem solid transparent;
+    border-left: 0.7rem solid var(--lj-ink);
+}
+
+@keyframes voice-list-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes voice-option-in {
+    from {
+        opacity: 0;
+        transform: translateX(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}

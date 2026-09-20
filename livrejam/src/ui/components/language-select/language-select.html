@@ -4,6 +4,7 @@
             type="button"
             class="language-select__option"
             role="radio"
+            appHoverSound
             [class.language-select__option--active]="language.lang() === option.code"
             [attr.aria-checked]="language.lang() === option.code"
             (click)="select(option.code)"

@@ -203,12 +203,13 @@ describe('MainMenu', () => {
         expect(flow.isPlaying()).toBe(true);
     });
 
-    it('opens the configuration panel with both audio sliders and the match time', () => {
+    it('opens the configuration panel with every audio slider and the match time', () => {
         clickButton(fixture, 'Configuration');
 
         const content = text(fixture);
         expect(content).toContain('Music');
         expect(content).toContain('Sound effects');
+        expect(content).toContain('Voice');
         expect(content).toContain('Match time');
         expect(content).toContain('Back');
     });

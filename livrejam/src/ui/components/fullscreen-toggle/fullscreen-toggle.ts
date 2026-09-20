@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 
+import { HoverSound } from '../../directives';
 import { FullscreenService } from '../../services';
 
 /**
@@ -9,7 +10,7 @@ import { FullscreenService } from '../../services';
  */
 @Component({
     selector: 'app-fullscreen-toggle',
-    imports: [TranslatePipe],
+    imports: [HoverSound, TranslatePipe],
     templateUrl: './fullscreen-toggle.html',
     styleUrl: './fullscreen-toggle.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,

@@ -1,14 +1,7 @@
-import {
-    ChangeDetectionStrategy,
-    Component,
-    booleanAttribute,
-    computed,
-    input,
-    output,
-    signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, booleanAttribute, computed, input, output, signal } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 
+import { HoverSound } from '../../directives';
 import { FullscreenToggle } from '../fullscreen-toggle/fullscreen-toggle';
 import { LanguageSelect } from '../language-select/language-select';
 import { ParticleField } from '../particle-field/particle-field';
@@ -36,6 +29,7 @@ const PANEL_TITLE_KEYS: Record<Exclude<MenuPanelId, 'none'>, string> = {
     selector: 'app-menu-view',
     imports: [
         FullscreenToggle,
+        HoverSound,
         LanguageSelect,
         ParticleField,
         PixelButton,

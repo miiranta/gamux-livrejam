@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { TranslateService } from '@ngx-translate/core';
 import { describe, expect, it, vi } from 'vitest';
 
+import { DEFAULT_VOICE_SET } from '../../game/audio';
 import { GameFlowService } from './game-flow.service';
 import { GameSettingsService } from './game-settings.service';
 import { LanguageService } from './language.service';
@@ -14,6 +15,8 @@ describe('GameSettingsService', () => {
 
         expect(settings.musicVolume()).toBeGreaterThan(0);
         expect(settings.sfxVolume()).toBeGreaterThan(0);
+        expect(settings.voiceVolume()).toBeGreaterThan(0);
+        expect(settings.voiceSet()).toBe(DEFAULT_VOICE_SET);
         expect(settings.matchTimeSeconds()).toBeGreaterThan(0);
     });
 
@@ -23,9 +26,33 @@ describe('GameSettingsService', () => {
 
         settings.setMusicVolume(4);
         settings.setSfxVolume(-2);
+        settings.setVoiceVolume(9);
 
         expect(settings.musicVolume()).toBe(1);
         expect(settings.sfxVolume()).toBe(0);
+        expect(settings.voiceVolume()).toBe(1);
+    });
+
+    it('keeps the voice volume separate from the sound effects', () => {
+        TestBed.configureTestingModule({});
+        const settings = TestBed.inject(GameSettingsService);
+
+        settings.setSfxVolume(0.2);
+        settings.setVoiceVolume(0.8);
+
+        expect(settings.sfxVolume()).toBe(0.2);
+        expect(settings.voiceVolume()).toBe(0.8);
+    });
+
+    it('stores the selected voice set and ignores empty keys', () => {
+        TestBed.configureTestingModule({});
+        const settings = TestBed.inject(GameSettingsService);
+
+        settings.setVoiceSet('set_b');
+        expect(settings.voiceSet()).toBe('set_b');
+
+        settings.setVoiceSet('');
+        expect(settings.voiceSet()).toBe('set_b');
     });
 
     it('clamps the match time into the configured limits', () => {

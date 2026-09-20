@@ -17,6 +17,12 @@
     "audio": "Audio",
     "music": "Music",
     "sfx": "Sound effects",
+    "voice": "Voice",
+    "voicePreview": "Listen to a sample",
+    "voiceSet": {
+      "set_a": "Normal",
+      "set_b": "Hoarse"
+    },
     "match": "Match",
     "matchTime": "Match time",
     "matchTimeHint": "How long each match lasts."

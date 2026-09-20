@@ -12,7 +12,7 @@ Cada camada esta disponivel sob mais de uma licenca. As licencas comuns a **toda
 - **CC-BY-SA 3.0**
 - **GPL 3.0**
 
-Ou seja, o personagem montado (e qualquer edicao dele) deve ser distribuido sob **CC-BY-SA 3.0** ou **GPL 3.0**. As camadas que restringem o conjunto (as unicas sem opcao OGA-BY) sao: `body/wound/arm`, `body/wound/brain`, `body/wound/eye_left`, `body/wound/eye_right`, `body/wound/mouth`, `body/wound/ribs`, `hair/unkempt` — as feridas vem do [LPC] Zombie. Trocando o cabelo por um com OGA-BY e tirando as feridas, o resto do personagem poderia ser usado so com credito, sem share-alike.
+Ou seja, o personagem montado (e qualquer edicao dele) deve ser distribuido sob **CC-BY-SA 3.0** ou **GPL 3.0**. As camadas que restringem o conjunto (as unicas sem opcao OGA-BY) sao: `body/wound/arm`, `body/wound/brain`, `body/wound/eye_left`, `body/wound/eye_right`, `body/wound/mouth`, `body/wound/ribs`, `hair/bedhead` — as feridas vem do [LPC] Zombie. Trocando o cabelo por um com OGA-BY e tirando as feridas, o resto do personagem poderia ser usado so com credito, sem share-alike.
 
 O que isso exige na pratica:
 
@@ -100,7 +100,7 @@ https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generat
   - https://opengameart.org/content/lpc-clothes-and-hair
   - https://opengameart.org/content/lpc-expanded-socks-shoes
 
-### `hair/unkempt` — cabelo
+### `hair/bedhead` — cabelo
 
 - **Autores:** JaidynReiman, Manuel Riecke (MrBeast)
 - **Licencas disponiveis:** CC-BY-SA 3.0, GPL 3.0

@@ -34,6 +34,8 @@ export interface MatchStats {
 export interface FaceSmashingCallbacks {
     onStats: (stats: MatchStats) => void;
     onMatchEnd?: (result: MatchStats) => void;
+    /** The dodger just took a hit; `tierChange` > 0 when the damage tier rose. */
+    onHit?: (damage: number, tierChange: number) => void;
 }
 
 export interface FaceSmashingOptions {
@@ -423,6 +425,8 @@ export class FaceSmashing {
         if (outcome.tierChange > 0) {
             dodger.setAnimation('hurt');
         }
+
+        this.callbacks.onHit?.(outcome.damage, outcome.tierChange);
 
         const scale = dodger.size.width;
         this.effects.spawn({

@@ -41,8 +41,10 @@
 
         <!-- 3) Actions: no tilt, quick fade-in. -->
         <div class="end-game__actions">
-            <app-pixel-button (pressed)="retry()">{{ 'end.retry' | translate }}</app-pixel-button>
-            <app-pixel-button variant="ghost" (pressed)="exit()">
+            <app-pixel-button appHoverSound (pressed)="retry()">
+                {{ 'end.retry' | translate }}
+            </app-pixel-button>
+            <app-pixel-button variant="ghost" appHoverSound (pressed)="exit()">
                 {{ 'end.exit' | translate }}
             </app-pixel-button>
         </div>

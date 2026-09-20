@@ -8,13 +8,15 @@ import {
 } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 
+import { HoverSound } from '../../directives';
+
 /**
  * Numeric field with pixel-art "-" / "+" buttons. Pass a `formatter` to show
  * a friendlier representation (e.g. "1:30" instead of "90").
  */
 @Component({
     selector: 'app-pixel-stepper',
-    imports: [TranslatePipe],
+    imports: [HoverSound, TranslatePipe],
     templateUrl: './pixel-stepper.html',
     styleUrl: './pixel-stepper.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,

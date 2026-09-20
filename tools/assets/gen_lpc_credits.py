@@ -153,3 +153,8 @@ Para explorar outras pecas (armaduras, capas, chapeus, proteses, tapa-olho), use
 gerador no navegador e procure o caminho da peca em `sheet_definitions/` do repo do LPC.
 Peças brancas/cinza (capas, por exemplo) precisam ser recoloridas pelo gerador —
 os PNGs crus vem na paleta neutra.
+"""
+open(os.path.join(OUT, "README.md"), "w").write(R)
+print("CREDITS.md, credits.csv e README.md gerados em", OUT)
+print("autores unicos:", len(all_authors))
+print("licenca comum:", sorted(inter))

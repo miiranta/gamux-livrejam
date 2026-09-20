@@ -1,6 +1,7 @@
 <button
     type="button"
     class="fullscreen-toggle"
+    appHoverSound
     [disabled]="!fullscreen.isSupported()"
     [attr.aria-pressed]="fullscreen.isFullscreen()"
     [attr.aria-label]="labelKey() | translate"

@@ -1,10 +1,13 @@
 import { Injectable, computed, signal } from '@angular/core';
 
+import { DEFAULT_VOICE_SET, isVoiceSetKey } from '../../game/audio';
 import { FACE_SMASHING } from '../../game/config';
 
 export interface GameSettings {
     musicVolume: number;
     sfxVolume: number;
+    voiceVolume: number;
+    voiceSet: string;
     matchTimeSeconds: number;
 }
 
@@ -28,15 +31,16 @@ function defaultSettings(): GameSettings {
     return {
         musicVolume: 0.7,
         sfxVolume: 0.9,
+        voiceVolume: 0.9,
+        voiceSet: DEFAULT_VOICE_SET,
         matchTimeSeconds: FACE_SMASHING.match.defaultDurationSeconds,
     };
 }
 
 /**
- * Single source of truth for player-facing options (audio levels, match
- * length). Nothing consumes the values yet — gameplay wiring comes later —
- * but every screen reads and writes them through this service so the values
- * survive navigation and reloads.
+ * Single source of truth for player-facing options (audio levels, voice set,
+ * match length). `AudioService` mirrors the values into the mixer, so every
+ * screen just reads and writes them here and they survive navigation/reloads.
  */
 @Injectable({ providedIn: 'root' })
 export class GameSettingsService {
@@ -47,6 +51,8 @@ export class GameSettingsService {
 
     readonly musicVolume = computed(() => this.state().musicVolume);
     readonly sfxVolume = computed(() => this.state().sfxVolume);
+    readonly voiceVolume = computed(() => this.state().voiceVolume);
+    readonly voiceSet = computed(() => this.state().voiceSet);
     readonly matchTimeSeconds = computed(() => this.state().matchTimeSeconds);
     /** Human-friendly match length, e.g. "1:30". */
     readonly matchTimeLabel = computed(() => formatDuration(this.state().matchTimeSeconds));
@@ -57,6 +63,18 @@ export class GameSettingsService {
 
     setSfxVolume(value: number): void {
         this.patch({ sfxVolume: clamp01(value) });
+    }
+
+    setVoiceVolume(value: number): void {
+        this.patch({ voiceVolume: clamp01(value) });
+    }
+
+    setVoiceSet(key: string): void {
+        if (!isVoiceSetKey(key)) {
+            return;
+        }
+
+        this.patch({ voiceSet: key });
     }
 
     setMatchTimeSeconds(value: number): void {
@@ -114,6 +132,8 @@ function loadSettings(): GameSettings {
         return {
             musicVolume: clamp01(parsed.musicVolume ?? fallback.musicVolume),
             sfxVolume: clamp01(parsed.sfxVolume ?? fallback.sfxVolume),
+            voiceVolume: clamp01(parsed.voiceVolume ?? fallback.voiceVolume),
+            voiceSet: isVoiceSetKey(parsed.voiceSet) ? parsed.voiceSet : fallback.voiceSet,
             matchTimeSeconds: clamp(
                 parsed.matchTimeSeconds ?? fallback.matchTimeSeconds,
                 settingsLimits().minMatchTimeSeconds,

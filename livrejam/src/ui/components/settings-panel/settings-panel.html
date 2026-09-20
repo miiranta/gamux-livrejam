@@ -13,6 +13,14 @@
             [value]="settings.sfxVolume()"
             (valueChange)="settings.setSfxVolume($event)"
         />
+
+        <app-pixel-slider
+            labelKey="settings.voice"
+            [value]="settings.voiceVolume()"
+            (valueChange)="settings.setVoiceVolume($event)"
+        />
+
+        <app-voice-select />
     </fieldset>
 
     @if (showMatchTime()) {

@@ -16,25 +16,25 @@
             </header>
 
             <nav class="menu-view__actions">
-                <app-pixel-button block (pressed)="primary.emit()">
+                <app-pixel-button block appHoverSound (pressed)="primary.emit()">
                     {{ primaryKey() | translate }}
                 </app-pixel-button>
 
                 @if (isPause()) {
-                    <app-pixel-button block variant="ghost" (pressed)="restart.emit()">
+                    <app-pixel-button block variant="ghost" appHoverSound (pressed)="restart.emit()">
                         {{ 'menu.restart' | translate }}
                     </app-pixel-button>
                 }
 
-                <app-pixel-button block variant="ghost" (pressed)="open('configuration')">
+                <app-pixel-button block variant="ghost" appHoverSound (pressed)="open('configuration')">
                     {{ 'menu.configuration' | translate }}
                 </app-pixel-button>
 
-                <app-pixel-button block variant="ghost" (pressed)="open('credits')">
+                <app-pixel-button block variant="ghost" appHoverSound (pressed)="open('credits')">
                     {{ 'menu.credits' | translate }}
                 </app-pixel-button>
 
-                <app-pixel-button block variant="ghost" (pressed)="open('language')">
+                <app-pixel-button block variant="ghost" appHoverSound (pressed)="open('language')">
                     <span class="menu-view__button-icon" aria-hidden="true">
                         <svg viewBox="0 0 16 16" class="menu-view__icon">
                             <circle cx="8" cy="8" r="6" />
@@ -50,6 +50,7 @@
                         class="menu-view__abandon"
                         block
                         variant="danger"
+                        appHoverSound
                         (pressed)="abandon.emit()"
                     >
                         {{ 'menu.abandon' | translate }}
@@ -72,7 +73,7 @@
                     }
 
                     <div class="menu-view__panel-footer">
-                        <app-pixel-button block variant="ghost" (pressed)="close()">
+                        <app-pixel-button block variant="ghost" appHoverSound (pressed)="close()">
                             {{ 'menu.back' | translate }}
                         </app-pixel-button>
                     </div>
