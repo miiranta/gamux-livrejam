@@ -25,7 +25,7 @@
         4px 0 0 var(--lj-shadow),
         -4px 0 0 var(--lj-shadow),
         0 -4px 0 var(--lj-shadow);
-    animation: countdown-pop 1s var(--lj-punch) both;
+    animation: countdown-pop 0.7s var(--lj-punch) both;
 }
 
 @keyframes countdown-pop {
