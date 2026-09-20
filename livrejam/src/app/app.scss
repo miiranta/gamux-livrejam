@@ -3,11 +3,22 @@
 }
 
 .app-shell {
+    --shell-pad: 1rem;
+    --shell-gap: 1rem;
+    --lj-camera-size: min(
+        33.333vw,
+        calc((100dvh - 2 * var(--shell-pad) - var(--shell-gap)) / 3)
+    );
+    --lj-stage-height: calc(
+        100dvh - 2 * var(--shell-pad) - var(--shell-gap) - var(--lj-camera-size)
+    );
+
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
-    padding: 1rem;
+    gap: var(--shell-gap);
+    height: 100dvh;
+    padding: var(--shell-pad);
 }
 
 /* The canvas keeps its place in the layout while the menu is up, so
@@ -15,6 +26,7 @@
 .app-shell__stage {
     display: grid;
     place-items: center;
+    height: var(--lj-stage-height);
     transition: opacity 0.2s ease-out;
 
     &--hidden {
@@ -28,6 +40,5 @@
 
 .app-shell__camera {
     display: block;
-    width: 33.333vw;
-    max-width: 100%;
+    width: var(--lj-camera-size);
 }

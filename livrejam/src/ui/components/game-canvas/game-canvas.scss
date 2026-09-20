@@ -11,6 +11,7 @@
 .game-canvas__surface {
     display: block;
     max-width: 100%;
+    max-height: var(--lj-stage-height, 60dvh);
     background: #0b0d12;
     border-radius: 0.5rem;
     box-shadow: 0 0 0 1px rgb(255 255 255 / 8%);
