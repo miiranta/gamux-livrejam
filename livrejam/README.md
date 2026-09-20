@@ -1,113 +1,125 @@
 # Livrejam
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.2.
+Projeto gerado com o [Angular CLI](https://github.com/angular/angular-cli)
+versão 22.1.2.
 
-## Audio
+## Áudio
 
 Sons ficam em `public/assets/audio/`, divididos por pasta — a pasta define qual
 controle de volume manda no som:
 
 | pasta | volume |
 |---|---|
-| `soundtrack/` | Music |
-| `voices/<set>/` | Voice (set escolhido na configuracao) |
-| `sound_effects/<evento>/` | Sound effects |
+| `soundtrack/` | Música |
+| `voices/<set>/` | Voz (set escolhido na configuração) |
+| `sound_effects/<evento>/` | Efeitos sonoros |
 
-O `manifest.json` e gerado (nao edite na mao):
+O `manifest.json` é gerado (não edite na mão):
 
 ```bash
 python3 ../tools/build_audio_manifest.py
 ```
 
-Detalhes de como adicionar musica, set de voz ou efeito sonoro:
+Detalhes de como adicionar música, set de voz ou efeito sonoro:
 [`public/assets/audio/README.md`](public/assets/audio/README.md).
 
-## Development server
+## Servidor de desenvolvimento
 
-To start a local development server, run:
+Para subir um servidor local:
 
 ```bash
 ng serve
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+Com o servidor no ar, abra `http://localhost:4200/` no navegador. A aplicação
+recarrega sozinha sempre que algum arquivo fonte é modificado.
 
-## Code scaffolding
+## Geração de código
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+O Angular CLI traz ferramentas de scaffolding. Para gerar um componente novo:
 
 ```bash
-ng generate component component-name
+ng generate component nome-do-componente
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+Para a lista completa de schematics disponíveis (como `components`,
+`directives` ou `pipes`):
 
 ```bash
 ng generate --help
 ```
 
-## Building
+## Build
 
-To build the project run:
+Para compilar o projeto:
 
 ```bash
 ng build
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Os artefatos do build ficam em `dist/`. Por padrão, o build de produção otimiza
+a aplicação para desempenho.
 
-## Running unit tests
+## Testes unitários
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+Para rodar os testes unitários com o [Vitest](https://vitest.dev/):
 
 ```bash
 ng test
 ```
 
-## Running end-to-end tests
+## Testes ponta a ponta
 
-For end-to-end (e2e) testing, run:
+Para testes ponta a ponta (e2e):
 
 ```bash
 ng e2e
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+O Angular CLI não vem com um framework de e2e por padrão; escolha o que fizer
+mais sentido para o projeto.
 
-## Additional Resources
+## Mais recursos
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Para mais informações sobre o Angular CLI, incluindo a referência completa dos
+comandos, veja a página
+[Angular CLI Overview and Command Reference](https://angular.dev/tools/cli).
 
-## Face and hand tracking
+## Captura de rosto e mãos
 
-Tracking runs fully on-device using [MediaPipe Tasks Vision](https://developers.google.com/edge/mediapipe/solutions/vision/face_landmarker) (`@mediapipe/tasks-vision`).
+A captura roda inteiramente no dispositivo, com o
+[MediaPipe Tasks Vision](https://developers.google.com/edge/mediapipe/solutions/vision/face_landmarker)
+(`@mediapipe/tasks-vision`).
 
-| Asset | Path | Size |
+| Asset | Caminho | Tamanho |
 | --- | --- | --- |
-| Face Landmarker bundle | `public/models/face_landmarker.task` | 3.6 MB |
-| Hand Landmarker bundle | `public/models/hand_landmarker.task` | 7.5 MB |
-| WASM runtime | `public/wasm/` | ~34 MB (one variant downloaded per browser) |
+| Bundle do Face Landmarker | `public/models/face_landmarker.task` | 3,6 MB |
+| Bundle do Hand Landmarker | `public/models/hand_landmarker.task` | 7,5 MB |
+| Runtime WASM | `public/wasm/` | ~34 MB (uma variante baixada por navegador) |
 
-### Model licenses
+### Licenças dos modelos
 
-All models and the runtime are licensed under the **Apache License 2.0**.
+Todos os modelos e o runtime estão sob a **Apache License 2.0**.
 
-| Component | Contents | License |
+| Componente | Conteúdo | Licença |
 | --- | --- | --- |
-| `@mediapipe/tasks-vision` | WASM runtime and JS API | Apache-2.0 |
-| `face_landmarker.task` | BlazeFace short-range detector, FaceMesh-V2, blendshape model | Apache-2.0 |
-| `hand_landmarker.task` | Palm detector, hand landmark model | Apache-2.0 |
+| `@mediapipe/tasks-vision` | Runtime WASM e API JS | Apache-2.0 |
+| `face_landmarker.task` | Detector BlazeFace short-range, FaceMesh-V2, modelo de blendshapes | Apache-2.0 |
+| `hand_landmarker.task` | Detector de palma, modelo de landmarks da mão | Apache-2.0 |
 
-- License text: <https://www.apache.org/licenses/LICENSE-2.0>
-- Source: <https://github.com/google-ai-edge/mediapipe>
-- Model download host: `https://storage.googleapis.com/mediapipe-models/`
+- Texto da licença: <https://www.apache.org/licenses/LICENSE-2.0>
+- Código fonte: <https://github.com/google-ai-edge/mediapipe>
+- Host de download dos modelos: `https://storage.googleapis.com/mediapipe-models/`
 
-`face_landmarker.task` contains `face_detector.tflite`, `face_landmarks_detector.tflite`,
-`face_blendshapes.tflite`, and `geometry_pipeline_metadata_landmarks.binarypb`.
-`hand_landmarker.task` contains `hand_detector.tflite` and `hand_landmarks_detector.tflite`.
+`face_landmarker.task` contém `face_detector.tflite`,
+`face_landmarks_detector.tflite`, `face_blendshapes.tflite` e
+`geometry_pipeline_metadata_landmarks.binarypb`.
+`hand_landmarker.task` contém `hand_detector.tflite` e
+`hand_landmarks_detector.tflite`.
 
-### Privacy
+### Privacidade
 
-Inference happens entirely on the device; camera frames are never uploaded. MediaPipe
-Tasks does send anonymous performance metrics to Google, which is described in the
-[MediaPipe Privacy Notice](https://github.com/google-ai-edge/mediapipe#privacy-notice).
+A inferência acontece inteiramente no dispositivo; os quadros da câmera nunca
+são enviados para lugar nenhum. O MediaPipe Tasks envia métricas anônimas de
+desempenho para o Google, como descrito no
+[aviso de privacidade do MediaPipe](https://github.com/google-ai-edge/mediapipe#privacy-notice).
