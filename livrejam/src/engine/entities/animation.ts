@@ -6,6 +6,7 @@ export interface AnimationClip {
     rows: number;
     frameDuration: number;
     holdLastFrame?: boolean;
+    strideDistance?: number;
 }
 
 export type AnimationSet = Record<string, AnimationClip>;
@@ -22,6 +23,25 @@ export function clipRow(clip: AnimationClip, facing: Facing): number {
 
 export function clampFrame(clip: AnimationClip, frame: number): number {
     return Math.min(Math.max(frame, 0), clip.frames - 1);
+}
+
+export function clipCycleSeconds(clip: AnimationClip): number {
+    return clip.frames * clip.frameDuration;
+}
+
+/**
+ * Quanto do clipe avancar neste quadro, em segundos.
+ *
+ * Clipes com `strideDistance` sao movidos pela distancia percorrida, nao pelo
+ * relogio: uma passada inteira cobre `strideDistance` pixels de mundo, entao o
+ * pe acompanha o chao em qualquer velocidade e para junto com o personagem.
+ */
+export function clipAdvance(clip: AnimationClip, dt: number, distance: number): number {
+    if (clip.strideDistance === undefined || clip.strideDistance <= 0) {
+        return dt;
+    }
+
+    return (Math.abs(distance) / clip.strideDistance) * clipCycleSeconds(clip);
 }
 
 export function advanceClip(

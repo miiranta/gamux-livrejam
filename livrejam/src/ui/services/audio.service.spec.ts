@@ -54,7 +54,7 @@ function sigmaFrame(active: boolean): TrackingFrame {
         gestures: {
             sixtySeven: { active: false, confidence: 0, level: 0, frequency: 0, alternations: 0 },
             sigma: { active, confidence: active ? 1 : 0, score: active ? 1 : 0 },
-            topHand: { active: false, confidence: 0, side: null, margin: 0 },
+            topHand: { active: false, confidence: 0, value: 0 },
         },
     };
 }
@@ -154,6 +154,7 @@ describe('AudioService', () => {
         const startMusic = vi.spyOn(AudioEngine.prototype, 'startMusic');
 
         flow.startMatch();
+        flow.finishCountdown();
         TestBed.tick();
         startMusic.mockClear();
 
@@ -171,6 +172,7 @@ describe('AudioService', () => {
         const startMusic = vi.spyOn(AudioEngine.prototype, 'startMusic');
 
         flow.startMatch();
+        flow.finishCountdown();
         TestBed.tick();
         startMusic.mockClear();
 
@@ -200,6 +202,7 @@ describe('AudioService', () => {
         const startMusic = vi.spyOn(AudioEngine.prototype, 'startMusic');
 
         flow.startMatch();
+        flow.finishCountdown();
         TestBed.tick();
         doSigma();
 
@@ -217,6 +220,7 @@ describe('AudioService', () => {
         const startMusic = vi.spyOn(AudioEngine.prototype, 'startMusic');
 
         flow.startMatch();
+        flow.finishCountdown();
         TestBed.tick();
         doSigma();
 
@@ -234,6 +238,7 @@ describe('AudioService', () => {
         const startMusic = vi.spyOn(AudioEngine.prototype, 'startMusic');
 
         flow.startMatch();
+        flow.finishCountdown();
         TestBed.tick();
         doSigma();
         startMusic.mockClear();

@@ -39,6 +39,7 @@
 }
 
 .app-shell__stage {
+    position: relative;
     display: grid;
     place-items: center;
     height: var(--lj-stage-height);

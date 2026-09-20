@@ -161,7 +161,21 @@
         "gamepad": "Gamepad",
         "connected": "connected",
         "disconnected": "none",
-        "hintPlayer": "Arrows or A/D move · Ctrl run · Up / W / Space jump · Shift dash · Enter drop"
+        "hintPlayer": "Arrows or A/D move · Ctrl run · Up / W / Space jump · Shift dash · Enter drop",
+        "players": {
+            "p1": "Player 1",
+            "p2": "Player 2",
+            "ai": "AI",
+            "steer": "Steer item",
+            "itemDash": "Shove item",
+            "hands": "Raise a hand",
+            "eyes": "Wink an eye",
+            "mouth": "Open your mouth",
+            "move": "Move",
+            "jump": "Jump",
+            "dash": "Dash",
+            "run": "Run"
+        }
     },
     "end": {
         "title": "It's over...",

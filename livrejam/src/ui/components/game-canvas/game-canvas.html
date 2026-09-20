@@ -158,6 +158,36 @@
             </div>
         </div>
 
+        <div class="game-canvas__players">
+            <section class="game-canvas__player">
+                <h2 class="game-canvas__player-name">{{ 'hud.players.p1' | translate }}</h2>
+                <ul class="game-canvas__player-keys">
+                    @for (row of playerOneControls(); track row.labelKey) {
+                        <li>
+                            <span>{{ row.labelKey | translate }}</span>
+                            <b>{{ row.hintKey! | translate }}</b>
+                        </li>
+                    }
+                </ul>
+            </section>
+
+            <section class="game-canvas__player game-canvas__player--right">
+                <h2 class="game-canvas__player-name">{{ 'hud.players.p2' | translate }}</h2>
+                @if (playerTwoIsAi()) {
+                    <p class="game-canvas__player-ai">{{ 'hud.players.ai' | translate }}</p>
+                } @else {
+                    <ul class="game-canvas__player-keys">
+                        @for (row of playerTwoControls(); track row.labelKey) {
+                            <li>
+                                <span>{{ row.labelKey | translate }}</span>
+                                <b>{{ row.keys }}</b>
+                            </li>
+                        }
+                    </ul>
+                }
+            </section>
+        </div>
+
         @if (debugMode()) {
             <p class="game-canvas__hint">
                 {{ controlHintKey() | translate }}

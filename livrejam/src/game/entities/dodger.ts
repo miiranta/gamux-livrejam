@@ -33,7 +33,7 @@ export class Dodger extends Character {
         const characterOptions: CharacterOptions = {
             feet: { x: options.feetX, y: options.feetY },
             box: config.box,
-            animation: 'walk',
+            animation: 'idle',
             gravity: FACE_SMASHING.physics.gravity,
             maxSpeedX: config.maxSpeedStart,
             accelerationX: config.accelerationX,
@@ -223,6 +223,14 @@ export class Dodger extends Character {
             return;
         }
 
-        this.setAnimation(this.horizontalSpeed > 1 ? 'run' : 'walk');
+        const config = FACE_SMASHING.dodger;
+        const speed = this.horizontalSpeed;
+
+        if (speed <= config.idleSpeed) {
+            this.setAnimation('idle');
+            return;
+        }
+
+        this.setAnimation(speed >= config.runSpeed ? 'run' : 'walk');
     }
 }

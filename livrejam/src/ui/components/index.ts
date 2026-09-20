@@ -1,4 +1,5 @@
 export * from './camera-gate/camera-gate';
+export * from './countdown/countdown';
 export * from './crack-overlay/crack-overlay';
 export * from './credits-panel/credits-panel';
 export * from './fullscreen-toggle/fullscreen-toggle';

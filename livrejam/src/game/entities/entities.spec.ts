@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { PhysicsWorld } from '../../engine/physics';
 import { FACE_SMASHING, ITEMS, ITEM_WEIGHT_TOTAL } from '../config';
+import { CHARACTER_CLIPS } from '../assets/dungeon-sprites';
 import { DAMAGE_PER_LEVEL, TIER_LAST, damageLevel, damageScale } from '../damage';
 import { Dodger } from './dodger';
 import { Item, pickItem } from './item';
@@ -131,11 +132,55 @@ describe('Dodger', () => {
         dodger.physics.body.grounded = true;
         dodger.physics.body.velocity.x = 0;
         dodger.resolveAnimation();
+        expect(dodger.animation).toBe('idle');
+
+        dodger.physics.body.velocity.x = 40;
+        dodger.resolveAnimation();
         expect(dodger.animation).toBe('walk');
 
         dodger.physics.body.velocity.x = 120;
         dodger.resolveAnimation();
         expect(dodger.animation).toBe('run');
+    });
+
+    it('advances the walk clip by distance, not by the clock', () => {
+        const stride = CHARACTER_CLIPS.walk.strideDistance ?? 0;
+        expect(stride).toBeGreaterThan(0);
+
+        const frameAfter = (speed: number, dt: number, steps: number): number => {
+            const dodger = createTestDodger();
+            dodger.physics.body.grounded = true;
+            dodger.physics.body.velocity.x = speed;
+            dodger.resolveAnimation();
+            expect(dodger.animation).toBe('walk');
+
+            for (let index = 0; index < steps; index++) {
+                dodger.advanceAnimation(dt, CHARACTER_CLIPS);
+            }
+
+            return dodger.frame;
+        };
+
+        const half = stride / 2;
+        const slow = frameAfter(20, 1 / 60, Math.round(half / (20 / 60)));
+        const quick = frameAfter(60, 1 / 60, Math.round(half / (60 / 60)));
+
+        expect(slow).toBe(quick);
+        expect(slow).toBeGreaterThan(0);
+    });
+
+    it('freezes the sprite while the dodger is standing still', () => {
+        const dodger = createTestDodger();
+        dodger.physics.body.grounded = true;
+        dodger.physics.body.velocity.x = 0;
+        dodger.resolveAnimation();
+
+        for (let index = 0; index < 120; index++) {
+            dodger.advanceAnimation(1 / 60, CHARACTER_CLIPS);
+        }
+
+        expect(dodger.animation).toBe('idle');
+        expect(dodger.frame).toBe(0);
     });
 });
 

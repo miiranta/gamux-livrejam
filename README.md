@@ -196,3 +196,5 @@ Os metadados coletados (pacote, licenca, contagem de arquivos) ficam em
 ## Train the AI
 
 cd /home/lucas-miranda/Desktop/LivreJam && .venv/bin/python -u tools/ai/train.py --generations 600 --population 64 --envs 1536 --episode-steps 3660 --sigma 0.05 --learning-rate 0.06 --worst-weight 0.5 --dodge-weight 0.1 --curriculum 1 --eval-every 10 --seed 71 --checkpoint-every 5 2>&1 | tee /tmp/train.log
+
+cd /home/lucas-miranda/Desktop/LivreJam && .venv/bin/python -u tools/ai/train.py --generations 600 --population 64 --envs 1536 --episode-steps 3660 --sigma 0.05 --learning-rate 0.06 --worst-weight 0.5 --worst-quantile 0.1 --dodge-weight 0.1 --curriculum 1 --eval-every 10 --seed 71 --checkpoint-every 5 2>&1 | tee /tmp/train.log

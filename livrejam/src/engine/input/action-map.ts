@@ -1,5 +1,5 @@
 export class KeyboardActionMap<TAction extends string> {
-    private readonly down = new Set<TAction>();
+    private readonly held = new Map<TAction, Set<string>>();
     private readonly codes = new Map<string, TAction>();
 
     constructor(
@@ -15,11 +15,12 @@ export class KeyboardActionMap<TAction extends string> {
     }
 
     isDown(action: TAction): boolean {
-        return this.down.has(action);
+        const codes = this.held.get(action);
+        return codes !== undefined && codes.size > 0;
     }
 
     clear(): void {
-        this.down.clear();
+        this.held.clear();
     }
 
     dispose(): void {
@@ -35,12 +36,21 @@ export class KeyboardActionMap<TAction extends string> {
             return;
         }
 
+        // Auto-repeat still has to be swallowed, or the browser keeps acting on
+        // the key: Space scrolls the page while it is held down.
+        event.preventDefault();
+
         if (event.repeat) {
             return;
         }
 
-        event.preventDefault();
-        this.down.add(action);
+        const codes = this.held.get(action);
+        if (codes === undefined) {
+            this.held.set(action, new Set([event.code]));
+            return;
+        }
+
+        codes.add(event.code);
     };
 
     private readonly onKeyUp = (event: KeyboardEvent): void => {
@@ -50,7 +60,7 @@ export class KeyboardActionMap<TAction extends string> {
         }
 
         event.preventDefault();
-        this.down.delete(action);
+        this.held.get(action)?.delete(event.code);
     };
 
     private readonly onBlur = (): void => {

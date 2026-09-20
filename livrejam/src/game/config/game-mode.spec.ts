@@ -130,12 +130,12 @@ describe('readPlayerIntent', () => {
 });
 
 describe('speedFactorFor', () => {
-    it('walks slower than it sprints, and sprinting is the full speed', () => {
+    it('moves the human at the same speed the policy gets', () => {
         const { walkSpeedFactor, runSpeedFactor } = FACE_SMASHING.player;
 
         expect(speedFactorFor(false)).toBe(walkSpeedFactor);
         expect(speedFactorFor(true)).toBe(runSpeedFactor);
-        expect(walkSpeedFactor).toBeLessThan(runSpeedFactor);
+        expect(walkSpeedFactor).toBe(1);
         expect(runSpeedFactor).toBe(1);
     });
 });

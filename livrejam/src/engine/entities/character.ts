@@ -3,7 +3,7 @@ import type { PhysicsBody } from '../physics';
 import { createBody, dampVelocity } from '../physics';
 import { accelerate } from '../physics';
 import type { AnimationSet } from './animation';
-import { advanceClip, clipRow } from './animation';
+import { advanceClip, clipAdvance, clipRow } from './animation';
 import type { Facing } from './facing';
 
 export interface CharacterBox {
@@ -142,7 +142,8 @@ export class Character {
             return;
         }
 
-        const step = advanceClip(clip, this.frame, this.elapsed, dt);
+        const travelled = this.physics.body.velocity.x * dt;
+        const step = advanceClip(clip, this.frame, this.elapsed, clipAdvance(clip, dt, travelled));
         this.frame = step.frame;
         this.elapsed = step.elapsed;
     }

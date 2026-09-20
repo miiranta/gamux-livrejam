@@ -4,7 +4,7 @@ import { CameraStatusService } from './camera-status.service';
 import { DebugModeService } from './debug-mode.service';
 
 /** Which screen currently owns the viewport. */
-export type GameScreen = 'menu' | 'playing' | 'paused' | 'game-over';
+export type GameScreen = 'menu' | 'countdown' | 'playing' | 'paused' | 'game-over';
 
 /** Final results handed to the end-game screen. */
 export interface MatchResult {
@@ -52,13 +52,17 @@ export class GameFlowService {
     readonly cameraGate = this.cameraGateState.asReadonly();
 
     readonly isMenu = computed(() => this.screenState() === 'menu');
+    readonly isCountdown = computed(() => this.screenState() === 'countdown');
     readonly isPlaying = computed(() => this.screenState() === 'playing');
     readonly isPaused = computed(() => this.screenState() === 'paused');
     readonly isGameOver = computed(() => this.screenState() === 'game-over');
 
     /** True while the match canvas should be rendering and simulating. */
     readonly isMatchVisible = computed(
-        () => this.screenState() === 'playing' || this.screenState() === 'paused',
+        () =>
+            this.screenState() === 'countdown' ||
+            this.screenState() === 'playing' ||
+            this.screenState() === 'paused',
     );
 
     /** True while the match simulation should advance. */
@@ -92,7 +96,7 @@ export class GameFlowService {
     }
 
     pause(): void {
-        if (this.screenState() !== 'playing') {
+        if (this.screenState() !== 'playing' && this.screenState() !== 'countdown') {
             return;
         }
 
@@ -106,11 +110,19 @@ export class GameFlowService {
         }
 
         this.pausedState.set(false);
+        this.screenState.set('countdown');
+    }
+
+    finishCountdown(): void {
+        if (this.screenState() !== 'countdown') {
+            return;
+        }
+
         this.screenState.set('playing');
     }
 
     togglePause(): void {
-        if (this.screenState() === 'playing') {
+        if (this.screenState() === 'playing' || this.screenState() === 'countdown') {
             this.pause();
         } else if (this.screenState() === 'paused') {
             this.resume();
@@ -176,6 +188,6 @@ export class GameFlowService {
         if (this.screenState() !== 'menu') {
             this.restartTokenState.update((token) => token + 1);
         }
-        this.screenState.set('playing');
+        this.screenState.set('countdown');
     }
 }

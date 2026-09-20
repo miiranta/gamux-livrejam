@@ -1,3 +1,4 @@
+import type { AnimationClip } from '../../engine/entities';
 import { loadImage, type SpriteSheet } from '../../engine/render';
 import { FACE_SMASHING, ITEMS } from '../config';
 import { DAMAGE_LEVELS } from '../damage';
@@ -10,6 +11,7 @@ import {
 } from './treasure-hunters';
 
 export type CharacterAnimationKey = 'walk' | 'run' | 'jump' | 'hurt';
+export type DodgerAnimationKey = CharacterAnimationKey | 'idle';
 export type EffectKey = 'impact' | 'slash' | 'dust' | 'explosion';
 
 export interface LoadedSpriteSheet extends SpriteSheet {
@@ -79,12 +81,20 @@ const CHARACTER_FRAME_SIZE = 64;
 
 export const FALLBACK_ANIMATION: CharacterAnimationKey = 'walk';
 
-export const CHARACTER_CLIPS: Record<
-    CharacterAnimationKey,
-    { frames: number; rows: number; frameDuration: number; holdLastFrame?: boolean }
-> = {
-    walk: { frames: CHARACTER_ANIMATIONS.walk, rows: 4, frameDuration: 0.11 },
-    run: { frames: CHARACTER_ANIMATIONS.run, rows: 4, frameDuration: 0.07 },
+export const CHARACTER_CLIPS: Record<DodgerAnimationKey, AnimationClip> = {
+    idle: { frames: 1, rows: 4, frameDuration: 1 },
+    walk: {
+        frames: CHARACTER_ANIMATIONS.walk,
+        rows: 4,
+        frameDuration: 0.11,
+        strideDistance: FACE_SMASHING.dodger.walkStride,
+    },
+    run: {
+        frames: CHARACTER_ANIMATIONS.run,
+        rows: 4,
+        frameDuration: 0.07,
+        strideDistance: FACE_SMASHING.dodger.runStride,
+    },
     jump: { frames: CHARACTER_ANIMATIONS.jump, rows: 4, frameDuration: 0.09, holdLastFrame: true },
     hurt: { frames: CHARACTER_ANIMATIONS.hurt, rows: 1, frameDuration: 0.12, holdLastFrame: true },
 };

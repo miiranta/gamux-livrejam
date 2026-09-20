@@ -183,10 +183,15 @@ describe('GameFlowService', () => {
         expect(flow.isMenu()).toBe(true);
     });
 
-    it('moves through play -> pause -> resume', () => {
+    it('moves through countdown -> play -> pause -> resume', () => {
         const flow = createFlow();
 
         flow.startMatch();
+        expect(flow.isCountdown()).toBe(true);
+        expect(flow.isMatchVisible()).toBe(true);
+        expect(flow.isRunning()).toBe(false);
+
+        flow.finishCountdown();
         expect(flow.isPlaying()).toBe(true);
         expect(flow.isRunning()).toBe(true);
 
@@ -197,7 +202,29 @@ describe('GameFlowService', () => {
         expect(flow.isRunning()).toBe(false);
 
         flow.resume();
+        expect(flow.isCountdown()).toBe(true);
+
+        flow.finishCountdown();
         expect(flow.isPlaying()).toBe(true);
+    });
+
+    it('ignores finishCountdown outside the countdown', () => {
+        const flow = createFlow();
+
+        flow.finishCountdown();
+
+        expect(flow.isMenu()).toBe(true);
+    });
+
+    it('pauses during the countdown and counts down again on resume', () => {
+        const flow = createFlow();
+        flow.startMatch();
+
+        flow.pause();
+        expect(flow.isPaused()).toBe(true);
+
+        flow.resume();
+        expect(flow.isCountdown()).toBe(true);
     });
 
     it('ignores pause while on the menu', () => {
@@ -215,7 +242,7 @@ describe('GameFlowService', () => {
 
         flow.restartMatch();
 
-        expect(flow.isPlaying()).toBe(true);
+        expect(flow.isCountdown()).toBe(true);
         expect(flow.restartToken()).toBe(before + 1);
     });
 
@@ -243,12 +270,13 @@ describe('GameFlowService', () => {
     it('toggles between playing and paused', () => {
         const flow = createFlow();
         flow.startMatch();
+        flow.finishCountdown();
 
         flow.togglePause();
         expect(flow.isPaused()).toBe(true);
 
         flow.togglePause();
-        expect(flow.isPlaying()).toBe(true);
+        expect(flow.isCountdown()).toBe(true);
     });
 
     it('refuses to start a match when the camera is blocked', () => {
@@ -259,7 +287,7 @@ describe('GameFlowService', () => {
 
         flow.startMatch();
 
-        expect(flow.isPlaying()).toBe(false);
+        expect(flow.isCountdown()).toBe(false);
         expect(flow.isMenu()).toBe(true);
         expect(flow.cameraGate()).toBe(true);
     });
@@ -270,13 +298,13 @@ describe('GameFlowService', () => {
         const flow = TestBed.inject(GameFlowService);
 
         flow.startMatch();
-        expect(flow.isPlaying()).toBe(false);
+        expect(flow.isCountdown()).toBe(false);
         expect(flow.cameraGate()).toBe(false);
 
         camera.markReady();
         TestBed.tick();
 
-        expect(flow.isPlaying()).toBe(true);
+        expect(flow.isCountdown()).toBe(true);
     });
 
     it('shows the gate instead of starting when the camera fails while warming up', () => {
@@ -286,13 +314,13 @@ describe('GameFlowService', () => {
 
         camera.markStarting();
         flow.startMatch();
-        expect(flow.isPlaying()).toBe(false);
+        expect(flow.isCountdown()).toBe(false);
 
         camera.markBlocked('busy', 'busy');
         TestBed.tick();
 
         expect(flow.cameraGate()).toBe(true);
-        expect(flow.isPlaying()).toBe(false);
+        expect(flow.isCountdown()).toBe(false);
     });
 
     it('closes the gate and returns to the menu when the camera recovers', () => {
@@ -325,7 +353,7 @@ describe('GameFlowService', () => {
         flow.startMatch();
 
         expect(flow.cameraGate()).toBe(false);
-        expect(flow.isPlaying()).toBe(true);
+        expect(flow.isCountdown()).toBe(true);
     });
 
     it('closes the gate when the player goes back to the menu', () => {
@@ -351,7 +379,7 @@ describe('GameFlowService', () => {
         flow.startMatch();
 
         expect(flow.cameraGate()).toBe(false);
-        expect(flow.isPlaying()).toBe(true);
+        expect(flow.isCountdown()).toBe(true);
     });
 
     it('starts a match straight away in debug mode, before the camera is ready', () => {
@@ -362,7 +390,7 @@ describe('GameFlowService', () => {
         flow.startMatch();
 
         expect(flow.cameraGate()).toBe(false);
-        expect(flow.isPlaying()).toBe(true);
+        expect(flow.isCountdown()).toBe(true);
     });
 
     it('opens the match when debug mode is switched on while the gate is open', () => {
@@ -377,7 +405,7 @@ describe('GameFlowService', () => {
         TestBed.tick();
 
         expect(flow.cameraGate()).toBe(false);
-        expect(flow.isPlaying()).toBe(true);
+        expect(flow.isCountdown()).toBe(true);
     });
 });
 
