@@ -67,7 +67,7 @@ function eyeFrame(leftClosed: boolean, rightClosed: boolean): TrackingFrame {
     });
 }
 
-function handFrame(side: 'left' | 'right' | null): TrackingFrame {
+function handFrame(side: 'left' | 'right' | null, margin = side === 'left' ? 0.1 : -0.1): TrackingFrame {
     return frame({
         hands: [hand('Left', 0.4), hand('Right', 0.5)],
         gestures: {
@@ -77,7 +77,7 @@ function handFrame(side: 'left' | 'right' | null): TrackingFrame {
                 active: side !== null,
                 confidence: side ? 1 : 0,
                 side,
-                margin: side === 'left' ? 0.1 : -0.1,
+                margin,
             },
         },
     });
@@ -91,13 +91,46 @@ describe('SteeringSystem', () => {
         expect(steering.intent('rizz', centerX())).toEqual({ axis: 0, active: false });
     });
 
-    it('steers with the higher hand in 67 mode', () => {
+    it('steers towards the higher hand in 67 mode', () => {
         const steering = new SteeringSystem(createLevel());
         steering.update(handFrame('left'));
-        expect(steering.intent('67', centerX()).axis).toBe(-1);
+        expect(steering.intent('67', centerX()).axis).toBeCloseTo(-2 / 3, 6);
 
         steering.update(handFrame('right'));
-        expect(steering.intent('67', centerX()).axis).toBe(1);
+        expect(steering.intent('67', centerX()).axis).toBeCloseTo(2 / 3, 6);
+    });
+
+    it('scales the direction with how far apart the hands are held', () => {
+        const steering = new SteeringSystem(createLevel());
+        steering.update(handFrame('left', 0.075));
+        const partial = steering.intent('67', centerX()).axis;
+
+        steering.update(handFrame('left', 0.15));
+        const full = steering.intent('67', centerX()).axis;
+
+        expect(partial).toBeLessThan(0);
+        expect(partial).toBeGreaterThan(-1);
+        expect(full).toBe(-1);
+        expect(partial).toBeGreaterThan(full);
+    });
+
+    it('drops straight while the hands are held level', () => {
+        const steering = new SteeringSystem(createLevel());
+        steering.update(handFrame('left', 0));
+
+        expect(steering.intent('67', centerX()).axis).toBe(0);
+    });
+
+    it('keeps the decided side when the margin sign flickers', () => {
+        const steering = new SteeringSystem(createLevel());
+
+        steering.update(handFrame('left', -0.1));
+        expect(steering.intent('67', centerX()).axis).toBeLessThan(0);
+        expect(steering.aim('67')).toBeLessThan(0);
+
+        steering.update(handFrame('right', 0.1));
+        expect(steering.intent('67', centerX()).axis).toBeGreaterThan(0);
+        expect(steering.aim('67')).toBeGreaterThan(0);
     });
 
     it('ignores the eyes in 67 mode', () => {
@@ -150,7 +183,7 @@ describe('SteeringSystem', () => {
         steering.update(handFrame('left'));
 
         expect(steering.intent('67', level.playLeft).axis).toBe(0);
-        expect(steering.intent('67', centerX()).axis).toBe(-1);
+        expect(steering.intent('67', centerX()).axis).toBeLessThan(0);
     });
 
     it('refuses to push the item into the right wall', () => {
@@ -159,7 +192,7 @@ describe('SteeringSystem', () => {
         steering.update(handFrame('right'));
 
         expect(steering.intent('67', level.playRight).axis).toBe(0);
-        expect(steering.intent('67', centerX()).axis).toBe(1);
+        expect(steering.intent('67', centerX()).axis).toBeGreaterThan(0);
     });
 
     it('forgets the frame on reset', () => {
@@ -183,10 +216,19 @@ describe('SteeringSystem aim', () => {
         const steering = new SteeringSystem(createLevel());
 
         steering.update(handFrame('left'));
-        expect(steering.aim('67')).toBeGreaterThan(0);
+        expect(steering.aim('67')).toBeLessThan(0);
 
         steering.update(handFrame('right'));
-        expect(steering.aim('67')).toBeLessThan(0);
+        expect(steering.aim('67')).toBeGreaterThan(0);
+    });
+
+    it('points the marker where the item will actually fly', () => {
+        const steering = new SteeringSystem(createLevel());
+
+        for (const margin of [-0.15, -0.05, 0, 0.05, 0.15]) {
+            steering.update(handFrame('left', margin));
+            expect(steering.aim('67')).toBe(steering.intent('67', centerX()).axis);
+        }
     });
 
     it('clamps a large hand margin', () => {
@@ -195,7 +237,7 @@ describe('SteeringSystem aim', () => {
         frame.gestures.topHand.margin = 5;
 
         steering.update(frame);
-        expect(steering.aim('67')).toBe(1);
+        expect(steering.aim('67')).toBe(-1);
     });
 
     it('swings fully to the winked side in rizz mode', () => {

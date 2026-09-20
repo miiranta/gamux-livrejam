@@ -528,10 +528,10 @@ export class FaceSmashing {
     }
 
     private awardHitScore(outcome: ImpactOutcome): void {
+        this.score += outcome.damage;
+
         for (const contact of outcome.contacts) {
-            const points = hitPoints(contact.damage);
-            this.score += points;
-            this.scorePopups.spawn(contact.x, contact.y, points);
+            this.scorePopups.spawn(contact.x, contact.y, hitPoints(contact.damage));
         }
     }
 
