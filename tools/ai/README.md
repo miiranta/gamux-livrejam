@@ -237,13 +237,13 @@ aceleracao, todo quadro em que o desviador esta no chao. Com o atrito na frente,
 a aceleracao continua empurrando e o limite de projeto e alcancavel:
 
 ```
-v_terminal = maxSpeed = 560 px/s (nivel 0) e 150 px/s (nivel 7)
+v_terminal = maxSpeed = 448 px/s (nivel 0) e 150 px/s (nivel 7)
 ```
 
 O que **nao** funciona e aplicar o atrito depois de limitar a velocidade: nesse
-caso o teto real vira `maxSpeed * f` (459 px/s), a velocidade maxima do nivel deixa
+caso o teto real vira `maxSpeed * f` (367 px/s), a velocidade maxima do nivel deixa
 de ser alcancavel e a observacao passa a mentir sobre a propria capacidade. A
-aceleracao de 7376 foi escolhida para vencer o atrito e ainda chegar aos 560.
+aceleracao de 5900 foi escolhida para vencer o atrito e ainda chegar aos 448.
 
 O avanco (dash) ignora o atrito e o limite de velocidade: e um pico de 0,16 s que
 chega a 1000 px/s no nivel 0, com 1 s de recarga. Ele exige o chao e e recusado
@@ -323,8 +323,8 @@ Cada nivel enfraquece a mobilidade de forma linear, do nivel 0 ao 7:
 
 | nivel | velocidade maxima | pulo (px de subida) | arrancada do avanco |
 | --- | --- | --- | --- |
-| 0 | 560 | 192 | 1000 |
-| 3 | 384 | 124 | 657 |
+| 0 | 448 | 192 | 1000 |
+| 3 | 320 | 124 | 657 |
 | 7 | 150 | 57 | 400 |
 
 A subida vem de `v^2 / 2g`, nao do valor cru do pulo. No nivel 0 ela e de 192 px,

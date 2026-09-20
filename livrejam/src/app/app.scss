@@ -3,8 +3,10 @@
 }
 
 .app-shell {
-    display: grid;
-    place-items: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
     padding: 1rem;
 }
 
@@ -25,5 +27,7 @@
 }
 
 .app-shell__camera {
-    display: none;
+    display: block;
+    width: 33.333vw;
+    max-width: 100%;
 }

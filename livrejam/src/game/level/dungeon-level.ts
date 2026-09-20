@@ -9,6 +9,9 @@ export interface DungeonLevel {
     grid: TileGrid;
     decorations: DecorationPlan;
     colliders: SolidBox[];
+    solid: ReadonlySet<string>;
+    ceilingRows: number;
+    ceilingBottom: number;
     floorTop: number;
     playLeft: number;
     playRight: number;
@@ -18,6 +21,8 @@ export interface DungeonLevel {
 
 const LAYER_WALL = 1;
 const LAYER_FLOOR = 2;
+
+const CEILING_ROWS = 2;
 
 export function createDungeonLevel(): DungeonLevel {
     const { size, scale, columns, rows, wallThickness, floorThickness } = FACE_SMASHING.tile;
@@ -37,9 +42,12 @@ export function createDungeonLevel(): DungeonLevel {
     }
 
     const floorTop = grid.rowY(floorRow);
+    const ceilingRows = Math.min(CEILING_ROWS, Math.max(0, floorRow - 2));
+    const ceilingBottom = grid.rowY(ceilingRows);
+
     const level: DungeonLevel = {
         grid,
-        decorations: { walls: [], floors: [], torches: [] },
+        decorations: { walls: [], floors: [], torches: [], ceiling: [], arch: [], banners: [], props: [] },
         colliders: mergeColliders(
             solid,
             columns,
@@ -49,10 +57,13 @@ export function createDungeonLevel(): DungeonLevel {
             LAYER_FLOOR,
             floorRow,
         ),
+        solid,
+        ceilingRows,
+        ceilingBottom,
         floorTop,
         playLeft: grid.columnX(wallThickness),
         playRight: grid.columnX(columns - wallThickness),
-        spawnY: grid.top + FACE_SMASHING.item.spawnHeight,
+        spawnY: ceilingBottom + FACE_SMASHING.item.spawnHeight,
         despawnY: grid.bottom + FACE_SMASHING.item.despawnBelow,
     };
 
