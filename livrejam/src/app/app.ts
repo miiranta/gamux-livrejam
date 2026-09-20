@@ -63,6 +63,13 @@ export class App {
             return;
         }
 
+        // A menu on screen answers Esc itself, as its own "back" — closing an
+        // open panel rather than pausing behind it. `GamepadNavigation` is
+        // injected above, so it listens first and marks those presses.
+        if (event.defaultPrevented) {
+            return;
+        }
+
         if (this.flow.isPlaying() || this.flow.isCountdown() || this.flow.isPaused()) {
             event.preventDefault();
             this.flow.togglePause();

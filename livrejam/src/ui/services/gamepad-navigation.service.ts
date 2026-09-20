@@ -46,7 +46,11 @@ export class GamepadNavigation {
         }
 
         this.frameId = requestAnimationFrame(this.poll);
-        this.destroyRef.onDestroy(() => this.stop());
+        window.addEventListener('keydown', this.onKeyDown);
+        this.destroyRef.onDestroy(() => {
+            this.stop();
+            window.removeEventListener('keydown', this.onKeyDown);
+        });
     }
 
     /**
@@ -144,6 +148,80 @@ export class GamepadNavigation {
         this.onBack?.();
     }
 
+    /**
+     * The keyboard's arrows do what the d-pad does: walk the focus ring, and
+     * step a focused slider sideways. Everything the pad reaches in a menu is
+     * reachable without one.
+     *
+     * Enter confirms and Esc or Backspace go back, exactly like the pad's
+     * bottom and right buttons. Space still runs a focused button natively,
+     * and Tab walks the page.
+     */
+    private readonly onKeyDown = (event: KeyboardEvent): void => {
+        const direction = ARROW_KEYS[event.key];
+
+        if (event.key === 'Enter') {
+            this.menuKey(event, confirmFocused);
+            return;
+        }
+
+        if (event.key === 'Escape' || event.key === 'Backspace') {
+            this.menuKey(event, () => this.onBack?.());
+            return;
+        }
+
+        // No menu on screen means the arrows belong to the match, and a
+        // shortcut chord is never a navigation press.
+        if (!direction || !topLayer() || event.ctrlKey || event.altKey || event.metaKey) {
+            return;
+        }
+
+        // A field being typed into keeps its arrows: they move the caret, and
+        // walking away would drop what was typed. The stepper's readout is
+        // left with Enter and Esc, which it already handles.
+        if (isTextEntry(document.activeElement)) {
+            return;
+        }
+
+        // Taken over from the browser, so sideways on a slider steps the
+        // value once — the pad's way — instead of also stepping it natively.
+        event.preventDefault();
+
+        if (direction === 'left' || direction === 'right') {
+            this.horizontal(direction);
+            return;
+        }
+
+        moveFocus(direction);
+    };
+
+    /**
+     * Runs a menu action for a key press, under the same rules as the pad:
+     * only while a menu layer is on screen, and not during the hold window.
+     *
+     * The default is taken over whenever the press was the menu's, so Enter
+     * cannot also fire the focused button natively (which would run it
+     * twice), Backspace cannot walk the browser's history, and Esc does not
+     * reach the shell, which would pause on top of the layer's own answer.
+     */
+    private menuKey(event: KeyboardEvent, action: () => void): void {
+        if (!topLayer() || event.ctrlKey || event.altKey || event.metaKey) {
+            return;
+        }
+
+        // A field being typed into keeps these keys: the readout commits on
+        // Enter, reverts on Esc, and Backspace erases what is in it.
+        if (isTextEntry(document.activeElement)) {
+            return;
+        }
+
+        event.preventDefault();
+
+        if (performance.now() >= this.deafUntil) {
+            action();
+        }
+    }
+
     /** D-pad and left stick nudge the browser's focus ring around. */
     private readDirections(pad: Gamepad): void {
         const dx = axisDirection(pad.axes[0]);
@@ -218,6 +296,26 @@ type Direction = 'up' | 'down' | 'left' | 'right';
 const FOCUS_REPEAT_DELAY = 350;
 const FOCUS_REPEAT_INTERVAL = 130;
 const STICK_DEAD_ZONE = 0.5;
+
+/** Keyboard arrows, mapped onto the directions the focus ring understands. */
+const ARROW_KEYS: Readonly<Record<string, Direction | undefined>> = {
+    ArrowUp: 'up',
+    ArrowDown: 'down',
+    ArrowLeft: 'left',
+    ArrowRight: 'right',
+};
+
+/** True for anything the player types into, where the arrows are the caret's. */
+function isTextEntry(element: Element | null): boolean {
+    if (
+        element instanceof HTMLTextAreaElement ||
+        (element as HTMLElement | null)?.isContentEditable
+    ) {
+        return true;
+    }
+
+    return element instanceof HTMLInputElement && !PAD_INPUT_TYPES.has(element.type);
+}
 
 /** Moves focus to the next control in the given direction, wrapping around. */
 export function moveFocus(direction: Direction): void {
