@@ -1,6 +1,6 @@
 {
   "checkpoint": true,
-  "generation": 19,
+  "generation": 21,
   "best_fitness": 0.8530381917953491,
   "best_generation": 1,
   "generations": 600,
@@ -316,6 +316,38 @@
       "held_out_damage": null,
       "held_out_p90": null,
       "elapsed": 957.5746068954468
+    },
+    {
+      "generation": 20,
+      "mean_fitness": 0.110855832695961,
+      "top_fitness": 0.40196889638900757,
+      "mean_damage": 2136.701171875,
+      "worst_damage": 3068.591064453125,
+      "best_damage": 4114.27978515625,
+      "hits": 59.5498161315918,
+      "dodges": 34.326133728027344,
+      "champion_damage": 1388.9755859375,
+      "champion_worst_damage": 2255.659423828125,
+      "drop_cap": 260.0,
+      "held_out_damage": 3470.5712890625,
+      "held_out_p90": 3952.847412109375,
+      "elapsed": 1026.7100026607513
+    },
+    {
+      "generation": 21,
+      "mean_fitness": 0.034478772431612015,
+      "top_fitness": 0.37959256768226624,
+      "mean_damage": 2331.029052734375,
+      "worst_damage": 3279.939453125,
+      "best_damage": 4094.908935546875,
+      "hits": 61.701263427734375,
+      "dodges": 32.674217224121094,
+      "champion_damage": 1447.2684326171875,
+      "champion_worst_damage": 2344.147705078125,
+      "drop_cap": 260.0,
+      "held_out_damage": null,
+      "held_out_p90": null,
+      "elapsed": 1075.4666533470154
     }
   ],
   "weights": 17376,
