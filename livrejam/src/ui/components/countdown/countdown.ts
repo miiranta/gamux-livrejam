@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { GameFlowService } from '../../services';
 
 const COUNT_FROM = 3;
-const STEP_MS = 1000;
+const STEP_MS = 700;
 
 @Component({
     selector: 'app-countdown',

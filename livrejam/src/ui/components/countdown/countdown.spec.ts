@@ -41,17 +41,17 @@ describe('Countdown', () => {
 
         expect(digit()).toBe('3');
 
-        vi.advanceTimersByTime(1000);
+        vi.advanceTimersByTime(700);
         detect();
         expect(digit()).toBe('2');
         expect(flow.isCountdown()).toBe(true);
 
-        vi.advanceTimersByTime(1000);
+        vi.advanceTimersByTime(700);
         detect();
         expect(digit()).toBe('1');
         expect(flow.isCountdown()).toBe(true);
 
-        vi.advanceTimersByTime(1000);
+        vi.advanceTimersByTime(700);
         detect();
         expect(flow.isPlaying()).toBe(true);
     });
