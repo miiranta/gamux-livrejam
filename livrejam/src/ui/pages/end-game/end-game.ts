@@ -6,7 +6,7 @@ import { ParticleBurst } from '../../components/particle-burst/particle-burst';
 import { PixelButton } from '../../components/pixel-button/pixel-button';
 import { PixelPanel } from '../../components/pixel-panel/pixel-panel';
 import { GamepadMenu, HoverSound } from '../../directives';
-import { AudioService, GameFlowService, SOUND_EFFECTS } from '../../services';
+import { AudioService, GameFlowService, GamepadNavigation, SOUND_EFFECTS } from '../../services';
 
 /**
  * When each element "hits" the screen, in seconds. These mirror the CSS
@@ -15,6 +15,14 @@ import { AudioService, GameFlowService, SOUND_EFFECTS } from '../../services';
  */
 const TITLE_IMPACT_SECONDS = 0.42;
 const SCORE_IMPACT_SECONDS = 0.95;
+
+/**
+ * How long the pad's buttons are ignored once the screen opens. The match
+ * ends on its own, so the player is usually still hammering the jump button
+ * ("A", the same button that confirms here) when the score lands — without
+ * this the round restarts before they get to read it.
+ */
+const PAD_HOLD_SECONDS = SCORE_IMPACT_SECONDS + 0.85;
 
 /**
  * Result screen shown when the match timer runs out. Elements slam in one
@@ -39,6 +47,7 @@ const SCORE_IMPACT_SECONDS = 0.95;
 export class EndGame {
     private readonly flow = inject(GameFlowService);
     private readonly audio = inject(AudioService);
+    private readonly gamepad = inject(GamepadNavigation);
 
     /** Placeholder scoring — the real formula lands when gameplay is wired. */
     protected readonly score = computed(() => this.flow.result().score);
@@ -50,6 +59,8 @@ export class EndGame {
             TITLE_IMPACT_SECONDS,
             SCORE_IMPACT_SECONDS,
         ]);
+
+        this.gamepad.holdActions(PAD_HOLD_SECONDS);
     }
 
     protected retry(): void {

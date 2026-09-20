@@ -5,6 +5,7 @@ import { FACE_SMASHING } from '../config';
 export interface ImpactContact {
     x: number;
     y: number;
+    /** Where the blow throws the dodger: -1 left, 1 right, away from the item. */
     direction: number;
     damage: number;
 }
@@ -55,7 +56,7 @@ export class ImpactSystem {
                 this.contacts.push({
                     x: item.centerX,
                     y: item.centerY,
-                    direction: item.centerX < dodger.feet.x ? -1 : 1,
+                    direction: item.centerX < dodger.feet.x ? 1 : -1,
                     damage: dealt,
                 });
                 continue;

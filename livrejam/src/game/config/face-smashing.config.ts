@@ -112,7 +112,7 @@ export const FACE_SMASHING = {
         pop: 190,
         stunSeconds: 0.28,
         flashSeconds: 0.2,
-        invulnerableSeconds: 0.5,
+        invulnerableSeconds: 0.75,
         flashColor: '#ffffff',
     },
     effects: {

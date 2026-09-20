@@ -29,6 +29,9 @@ export class GamepadNavigation {
      */
     onBack: (() => void) | null = null;
 
+    /** While `performance.now()` is below this, confirm and back are ignored. */
+    private deafUntil = 0;
+
     constructor() {
         if (typeof window === 'undefined') {
             return;
@@ -36,6 +39,16 @@ export class GamepadNavigation {
 
         this.frameId = requestAnimationFrame(this.poll);
         this.destroyRef.onDestroy(() => this.stop());
+    }
+
+    /**
+     * Swallows confirm and back for `seconds`. A screen that appears on its
+     * own — the result screen at the end of a match — uses it so a press
+     * aimed at the match does not fall straight through into it. Focus still
+     * moves, so the player can pick a button while they read the score.
+     */
+    holdActions(seconds: number): void {
+        this.deafUntil = Math.max(this.deafUntil, performance.now() + seconds * 1000);
     }
 
     private stop(): void {
@@ -64,10 +77,14 @@ export class GamepadNavigation {
             return;
         }
 
-        for (const [index, action] of PAD_ACTIONS) {
-            if (pressed[index] && !previous[index]) {
-                this.trigger(action);
-                return;
+        // The button states above are recorded either way, so a button held
+        // across the hold window never fires late: it has to be pressed anew.
+        if (performance.now() >= this.deafUntil) {
+            for (const [index, action] of PAD_ACTIONS) {
+                if (pressed[index] && !previous[index]) {
+                    this.trigger(action);
+                    return;
+                }
             }
         }
 
@@ -99,10 +116,23 @@ export class GamepadNavigation {
         } else if (this.edge('down', down || dy > 0)) {
             moveFocus('down');
         } else if (this.edge('left', left || dx < 0)) {
-            moveFocus('left');
+            this.horizontal('left');
         } else if (this.edge('right', right || dx > 0)) {
-            moveFocus('right');
+            this.horizontal('right');
         }
+    }
+
+    /**
+     * Sideways is the one axis a slider wants for itself: on the volume
+     * sliders it drags the value, everywhere else it walks the focus ring.
+     * Up and down still leave the slider, so the pad never gets stuck on one.
+     */
+    private horizontal(direction: 'left' | 'right'): void {
+        if (nudgeFocusedRange(direction === 'left' ? -1 : 1)) {
+            return;
+        }
+
+        moveFocus(direction);
     }
 
     /**
@@ -160,6 +190,51 @@ export function moveFocus(direction: Direction): void {
     const next = index === -1 ? 0 : (index + step + items.length) % items.length;
 
     items[next].focus();
+}
+
+/**
+ * Drags a focused `<input type="range">` one step, and reports whether there
+ * was one. The pad cannot grab a slider's thumb, so this is the only way to
+ * reach the volume without a mouse or a keyboard.
+ *
+ * The synthetic `input` event is what the sliders listen to, so the value
+ * lands in the settings exactly as a drag would.
+ */
+export function nudgeFocusedRange(step: number): boolean {
+    const active = document.activeElement as HTMLInputElement | null;
+
+    if (!active || active.tagName !== 'INPUT' || active.type !== 'range') {
+        return false;
+    }
+
+    const size = attribute(active.step, 1);
+    const min = attribute(active.min, 0);
+    const max = attribute(active.max, 100);
+    const value = attribute(active.value, min);
+    // Snapped to the step grid, so a slider left off-grid does not drift.
+    const steps = Math.round((value - min) / size) + step;
+    const next = Math.min(Math.max(min + steps * size, min), max);
+
+    // At either end there is nothing to change, but the press is still the
+    // slider's: letting it fall through would jump the focus away instead.
+    if (next !== value) {
+        active.value = String(round(next));
+        active.dispatchEvent(new Event('input', { bubbles: true }));
+        active.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    return true;
+}
+
+/** A numeric input attribute, falling back when it is empty or malformed. */
+function attribute(raw: string, fallback: number): number {
+    const value = Number(raw);
+    return raw === '' || Number.isNaN(value) ? fallback : value;
+}
+
+/** Keeps fractional steps (0.05 on the volumes) off binary-float tails. */
+function round(value: number): number {
+    return Math.round(value * 1e4) / 1e4;
 }
 
 /** Runs the focused control, or focuses the first one if nothing is. */
