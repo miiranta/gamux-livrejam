@@ -66,6 +66,28 @@ export function createObservationBuffer(): Float32Array {
     return new Float32Array(OBSERVATION_SIZE);
 }
 
+const FRAMES = FACE_SMASHING.ai.frames;
+
+export function createStackedObservation(): Float32Array {
+    return new Float32Array(OBSERVATION_SIZE * FRAMES);
+}
+
+export function pushObservation(
+    stacked: Float32Array,
+    observation: Float32Array,
+    primed: boolean,
+): void {
+    if (!primed) {
+        for (let slot = 0; slot < FRAMES; slot++) {
+            stacked.set(observation, slot * OBSERVATION_SIZE);
+        }
+        return;
+    }
+
+    stacked.copyWithin(0, OBSERVATION_SIZE, OBSERVATION_SIZE * FRAMES);
+    stacked.set(observation, OBSERVATION_SIZE * (FRAMES - 1));
+}
+
 export interface ObservationContext {
     level: DungeonLevel;
     dodger: Dodger;

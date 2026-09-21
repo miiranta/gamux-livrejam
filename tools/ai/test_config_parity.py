@@ -69,6 +69,7 @@ PAIRS = (
     ("round.seconds", cfg.ROUND_SECONDS, "round.seconds"),
     ("ai.observeRadius", cfg.OBSERVE_RADIUS, "ai.observeRadius"),
     ("ai.observationSize", cfg.OBSERVATION_SIZE, "ai.observationSize"),
+    ("ai.frames", cfg.FRAMES, "ai.frames"),
     ("ai.actionCount", cfg.ACTION_COUNT, "ai.actionCount"),
     ("dash.speedStart", cfg.DASH_SPEED_START, "dash.speedStart"),
     ("dash.speedEnd", cfg.DASH_SPEED_END, "dash.speedEnd"),

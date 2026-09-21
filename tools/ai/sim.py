@@ -88,6 +88,8 @@ class FaceSmashingSim:
         self.slide_decay = float(torch.exp(torch.tensor(-cfg.ITEM_GROUND_FRICTION * cfg.DT)))
         self.spin_decay = float(torch.exp(torch.tensor(-cfg.ITEM_GROUND_FRICTION * cfg.DT)))
 
+        self.steer_depth = int(round(cfg.STEER_LATENCY_MAX / cfg.DT))
+
         self.reset()
 
         if compiled and self.device.type == "cuda":
@@ -104,6 +106,12 @@ class FaceSmashingSim:
 
     def draw(self, shape):
         return torch.rand(shape, generator=self.generator, device=self.device)
+
+    def sample_steer_lag(self, count):
+        low = cfg.STEER_LATENCY_MIN / cfg.DT
+        high = cfg.STEER_LATENCY_MAX / cfg.DT
+        frames = torch.round(low + self.draw((count,)) * (high - low)).to(torch.long)
+        return torch.clamp(frames, min=0, max=self.steer_depth)
 
     def sample_spawn_x(self, count):
         span = cfg.PLAY_RIGHT - cfg.PLAY_LEFT
@@ -151,6 +159,10 @@ class FaceSmashingSim:
         self.grounded = torch.ones(envs, dtype=torch.bool, device=device)
         self.jump_latch = torch.zeros(envs, dtype=torch.bool, device=device)
         self.jump_cut_armed = torch.zeros(envs, dtype=torch.bool, device=device)
+
+        centre = self.pos_x + cfg.DODGER_BOX[0] / 2
+        self.steer_history = centre[None, :].repeat(self.steer_depth + 1, 1)
+        self.steer_lag = self.sample_steer_lag(envs)
         self.stun = torch.zeros(envs, dtype=self.dtype, device=device)
         self.invulnerable = torch.zeros(envs, dtype=self.dtype, device=device)
         self.dash_timer = torch.zeros(envs, dtype=self.dtype, device=device)
@@ -214,6 +226,11 @@ class FaceSmashingSim:
         self.jump_cut_armed = self.jump_cut_armed & keep
 
         self.pos_x = torch.where(done, self.sample_spawn_x(envs), self.pos_x)
+        respawn = self.pos_x + cfg.DODGER_BOX[0] / 2
+        self.steer_history = torch.where(
+            done[None, :], respawn[None, :].expand_as(self.steer_history), self.steer_history
+        )
+        self.steer_lag = torch.where(done, self.sample_steer_lag(envs), self.steer_lag)
         self.pos_y = torch.where(
             done,
             torch.full(
@@ -515,7 +532,9 @@ class FaceSmashingSim:
         half_width = self.item_half_width[self.obstacle_item]
         item_center = self.obstacle_x + half_width
         dodger_center = self.pos_x + cfg.DODGER_BOX[0] / 2
-        delta = dodger_center[:, None] - item_center
+        self.steer_history = torch.cat((self.steer_history[1:], dodger_center[None, :]), dim=0)
+        seen = self.steer_history.gather(0, (self.steer_depth - self.steer_lag)[None, :]).squeeze(0)
+        delta = seen[:, None] - item_center
         step = torch.clamp(delta, min=-cfg.DROP_STEER_SPEED * cfg.DT, max=cfg.DROP_STEER_SPEED * cfg.DT)
 
         self.obstacle_vx = torch.where(falling, step / cfg.DT, self.obstacle_vx)
