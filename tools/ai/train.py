@@ -40,6 +40,7 @@ def parse_args():
     parser.add_argument("--worst-weight", type=float, default=0.5)
     parser.add_argument("--worst-quantile", type=float, default=0.1)
     parser.add_argument("--mirrored", type=int, default=1, choices=(0, 1))
+    parser.add_argument("--compile", type=int, default=1, choices=(0, 1))
     parser.add_argument("--dodge-weight", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--out", default="livrejam/public/models/dodger-policy.json")
@@ -48,6 +49,8 @@ def parse_args():
     parser.add_argument("--checkpoint-every", type=int, default=10)
     parser.add_argument("--curriculum", type=int, default=1, choices=(0, 1))
     parser.add_argument("--curriculum-target", type=float, default=0.18)
+    parser.add_argument("--curriculum-patience", type=int, default=10)
+    parser.add_argument("--curriculum-tolerance", type=float, default=0.01)
     parser.add_argument("--curriculum-step", type=float, default=40.0)
     parser.add_argument("--eval-every", type=int, default=10)
     parser.add_argument("--eval-envs", type=int, default=2048)
@@ -100,6 +103,7 @@ def evaluate(theta, perturbations, args, generation, drop_cap=None):
         device=args.device,
         seed=args.seed + 1000 + generation * 7919,
         round_seconds=args.round_seconds,
+        compiled=bool(args.compile),
     )
     if drop_cap is not None:
         sim.set_drop_cap(drop_cap)
@@ -144,7 +148,9 @@ def evaluate(theta, perturbations, args, generation, drop_cap=None):
 
 def held_out(theta, args, seed):
     sizes = cfg.NETWORK_SIZES
-    sim = FaceSmashingSim(args.eval_envs, device=args.device, seed=seed)
+    sim = FaceSmashingSim(
+        args.eval_envs, device=args.device, seed=seed, compiled=bool(args.compile)
+    )
     if args.curriculum:
         sim.set_drop_cap(cfg.DROP_MAX_SPEED)
     stacked = stack_policies([unflatten_policy(theta, sizes)])
@@ -225,6 +231,8 @@ def main():
     best_fitness = float("-inf")
     best_generation = 0
     history = []
+    plateau_best = float("inf")
+    plateau_wait = 0
 
     print(
         f"device={device} parameters={parameters} population={args.population} "
@@ -235,8 +243,9 @@ def main():
         drop_cap = cfg.DROP_BASE_SPEED
         print(
             f"curriculo ligado: rampa comeca com teto {drop_cap:.0f} px/s e sobe "
-            f"{args.curriculum_step:.0f} quando o dano do campeao cair abaixo de "
-            f"{args.curriculum_target * 100:.0f}% do teto",
+            f"{args.curriculum_step:.0f} quando o dano medio estagnar por "
+            f"{args.curriculum_patience} geracoes (ou cair abaixo de "
+            f"{args.curriculum_target * 100:.0f}% do teto)",
             flush=True,
         )
     else:
@@ -269,13 +278,19 @@ def main():
             best_generation = generation
 
         promoted = False
-        if (
-            args.curriculum
-            and drop_cap < cfg.DROP_MAX_SPEED
-            and mean_damage < args.curriculum_target * cfg.DAMAGE_CEILING
-        ):
-            drop_cap = min(drop_cap + args.curriculum_step, cfg.DROP_MAX_SPEED)
-            promoted = True
+        if args.curriculum and drop_cap < cfg.DROP_MAX_SPEED:
+            if mean_damage < plateau_best * (1.0 - args.curriculum_tolerance):
+                plateau_best = mean_damage
+                plateau_wait = 0
+            else:
+                plateau_wait += 1
+
+            mastered = mean_damage < args.curriculum_target * cfg.DAMAGE_CEILING
+            if mastered or plateau_wait >= args.curriculum_patience:
+                drop_cap = min(drop_cap + args.curriculum_step, cfg.DROP_MAX_SPEED)
+                plateau_best = float("inf")
+                plateau_wait = 0
+                promoted = True
 
         probe = None
         if args.eval_every > 0 and generation % args.eval_every == 0:

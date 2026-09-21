@@ -30,13 +30,30 @@ HALF_TURN = 6.283185307179586
 
 SENSOR_ORDER = ("wallLeft", "wallRight", "ceiling", "ground")
 
+COMPILED_PHASES = (
+    "observation",
+    "step_dodger",
+    "step_items",
+    "apply_impacts",
+    "detect_dodges",
+    "step_dropper",
+    "finish_rounds",
+)
+
 
 def tensor_minimum(values):
     return values.min(dim=1).values
 
 
 class FaceSmashingSim:
-    def __init__(self, envs, device="cpu", seed=0, round_seconds=cfg.ROUND_SECONDS):
+    def __init__(
+        self,
+        envs,
+        device="cpu",
+        seed=0,
+        round_seconds=cfg.ROUND_SECONDS,
+        compiled=False,
+    ):
         self.envs = envs
         self.device = torch.device(device)
         self.seed = seed
@@ -72,6 +89,15 @@ class FaceSmashingSim:
         self.spin_decay = float(torch.exp(torch.tensor(-cfg.ITEM_GROUND_FRICTION * cfg.DT)))
 
         self.reset()
+
+        if compiled and self.device.type == "cuda":
+            self.compile_phases()
+
+    def compile_phases(self):
+        torch._dynamo.config.suppress_errors = True
+
+        for name in COMPILED_PHASES:
+            setattr(self, name, torch.compile(getattr(self, name), dynamic=False))
 
     def _column(self, values):
         return torch.tensor(values, dtype=self.dtype, device=self.device)
@@ -311,19 +337,23 @@ class FaceSmashingSim:
             self.item_damage_max[gitem] - self.item_damage_min[gitem]
         ) * groll
 
-        for slot in range(cfg.ITEM_SLOTS):
-            base = cfg.GLOBAL_FEATURES + slot * cfg.ITEM_FEATURES
-            mask = valid[:, slot]
-            observation[:, base] = mask.to(self.dtype)
-            observation[:, base + 1] = torch.where(mask, gdx[:, slot] / cfg.OBSERVE_RADIUS, 0.0)
-            observation[:, base + 2] = torch.where(mask, gdy[:, slot] / cfg.OBSERVE_RADIUS, 0.0)
-            observation[:, base + 3] = torch.where(mask, gvx[:, slot] / cfg.ITEM_LATERAL, 0.0)
-            observation[:, base + 4] = torch.where(mask, gvy[:, slot] / cfg.ITEM_MAX_FALL, 0.0)
-            observation[:, base + 5] = torch.where(mask, landed[:, slot].to(self.dtype), 0.0)
-            observation[:, base + 6] = torch.where(mask, extent[:, slot] / cfg.TILE, 0.0)
-            observation[:, base + 7] = torch.where(
-                mask, base_damage[:, slot] / cfg.MAX_DAMAGE_ITEM, 0.0
-            )
+        keep = valid.to(self.dtype)
+        features = torch.stack(
+            (
+                torch.ones_like(keep),
+                gdx / cfg.OBSERVE_RADIUS,
+                gdy / cfg.OBSERVE_RADIUS,
+                gvx / cfg.ITEM_LATERAL,
+                gvy / cfg.ITEM_MAX_FALL,
+                landed.to(self.dtype),
+                extent / cfg.TILE,
+                base_damage / cfg.MAX_DAMAGE_ITEM,
+            ),
+            dim=2,
+        )
+        observation[:, cfg.GLOBAL_FEATURES :] = (features * keep[:, :, None]).reshape(
+            self.envs, -1
+        )
 
         return observation
 
