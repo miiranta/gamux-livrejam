@@ -23,7 +23,7 @@ import time
 import torch
 
 import config as cfg
-from model import FrameStack, batched_forward, export_json, initial_policy, stack_policies, unflatten_policy
+from model import FrameStack, batched_forward, export_json, initial_policy, load_policy, stack_policies, unflatten_policy
 from plot import render_graph
 from sim import FaceSmashingSim
 
@@ -56,6 +56,7 @@ def parse_args():
     parser.add_argument("--eval-match", type=int, default=0, choices=(0, 1))
     parser.add_argument("--dodge-weight", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--init", default="")
     parser.add_argument("--out", default="livrejam/public/models/dodger-policy.json")
     parser.add_argument("--best-out", default="livrejam/public/models/dodger-policy.best.json")
     parser.add_argument("--graph", default="livrejam/public/models/dodger-policy.graph.png")
@@ -251,9 +252,17 @@ def main():
 
     device = torch.device(args.device)
     sizes = network_sizes(args.frames)
-    theta = torch.cat(
-        [tensor.reshape(-1) for tensor in initial_policy(sizes, device=args.device, seed=args.seed)]
-    ).to(torch.float32)
+    if args.init:
+        loaded, loaded_sizes = load_policy(args.init, device=args.device)
+        if tuple(loaded_sizes) != tuple(sizes):
+            raise SystemExit(
+                f"--init {args.init} tem formato {tuple(loaded_sizes)}, "
+                f"mas o treino espera {tuple(sizes)}"
+            )
+        start = loaded
+    else:
+        start = initial_policy(sizes, device=args.device, seed=args.seed)
+    theta = torch.cat([tensor.reshape(-1) for tensor in start]).to(torch.float32)
     parameters = theta.numel()
 
     best_theta = theta.clone()

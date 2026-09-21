@@ -89,6 +89,8 @@ class FaceSmashingSim:
         self.spin_decay = float(torch.exp(torch.tensor(-cfg.ITEM_GROUND_FRICTION * cfg.DT)))
 
         self.steer_depth = int(round(cfg.STEER_LATENCY_MAX / cfg.DT))
+        self.steer_window = max(1, int(round(cfg.STEER_VELOCITY_WINDOW / cfg.DT)))
+        self.steer_now = self.steer_depth + self.steer_window
 
         self.reset()
 
@@ -106,6 +108,9 @@ class FaceSmashingSim:
 
     def draw(self, shape):
         return torch.rand(shape, generator=self.generator, device=self.device)
+
+    def sample_steer_lead(self, count):
+        return cfg.STEER_LEAD_MIN + self.draw((count,)) * (cfg.STEER_LEAD_MAX - cfg.STEER_LEAD_MIN)
 
     def sample_steer_lag(self, count):
         low = cfg.STEER_LATENCY_MIN / cfg.DT
@@ -161,8 +166,9 @@ class FaceSmashingSim:
         self.jump_cut_armed = torch.zeros(envs, dtype=torch.bool, device=device)
 
         centre = self.pos_x + cfg.DODGER_BOX[0] / 2
-        self.steer_history = centre[None, :].repeat(self.steer_depth + 1, 1)
+        self.steer_history = centre[None, :].repeat(self.steer_now + 1, 1)
         self.steer_lag = self.sample_steer_lag(envs)
+        self.steer_lead = self.sample_steer_lead(envs)
         self.stun = torch.zeros(envs, dtype=self.dtype, device=device)
         self.invulnerable = torch.zeros(envs, dtype=self.dtype, device=device)
         self.dash_timer = torch.zeros(envs, dtype=self.dtype, device=device)
@@ -231,6 +237,7 @@ class FaceSmashingSim:
             done[None, :], respawn[None, :].expand_as(self.steer_history), self.steer_history
         )
         self.steer_lag = torch.where(done, self.sample_steer_lag(envs), self.steer_lag)
+        self.steer_lead = torch.where(done, self.sample_steer_lead(envs), self.steer_lead)
         self.pos_y = torch.where(
             done,
             torch.full(
@@ -533,8 +540,13 @@ class FaceSmashingSim:
         item_center = self.obstacle_x + half_width
         dodger_center = self.pos_x + cfg.DODGER_BOX[0] / 2
         self.steer_history = torch.cat((self.steer_history[1:], dodger_center[None, :]), dim=0)
-        seen = self.steer_history.gather(0, (self.steer_depth - self.steer_lag)[None, :]).squeeze(0)
-        delta = seen[:, None] - item_center
+        seen_at = self.steer_now - self.steer_lag
+        seen = self.steer_history.gather(0, seen_at[None, :]).squeeze(0)
+        older = self.steer_history.gather(0, (seen_at - self.steer_window)[None, :]).squeeze(0)
+        velocity = (seen - older) / (self.steer_window * cfg.DT)
+        ahead = self.steer_lead * velocity * (self.steer_lag.to(self.dtype) * cfg.DT)
+        aim = torch.clamp(seen + ahead, cfg.PLAY_LEFT, cfg.PLAY_RIGHT)
+        delta = aim[:, None] - item_center
         step = torch.clamp(delta, min=-cfg.DROP_STEER_SPEED * cfg.DT, max=cfg.DROP_STEER_SPEED * cfg.DT)
 
         self.obstacle_vx = torch.where(falling, step / cfg.DT, self.obstacle_vx)
