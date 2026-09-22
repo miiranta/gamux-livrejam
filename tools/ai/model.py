@@ -1,6 +1,7 @@
 """Rede neural da politica e serializacao do modelo."""
 
 import json
+import os
 
 import torch
 
@@ -73,8 +74,10 @@ def export_json(policy, path, sizes=NETWORK_SIZES):
         "biases": biases,
     }
 
-    with open(path, "w", encoding="utf-8") as handle:
+    partial = path + ".partial"
+    with open(partial, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, separators=(",", ":"))
+    os.replace(partial, path)
     return payload
 
 
@@ -99,3 +102,23 @@ def load_policy(path, device="cpu"):
         bias_offset += fan_out
 
     return [tensor.to(device) for tensor in policy], sizes
+
+
+class FrameStack:
+    def __init__(self, frames, rows, device):
+        self.frames = frames
+        self.buffer = None
+        self.rows = rows
+        self.device = device
+
+    def reset(self, observation):
+        if self.frames <= 1:
+            return observation
+        self.buffer = observation[:, None, :].repeat(1, self.frames, 1)
+        return self.buffer.reshape(self.rows, -1)
+
+    def push(self, observation):
+        if self.frames <= 1:
+            return observation
+        self.buffer = torch.cat((self.buffer[:, 1:, :], observation[:, None, :]), dim=1)
+        return self.buffer.reshape(self.rows, -1)

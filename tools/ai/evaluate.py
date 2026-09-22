@@ -6,7 +6,7 @@ import json
 import torch
 
 import config as cfg
-from model import batched_forward, load_policy, stack_policies
+from model import FrameStack, batched_forward, load_policy, stack_policies
 from sim import FaceSmashingSim
 
 
@@ -22,13 +22,14 @@ def parse_args():
     return parser.parse_args()
 
 
-def run(actions_fn, args, seed_offset=0):
+def run(actions_fn, args, seed_offset=0, frames=1):
     sim = FaceSmashingSim(args.envs, device=args.device, seed=args.seed + seed_offset)
-    observation = sim.reset()
+    stack = FrameStack(frames, args.envs, args.device)
+    observation = stack.reset(sim.reset())
 
     for _ in range(args.steps):
         with torch.no_grad():
-            observation = sim.step(actions_fn(observation))
+            observation = stack.push(sim.step(actions_fn(observation)))
 
     metrics = sim.metrics()
     damage = metrics["damage_mean"]
@@ -55,12 +56,14 @@ def main():
 
     policy, sizes = load_policy(args.model, device=args.device)
     stacked = stack_policies([policy])
+    frames = sizes[0] // cfg.OBSERVATION_SIZE
 
     trained = run(
         lambda observation: torch.argmax(
             batched_forward(observation, stacked, sizes, 1, args.envs), dim=1
         ),
         args,
+        frames=frames,
     )
 
     report = {
@@ -123,6 +126,7 @@ def multi_seed(args):
     device = torch.device(args.device)
     policy, sizes = load_policy(args.model, device=args.device)
     stacked = stack_policies([policy])
+    frames = sizes[0] // cfg.OBSERVATION_SIZE
 
     runs = []
     for index in range(args.seeds):
@@ -134,6 +138,7 @@ def multi_seed(args):
                     batched_forward(observation, stacked, sizes, 1, args.envs), dim=1
                 ),
                 run_args,
+                frames=frames,
             )
         )
 

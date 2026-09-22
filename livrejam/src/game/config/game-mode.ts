@@ -12,7 +12,7 @@ export function isGameMode(value: unknown): value is GameMode {
 }
 
 /** Every mode, in menu order. */
-export const GAME_MODES: readonly GameMode[] = [/*'single', */'two'];
+export const GAME_MODES: readonly GameMode[] = ['single', 'two'];
 
 /** Translation key of a mode's label; the UI never hardcodes text. */
 export function gameModeLabelKey(mode: GameMode): string {

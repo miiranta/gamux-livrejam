@@ -25,7 +25,7 @@ O modo é escolhido na **tela inicial**: em vez de um "Jogar" genérico, cada
 modo tem seu próprio botão, porque é ele que decide quem controla o
 personagem. A escolha vale para a partida que começa em seguida.
 
-### 1 Jogador (desabilitado - em desenvolvimento)
+### 1 Jogador
 
 O modo original da jam: a política neural pilota o personagem e o humano cuida
 dos objetos que caem. O teclado não controla o personagem.

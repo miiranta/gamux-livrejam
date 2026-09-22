@@ -130,6 +130,7 @@ export const FACE_SMASHING = {
     ai: {
         modelUrl: 'models/dodger-policy.json',
         observationSize: 77,
+        frames: 3,
         actionCount: 11,
         observeRadius: 576,
         sensorReach: 192,

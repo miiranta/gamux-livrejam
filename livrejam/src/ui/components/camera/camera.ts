@@ -38,6 +38,28 @@ const CAMERA_CONSTRAINTS: MediaStreamConstraints = {
     audio: false,
 };
 
+type ExposureMode = 'none' | 'manual' | 'single-shot' | 'continuous';
+
+interface ExposureCapabilities extends MediaTrackCapabilities {
+    exposureMode?: ExposureMode[];
+}
+
+interface ExposureConstraintSet extends MediaTrackConstraintSet {
+    exposureMode?: ExposureMode;
+}
+
+export async function useAutoExposure(stream: MediaStream): Promise<void> {
+    for (const track of stream.getVideoTracks()) {
+        const capabilities = (track.getCapabilities?.() ?? {}) as ExposureCapabilities;
+        if (!capabilities.exposureMode?.includes('continuous')) {
+            continue;
+        }
+
+        const auto: ExposureConstraintSet = { exposureMode: 'continuous' };
+        await track.applyConstraints({ advanced: [auto] }).catch(() => undefined);
+    }
+}
+
 const MAX_CAMERA_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 400;
 
@@ -153,6 +175,7 @@ export class Camera {
 
             video.srcObject = stream;
             await video.play();
+            await useAutoExposure(stream);
             this.videoSize.set({
                 width: video.videoWidth || 16,
                 height: video.videoHeight || 9,

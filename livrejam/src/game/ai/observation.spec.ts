@@ -4,7 +4,12 @@ import { DAMAGE_CEILING } from '../damage';
 import { createDungeonLevel } from '../level';
 import type { DungeonLevel } from '../level';
 import { Dodger, Item } from '../entities';
-import { createObservationBuffer, writeObservation } from './observation';
+import {
+    createObservationBuffer,
+    createStackedObservation,
+    pushObservation,
+    writeObservation,
+} from './observation';
 
 const RADIUS = FACE_SMASHING.ai.observeRadius;
 const GLOBAL_FEATURES = 13;
@@ -301,5 +306,31 @@ describe('writeObservation', () => {
         for (let index = 0; index < SLOTS; index++) {
             expect(slot(buffer, index)[0]).toBe(1);
         }
+    });
+});
+
+describe('pushObservation', () => {
+    const size = FACE_SMASHING.ai.observationSize;
+    const frames = FACE_SMASHING.ai.frames;
+    const frameOf = (value: number): Float32Array => new Float32Array(size).fill(value);
+    const slots = (stacked: Float32Array): number[] =>
+        Array.from({ length: frames }, (_, slot) => stacked[slot * size]);
+
+    it('fills every slot with the first frame, like the trainer reset', () => {
+        const stacked = createStackedObservation();
+        pushObservation(stacked, frameOf(7), false);
+
+        expect(stacked.length).toBe(size * frames);
+        expect(slots(stacked)).toEqual(Array(frames).fill(7));
+    });
+
+    it('drops the oldest frame and appends the newest at the end', () => {
+        const stacked = createStackedObservation();
+        pushObservation(stacked, frameOf(1), false);
+        pushObservation(stacked, frameOf(2), true);
+        pushObservation(stacked, frameOf(3), true);
+        pushObservation(stacked, frameOf(4), true);
+
+        expect(slots(stacked)).toEqual([2, 3, 4]);
     });
 });

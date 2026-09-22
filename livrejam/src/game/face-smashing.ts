@@ -5,7 +5,14 @@ import { Camera, CanvasRenderer } from '../engine/render';
 import { PhysicsWorld } from '../engine/physics';
 import { CHARACTER_CLIPS, loadDungeonSprites } from './assets';
 import type { ActionIntent, PolicyLike } from './ai';
-import { IdlePolicy, createObservationBuffer, decodeAction, writeObservation } from './ai';
+import {
+    IdlePolicy,
+    createObservationBuffer,
+    createStackedObservation,
+    decodeAction,
+    pushObservation,
+    writeObservation,
+} from './ai';
 import { FACE_SMASHING } from './config';
 import {
     PLAYER_BINDINGS,
@@ -86,6 +93,8 @@ export class FaceSmashing {
     private readonly steering: SteeringSystem;
     private readonly loop: GameLoop;
     private readonly observation = createObservationBuffer();
+    private readonly stackedObservation = createStackedObservation();
+    private framesPrimed = false;
     private readonly random: () => number;
     private readonly callbacks: FaceSmashingCallbacks;
 
@@ -294,6 +303,7 @@ export class FaceSmashing {
         this.scorePopups.clear();
         this.steering.reset();
         this.scene?.reset();
+        this.framesPrimed = false;
         this.respawn();
         this.releaseItem();
         this.publishStats();
@@ -451,7 +461,7 @@ export class FaceSmashing {
 
         this.action =
             this.policy.ready && !dodger.stunned
-                ? decodeAction(this.policy.decide(this.observation))
+                ? decodeAction(this.policy.decide(this.stackedObservation))
                 : { axis: 0, jump: false, dash: false, fastFall: false, facing: 0 };
     }
 
@@ -589,6 +599,8 @@ export class FaceSmashing {
             dodger,
             items: this.items,
         });
+        pushObservation(this.stackedObservation, this.observation, this.framesPrimed);
+        this.framesPrimed = true;
     }
 
     private publishStats(): void {

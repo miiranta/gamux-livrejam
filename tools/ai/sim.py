@@ -30,13 +30,30 @@ HALF_TURN = 6.283185307179586
 
 SENSOR_ORDER = ("wallLeft", "wallRight", "ceiling", "ground")
 
+COMPILED_PHASES = (
+    "observation",
+    "step_dodger",
+    "step_items",
+    "apply_impacts",
+    "detect_dodges",
+    "step_dropper",
+    "finish_rounds",
+)
+
 
 def tensor_minimum(values):
     return values.min(dim=1).values
 
 
 class FaceSmashingSim:
-    def __init__(self, envs, device="cpu", seed=0, round_seconds=cfg.ROUND_SECONDS):
+    def __init__(
+        self,
+        envs,
+        device="cpu",
+        seed=0,
+        round_seconds=cfg.ROUND_SECONDS,
+        compiled=False,
+    ):
         self.envs = envs
         self.device = torch.device(device)
         self.seed = seed
@@ -44,6 +61,11 @@ class FaceSmashingSim:
         self.dtype = torch.float32
         self.slots = cfg.MAX_ITEM_SLOTS
         self.generator = torch.Generator(device=self.device).manual_seed(seed)
+        self.dash_generator = torch.Generator(device=self.device).manual_seed(seed + 104729)
+        self.chaos_generator = torch.Generator(device=self.device).manual_seed(seed + 130363)
+        self.random_generator = torch.Generator(device=self.device).manual_seed(seed + 156007)
+        self.fall_generator = torch.Generator(device=self.device).manual_seed(seed + 180097)
+        self.wobble_weights = torch.tensor(cfg.CHAOS_WEIGHTS, dtype=self.dtype, device=self.device)
         self.item_generator = None
         self.drop_cap = cfg.DROP_MAX_SPEED
 
@@ -71,13 +93,56 @@ class FaceSmashingSim:
         self.slide_decay = float(torch.exp(torch.tensor(-cfg.ITEM_GROUND_FRICTION * cfg.DT)))
         self.spin_decay = float(torch.exp(torch.tensor(-cfg.ITEM_GROUND_FRICTION * cfg.DT)))
 
+        self.steer_depth = int(round(cfg.STEER_LATENCY_MAX / cfg.DT))
+        self.steer_window = max(1, int(round(cfg.STEER_VELOCITY_WINDOW / cfg.DT)))
+        self.steer_now = self.steer_depth + self.steer_window
+
         self.reset()
+
+        if compiled and self.device.type == "cuda":
+            self.compile_phases()
+
+    def compile_phases(self):
+        torch._dynamo.config.suppress_errors = True
+
+        for name in COMPILED_PHASES:
+            setattr(self, name, torch.compile(getattr(self, name), dynamic=False))
 
     def _column(self, values):
         return torch.tensor(values, dtype=self.dtype, device=self.device)
 
     def draw(self, shape):
         return torch.rand(shape, generator=self.generator, device=self.device)
+
+    def draw_random(self, shape):
+        return torch.rand(shape, generator=self.random_generator, device=self.device)
+
+    def draw_chaos(self, shape):
+        return torch.rand(shape, generator=self.chaos_generator, device=self.device)
+
+    def sample_chaos(self, count):
+        return self.draw_chaos((count,)) * cfg.CHAOS_MAX
+
+    def draw_dash(self, shape):
+        return torch.rand(shape, generator=self.dash_generator, device=self.device)
+
+    def sample_dash_style(self, count):
+        chance = cfg.ITEM_DASH_CHANCE_MIN + self.draw_dash((count,)) * (
+            cfg.ITEM_DASH_CHANCE_MAX - cfg.ITEM_DASH_CHANCE_MIN
+        )
+        height = cfg.ITEM_DASH_HEIGHT_MIN + self.draw_dash((count,)) * (
+            cfg.ITEM_DASH_HEIGHT_MAX - cfg.ITEM_DASH_HEIGHT_MIN
+        )
+        return chance, height
+
+    def sample_steer_lead(self, count):
+        return cfg.STEER_LEAD_MIN + self.draw((count,)) * (cfg.STEER_LEAD_MAX - cfg.STEER_LEAD_MIN)
+
+    def sample_steer_lag(self, count):
+        low = cfg.STEER_LATENCY_MIN / cfg.DT
+        high = cfg.STEER_LATENCY_MAX / cfg.DT
+        frames = torch.round(low + self.draw((count,)) * (high - low)).to(torch.long)
+        return torch.clamp(frames, min=0, max=self.steer_depth)
 
     def sample_spawn_x(self, count):
         span = cfg.PLAY_RIGHT - cfg.PLAY_LEFT
@@ -114,6 +179,23 @@ class FaceSmashingSim:
         self.obstacle_settle = torch.zeros((envs, self.slots), dtype=self.dtype, device=device)
         self.obstacle_scored = torch.zeros((envs, self.slots), dtype=torch.bool, device=device)
         self.obstacle_hit = torch.zeros((envs, self.slots), dtype=torch.bool, device=device)
+        self.obstacle_dashed = torch.zeros((envs, self.slots), dtype=torch.bool, device=device)
+        self.obstacle_will_dash = torch.zeros((envs, self.slots), dtype=torch.bool, device=device)
+        self.obstacle_dash_timer = torch.zeros((envs, self.slots), dtype=self.dtype, device=device)
+        self.dash_chance, self.dash_height = self.sample_dash_style(envs)
+        self.obstacle_chase_timer = torch.zeros((envs, self.slots), dtype=self.dtype, device=device)
+        waves = len(cfg.CHAOS_WEIGHTS)
+        self.obstacle_wobble_phase = torch.zeros(
+            (envs, self.slots, waves), dtype=self.dtype, device=device
+        )
+        self.obstacle_wobble_freq = torch.zeros(
+            (envs, self.slots, waves), dtype=self.dtype, device=device
+        )
+        self.obstacle_fall_scale = torch.ones((envs, self.slots), dtype=self.dtype, device=device)
+        self.chaos_level = self.sample_chaos(envs)
+        self.obstacle_random = torch.zeros((envs, self.slots), dtype=torch.bool, device=device)
+        self.obstacle_drift = torch.zeros((envs, self.slots), dtype=self.dtype, device=device)
+        self.random_chance = self.draw_random((envs,)) * cfg.RANDOM_ITEM_MAX
         self.obstacle_cursor = torch.zeros(envs, dtype=torch.long, device=device)
 
         self.pos_x = self.sample_spawn_x(envs)
@@ -125,6 +207,12 @@ class FaceSmashingSim:
         self.grounded = torch.ones(envs, dtype=torch.bool, device=device)
         self.jump_latch = torch.zeros(envs, dtype=torch.bool, device=device)
         self.jump_cut_armed = torch.zeros(envs, dtype=torch.bool, device=device)
+
+        centre = self.pos_x + cfg.DODGER_BOX[0] / 2
+        self.steer_history = centre[None, :].repeat(self.steer_now + 1, 1)
+        self.steer_aim = centre.clone()
+        self.steer_lag = self.sample_steer_lag(envs)
+        self.steer_lead = self.sample_steer_lead(envs)
         self.stun = torch.zeros(envs, dtype=self.dtype, device=device)
         self.invulnerable = torch.zeros(envs, dtype=self.dtype, device=device)
         self.dash_timer = torch.zeros(envs, dtype=self.dtype, device=device)
@@ -172,6 +260,8 @@ class FaceSmashingSim:
             "obstacle_spin",
             "obstacle_roll",
             "obstacle_settle",
+            "obstacle_dash_timer",
+            "obstacle_chase_timer",
         ):
             current = getattr(self, field)
             setattr(self, field, torch.where(keep[:, None], current, torch.zeros_like(current)))
@@ -181,13 +271,32 @@ class FaceSmashingSim:
         self.obstacle_item = torch.where(
             done[:, None], torch.zeros_like(self.obstacle_item), self.obstacle_item
         )
-        for field in ("obstacle_scored", "obstacle_hit"):
+        chance, height = self.sample_dash_style(envs)
+        self.dash_chance = torch.where(done, chance, self.dash_chance)
+        self.dash_height = torch.where(done, height, self.dash_height)
+        self.chaos_level = torch.where(done, self.sample_chaos(envs), self.chaos_level)
+        self.random_chance = torch.where(
+            done, self.draw_random((envs,)) * cfg.RANDOM_ITEM_MAX, self.random_chance
+        )
+        for field in (
+            "obstacle_scored",
+            "obstacle_hit",
+            "obstacle_dashed",
+            "obstacle_will_dash",
+            "obstacle_random",
+        ):
             setattr(self, field, getattr(self, field) & keep[:, None])
 
         self.jump_latch = self.jump_latch & keep
         self.jump_cut_armed = self.jump_cut_armed & keep
 
         self.pos_x = torch.where(done, self.sample_spawn_x(envs), self.pos_x)
+        respawn = self.pos_x + cfg.DODGER_BOX[0] / 2
+        self.steer_history = torch.where(
+            done[None, :], respawn[None, :].expand_as(self.steer_history), self.steer_history
+        )
+        self.steer_lag = torch.where(done, self.sample_steer_lag(envs), self.steer_lag)
+        self.steer_lead = torch.where(done, self.sample_steer_lead(envs), self.steer_lead)
         self.pos_y = torch.where(
             done,
             torch.full(
@@ -311,19 +420,23 @@ class FaceSmashingSim:
             self.item_damage_max[gitem] - self.item_damage_min[gitem]
         ) * groll
 
-        for slot in range(cfg.ITEM_SLOTS):
-            base = cfg.GLOBAL_FEATURES + slot * cfg.ITEM_FEATURES
-            mask = valid[:, slot]
-            observation[:, base] = mask.to(self.dtype)
-            observation[:, base + 1] = torch.where(mask, gdx[:, slot] / cfg.OBSERVE_RADIUS, 0.0)
-            observation[:, base + 2] = torch.where(mask, gdy[:, slot] / cfg.OBSERVE_RADIUS, 0.0)
-            observation[:, base + 3] = torch.where(mask, gvx[:, slot] / cfg.ITEM_LATERAL, 0.0)
-            observation[:, base + 4] = torch.where(mask, gvy[:, slot] / cfg.ITEM_MAX_FALL, 0.0)
-            observation[:, base + 5] = torch.where(mask, landed[:, slot].to(self.dtype), 0.0)
-            observation[:, base + 6] = torch.where(mask, extent[:, slot] / cfg.TILE, 0.0)
-            observation[:, base + 7] = torch.where(
-                mask, base_damage[:, slot] / cfg.MAX_DAMAGE_ITEM, 0.0
-            )
+        keep = valid.to(self.dtype)
+        features = torch.stack(
+            (
+                torch.ones_like(keep),
+                gdx / cfg.OBSERVE_RADIUS,
+                gdy / cfg.OBSERVE_RADIUS,
+                gvx / cfg.ITEM_LATERAL,
+                gvy / cfg.ITEM_MAX_FALL,
+                landed.to(self.dtype),
+                extent / cfg.TILE,
+                base_damage / cfg.MAX_DAMAGE_ITEM,
+            ),
+            dim=2,
+        )
+        observation[:, cfg.GLOBAL_FEATURES :] = (features * keep[:, :, None]).reshape(
+            self.envs, -1
+        )
 
         return observation
 
@@ -472,6 +585,33 @@ class FaceSmashingSim:
         self.spawn_item(ready)
         self.steer_items()
 
+    def trigger_item_dash(self):
+        falling = self.obstacle_active & (self.obstacle_vy > 0)
+        half_height = self.item_half_height[self.obstacle_item]
+        gap = self.pos_y[:, None] - (self.obstacle_y + half_height * 2)
+        fire = (
+            falling
+            & self.obstacle_will_dash
+            & ~self.obstacle_dashed
+            & (gap > 0)
+            & (gap < self.dash_height[:, None])
+        )
+        speed = torch.sqrt(self.obstacle_vx**2 + self.obstacle_vy**2)
+        moving = speed > 1e-3
+        safe = torch.where(moving, speed, torch.ones_like(speed))
+        dir_x = torch.where(moving, self.obstacle_vx / safe, torch.zeros_like(speed))
+        dir_y = torch.where(moving, self.obstacle_vy / safe, torch.ones_like(speed))
+        self.obstacle_vx = torch.where(fire, dir_x * cfg.ITEM_DASH_SPEED, self.obstacle_vx)
+        self.obstacle_vy = torch.where(fire, dir_y * cfg.ITEM_DASH_SPEED, self.obstacle_vy)
+        self.obstacle_dash_timer = torch.where(
+            fire, torch.full_like(self.obstacle_dash_timer, cfg.ITEM_DASH_SECONDS),
+            self.obstacle_dash_timer,
+        )
+        self.obstacle_spin = torch.where(
+            fire, self.obstacle_spin * cfg.ITEM_DASH_SPIN_BOOST, self.obstacle_spin
+        )
+        self.obstacle_dashed = self.obstacle_dashed | fire
+
     def steer_items(self):
         """Os itens seguem o desviador enquanto caem.
 
@@ -481,14 +621,54 @@ class FaceSmashingSim:
         mesmo numero que o jogo usa para a guinada do jogador, entao a
         dificuldade e a mesma das duas partes.
         """
-        falling = self.obstacle_active & (self.obstacle_vy > 0)
+        self.trigger_item_dash()
+        falling = self.obstacle_active & (self.obstacle_vy > 0) & ~self.obstacle_dashed
         half_width = self.item_half_width[self.obstacle_item]
         item_center = self.obstacle_x + half_width
         dodger_center = self.pos_x + cfg.DODGER_BOX[0] / 2
-        delta = dodger_center[:, None] - item_center
-        step = torch.clamp(delta, min=-cfg.DROP_STEER_SPEED * cfg.DT, max=cfg.DROP_STEER_SPEED * cfg.DT)
+        self.steer_history = torch.cat((self.steer_history[1:], dodger_center[None, :]), dim=0)
+        seen_at = self.steer_now - self.steer_lag
+        seen = self.steer_history.gather(0, seen_at[None, :]).squeeze(0)
+        older = self.steer_history.gather(0, (seen_at - self.steer_window)[None, :]).squeeze(0)
+        velocity = (seen - older) / (self.steer_window * cfg.DT)
+        ahead = self.steer_lead * velocity * (self.steer_lag.to(self.dtype) * cfg.DT)
+        aim = torch.clamp(seen + ahead, cfg.PLAY_LEFT, cfg.PLAY_RIGHT)
+        self.steer_aim = aim
+        half_height = self.item_half_height[self.obstacle_item]
+        gap = self.pos_y[:, None] - (self.obstacle_y + half_height * 2)
+        fade = torch.clamp(gap / cfg.CHAOS_FADE_DISTANCE, 0.0, 1.0)
+        waves = torch.sin(
+            self.obstacle_wobble_phase + self.obstacle_wobble_freq * self.obstacle_y[..., None]
+        )
+        wobble = (waves * self.wobble_weights).sum(dim=-1)
+        offset = self.chaos_level[:, None] * cfg.CHAOS_AMPLITUDE * wobble * fade
+        wander = torch.clamp(aim[:, None] + offset, cfg.PLAY_LEFT, cfg.PLAY_RIGHT)
+        delta = wander - item_center
+        if cfg.STEER_SMOOTH:
+            desired = torch.clamp(
+                delta * cfg.STEER_GAIN, -cfg.DROP_STEER_SPEED, cfg.DROP_STEER_SPEED
+            )
+            change = cfg.STEER_ACCEL * cfg.DT
+            aimed_vx = self.obstacle_vx + torch.clamp(desired - self.obstacle_vx, -change, change)
+        else:
+            step = torch.clamp(
+                delta, min=-cfg.DROP_STEER_SPEED * cfg.DT, max=cfg.DROP_STEER_SPEED * cfg.DT
+            )
+            aimed_vx = step / cfg.DT
 
-        self.obstacle_vx = torch.where(falling, step / cfg.DT, self.obstacle_vx)
+        noise = torch.randn(
+            self.obstacle_drift.shape, generator=self.random_generator, device=self.device
+        )
+        drift = self.obstacle_drift + (
+            -cfg.RANDOM_DRIFT_THETA * self.obstacle_drift * cfg.DT
+            + cfg.RANDOM_DRIFT_SIGMA * cfg.DT**0.5 * noise
+        )
+        drift = torch.where((item_center <= cfg.PLAY_LEFT) & (drift < 0), -drift, drift)
+        drift = torch.where((item_center >= cfg.PLAY_RIGHT) & (drift > 0), -drift, drift)
+        self.obstacle_drift = torch.clamp(drift, -cfg.DROP_STEER_SPEED, cfg.DROP_STEER_SPEED)
+
+        steered = torch.where(self.obstacle_random, self.obstacle_drift, aimed_vx)
+        self.obstacle_vx = torch.where(falling, steered, self.obstacle_vx)
 
     def spawn_item(self, ready):
         rows = torch.arange(self.envs, device=self.device)
@@ -521,8 +701,14 @@ class FaceSmashingSim:
         self.obstacle_vx[rows, index] = torch.where(
             ready, torch.zeros_like(center), self.obstacle_vx[rows, index]
         )
+        fall_scale = cfg.FALL_SCALE_MIN + torch.rand(
+            ready.shape, generator=self.fall_generator, device=self.device
+        ) * (cfg.FALL_SCALE_MAX - cfg.FALL_SCALE_MIN)
+        self.obstacle_fall_scale[rows, index] = torch.where(
+            ready, fall_scale, self.obstacle_fall_scale[rows, index]
+        )
         self.obstacle_vy[rows, index] = torch.where(
-            ready, self.drop_speed, self.obstacle_vy[rows, index]
+            ready, self.drop_speed * fall_scale, self.obstacle_vy[rows, index]
         )
         self.obstacle_angle[rows, index] = torch.where(
             ready, angle, self.obstacle_angle[rows, index]
@@ -537,11 +723,64 @@ class FaceSmashingSim:
         )
         self.obstacle_scored[rows, index] = self.obstacle_scored[rows, index] & ~ready
         self.obstacle_hit[rows, index] = self.obstacle_hit[rows, index] & ~ready
+        will_dash = self.draw_dash(ready.shape) < self.dash_chance
+        self.obstacle_dashed[rows, index] = self.obstacle_dashed[rows, index] & ~ready
+        self.obstacle_will_dash[rows, index] = torch.where(
+            ready, will_dash, self.obstacle_will_dash[rows, index]
+        )
+        self.obstacle_dash_timer[rows, index] = torch.where(
+            ready, torch.zeros_like(self.obstacle_dash_timer[rows, index]),
+            self.obstacle_dash_timer[rows, index],
+        )
+        self.obstacle_chase_timer[rows, index] = torch.where(
+            ready, torch.zeros_like(self.obstacle_chase_timer[rows, index]),
+            self.obstacle_chase_timer[rows, index],
+        )
+        waves = (ready.shape[0], self.wobble_weights.shape[0])
+        phase = self.draw_chaos(waves) * HALF_TURN
+        freq = cfg.CHAOS_FREQ_MIN + self.draw_chaos(waves) * (
+            cfg.CHAOS_FREQ_MAX - cfg.CHAOS_FREQ_MIN
+        )
+        self.obstacle_wobble_phase[rows, index] = torch.where(
+            ready[:, None], phase, self.obstacle_wobble_phase[rows, index]
+        )
+        self.obstacle_wobble_freq[rows, index] = torch.where(
+            ready[:, None], freq, self.obstacle_wobble_freq[rows, index]
+        )
+        is_random = self.draw_random(ready.shape) < self.random_chance
+        spread = cfg.RANDOM_DRIFT_SIGMA / (2.0 * cfg.RANDOM_DRIFT_THETA) ** 0.5
+        drift = torch.randn(ready.shape, generator=self.random_generator, device=self.device) * spread
+        self.obstacle_random[rows, index] = torch.where(
+            ready, is_random, self.obstacle_random[rows, index]
+        )
+        self.obstacle_drift[rows, index] = torch.where(
+            ready, drift, self.obstacle_drift[rows, index]
+        )
         self.obstacle_cursor = self.obstacle_cursor + ready.to(torch.long)
         self.drop_timer = torch.where(ready, self.drop_timer - cfg.DROP_INTERVAL, self.drop_timer)
 
     def step_items(self):
+        was_dashing = self.obstacle_dash_timer > 0
+        self.obstacle_dash_timer = torch.clamp(self.obstacle_dash_timer - cfg.DT, min=0.0)
+        ended = was_dashing & (self.obstacle_dash_timer <= 0)
+        self.obstacle_vy = torch.where(
+            ended,
+            torch.minimum(self.obstacle_vy, cfg.ITEM_MAX_FALL * self.obstacle_fall_scale),
+            self.obstacle_vy,
+        )
+        self.obstacle_vx = torch.where(
+            ended,
+            torch.clamp(self.obstacle_vx, -cfg.DROP_STEER_SPEED, cfg.DROP_STEER_SPEED),
+            self.obstacle_vx,
+        )
+        fall_cap = torch.where(
+            self.obstacle_dash_timer > 0,
+            torch.full_like(self.obstacle_vy, cfg.ITEM_DASH_SPEED),
+            cfg.ITEM_MAX_FALL * self.obstacle_fall_scale,
+        )
+
         falling = self.obstacle_active & (self.obstacle_vy > 0)
+        thrusted = falling & ~self.obstacle_dashed
         half_width = self.item_half_width[self.obstacle_item]
         half_height = self.item_half_height[self.obstacle_item]
 
@@ -550,19 +789,20 @@ class FaceSmashingSim:
         # teto de velocidade.
         self.obstacle_vy = torch.where(
             falling,
-            torch.clamp(self.obstacle_vy, max=cfg.ITEM_MAX_FALL),
+            torch.minimum(self.obstacle_vy, fall_cap),
             self.obstacle_vy,
         )
         self.obstacle_vy = torch.where(
-            falling,
-            torch.clamp(
-                self.obstacle_vy + cfg.DROPPED_ACCELERATION * cfg.DT, max=cfg.DROP_MAX_SPEED
+            thrusted,
+            torch.minimum(
+                self.obstacle_vy + cfg.DROPPED_ACCELERATION * cfg.DT,
+                cfg.DROP_MAX_SPEED * self.obstacle_fall_scale,
             ),
             self.obstacle_vy,
         )
         self.obstacle_vy = torch.where(
             falling,
-            torch.clamp(self.obstacle_vy + self.item_gravity_step, max=cfg.ITEM_MAX_FALL),
+            torch.minimum(self.obstacle_vy + self.item_gravity_step, fall_cap),
             self.obstacle_vy,
         )
 
@@ -585,18 +825,34 @@ class FaceSmashingSim:
         self.obstacle_angle = self.obstacle_angle + self.obstacle_spin * cfg.DT
 
         landed = self.obstacle_active & (self.obstacle_vy <= 0)
+        chasing = landed & ~self.obstacle_hit & (self.obstacle_chase_timer < cfg.ITEM_CHASE_SECONDS)
+        resting = landed & ~chasing
         self.obstacle_spin = torch.where(
             landed, self.obstacle_spin * self.spin_decay, self.obstacle_spin
         )
-        self.obstacle_vx = torch.where(landed, self.obstacle_vx * self.slide_decay, self.obstacle_vx)
+        direction = torch.sign(self.steer_aim[:, None] - (self.obstacle_x + half_width))
+        wandering = torch.clamp(self.obstacle_drift, -cfg.ITEM_CHASE_SPEED, cfg.ITEM_CHASE_SPEED)
+        desired = torch.where(
+            self.obstacle_random, wandering, direction * cfg.ITEM_CHASE_SPEED
+        )
+        step = cfg.ITEM_CHASE_ACCELERATION * cfg.DT
+        chased = self.obstacle_vx + torch.clamp(desired - self.obstacle_vx, -step, step)
+        self.obstacle_vx = torch.where(
+            chasing,
+            chased,
+            torch.where(resting, self.obstacle_vx * self.slide_decay, self.obstacle_vx),
+        )
         self.obstacle_x = torch.where(
             landed, self.obstacle_x + self.obstacle_vx * cfg.DT, self.obstacle_x
         )
+        self.obstacle_chase_timer = torch.where(
+            chasing, self.obstacle_chase_timer + cfg.DT, self.obstacle_chase_timer
+        )
         self.obstacle_settle = torch.where(
-            landed, self.obstacle_settle + cfg.DT, self.obstacle_settle
+            resting, self.obstacle_settle + cfg.DT, self.obstacle_settle
         )
         self.obstacle_active = self.obstacle_active & ~(
-            landed & (self.obstacle_settle >= cfg.ITEM_SETTLE)
+            resting & (self.obstacle_settle >= cfg.ITEM_SETTLE)
         )
 
     def dodger_bounds(self):

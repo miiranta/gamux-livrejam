@@ -23,7 +23,7 @@ import time
 import torch
 
 import config as cfg
-from model import batched_forward, export_json, initial_policy, stack_policies, unflatten_policy
+from model import FrameStack, batched_forward, export_json, initial_policy, load_policy, stack_policies, unflatten_policy
 from plot import render_graph
 from sim import FaceSmashingSim
 
@@ -40,19 +40,41 @@ def parse_args():
     parser.add_argument("--worst-weight", type=float, default=0.5)
     parser.add_argument("--worst-quantile", type=float, default=0.1)
     parser.add_argument("--mirrored", type=int, default=1, choices=(0, 1))
+    parser.add_argument("--compile", type=int, default=1, choices=(0, 1))
+    parser.add_argument("--optimizer", default="sgd", choices=("sgd", "adam"))
+    parser.add_argument("--adam-beta1", type=float, default=0.9)
+    parser.add_argument("--adam-beta2", type=float, default=0.999)
+    parser.add_argument("--adam-eps", type=float, default=1e-8)
+    parser.add_argument("--lr-decay", type=float, default=1.0)
+    parser.add_argument("--lr-final", type=float, default=0.0)
+    parser.add_argument("--sigma-adapt", type=int, default=0, choices=(0, 1))
+    parser.add_argument("--sigma-min", type=float, default=0.01)
+    parser.add_argument("--sigma-max", type=float, default=0.2)
+    parser.add_argument("--sigma-grow", type=float, default=1.15)
+    parser.add_argument("--sigma-shrink", type=float, default=0.97)
+    parser.add_argument("--frames", type=int, default=cfg.FRAMES)
+    parser.add_argument("--eval-match", type=int, default=0, choices=(0, 1))
     parser.add_argument("--dodge-weight", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--init", default="")
     parser.add_argument("--out", default="livrejam/public/models/dodger-policy.json")
     parser.add_argument("--best-out", default="livrejam/public/models/dodger-policy.best.json")
     parser.add_argument("--graph", default="livrejam/public/models/dodger-policy.graph.png")
     parser.add_argument("--checkpoint-every", type=int, default=10)
     parser.add_argument("--curriculum", type=int, default=1, choices=(0, 1))
     parser.add_argument("--curriculum-target", type=float, default=0.18)
+    parser.add_argument("--curriculum-patience", type=int, default=10)
+    parser.add_argument("--curriculum-tolerance", type=float, default=0.01)
+    parser.add_argument("--curriculum-min-gain", type=float, default=0.05)
     parser.add_argument("--curriculum-step", type=float, default=40.0)
     parser.add_argument("--eval-every", type=int, default=10)
     parser.add_argument("--eval-envs", type=int, default=2048)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     return parser.parse_args()
+
+
+def network_sizes(frames):
+    return (cfg.OBSERVATION_SIZE * frames, *cfg.HIDDEN_SIZES, cfg.ACTION_COUNT)
 
 
 def round_steps(seconds):
@@ -89,7 +111,7 @@ def to_layers(vector, sizes):
 
 
 def evaluate(theta, perturbations, args, generation, drop_cap=None):
-    sizes = cfg.NETWORK_SIZES
+    sizes = network_sizes(args.frames)
     population = perturbations.shape[0]
     total = population * args.envs
     candidates = theta[None, :] + args.sigma * perturbations
@@ -100,15 +122,17 @@ def evaluate(theta, perturbations, args, generation, drop_cap=None):
         device=args.device,
         seed=args.seed + 1000 + generation * 7919,
         round_seconds=args.round_seconds,
+        compiled=bool(args.compile),
     )
     if drop_cap is not None:
         sim.set_drop_cap(drop_cap)
-    observation = sim.reset()
+    stack = FrameStack(args.frames, total, args.device)
+    observation = stack.reset(sim.reset())
 
     for _ in range(args.episode_steps):
         with torch.no_grad():
             scores = batched_forward(observation, stacked, sizes, population, args.envs)
-            observation = sim.step(torch.argmax(scores, dim=1))
+            observation = stack.push(sim.step(torch.argmax(scores, dim=1)))
 
     metrics = sim.metrics()
     damage = metrics["damage_mean"].view(population, args.envs)
@@ -142,18 +166,27 @@ def evaluate(theta, perturbations, args, generation, drop_cap=None):
     )
 
 
-def held_out(theta, args, seed):
-    sizes = cfg.NETWORK_SIZES
-    sim = FaceSmashingSim(args.eval_envs, device=args.device, seed=seed)
+def held_out(theta, args, seed, drop_cap=None):
+    sizes = network_sizes(args.frames)
+    seconds = args.round_seconds if args.eval_match else cfg.ROUND_SECONDS
+    sim = FaceSmashingSim(
+        args.eval_envs,
+        device=args.device,
+        seed=seed,
+        round_seconds=seconds,
+        compiled=bool(args.compile),
+    )
     if args.curriculum:
-        sim.set_drop_cap(cfg.DROP_MAX_SPEED)
+        cap = drop_cap if (args.eval_match and drop_cap is not None) else cfg.DROP_MAX_SPEED
+        sim.set_drop_cap(cap)
     stacked = stack_policies([unflatten_policy(theta, sizes)])
-    observation = sim.reset()
+    stack = FrameStack(args.frames, args.eval_envs, args.device)
+    observation = stack.reset(sim.reset())
 
-    for _ in range(round_steps(cfg.ROUND_SECONDS)):
+    for _ in range(round_steps(seconds)):
         with torch.no_grad():
             scores = batched_forward(observation, stacked, sizes, 1, args.eval_envs)
-            observation = sim.step(torch.argmax(scores, dim=1))
+            observation = stack.push(sim.step(torch.argmax(scores, dim=1)))
 
     damage = sim.metrics()["damage_mean"]
     return {
@@ -173,8 +206,11 @@ def write_report(path, extra, payload):
     record["weights"] = len(payload["weights"])
     record["biases"] = len(payload["biases"])
 
-    with open(os.path.splitext(path)[0] + ".train.json", "w", encoding="utf-8") as handle:
+    target = os.path.splitext(path)[0] + ".train.json"
+    partial = target + ".partial"
+    with open(partial, "w", encoding="utf-8") as handle:
         json.dump(record, handle, indent=2)
+    os.replace(partial, target)
 
 
 def report_payload(args, best_fitness, best_generation, parameters, history, checkpoint):
@@ -215,16 +251,27 @@ def main():
         raise SystemExit("--population precisa ser par quando --mirrored 1")
 
     device = torch.device(args.device)
-    sizes = cfg.NETWORK_SIZES
-    theta = torch.cat(
-        [tensor.reshape(-1) for tensor in initial_policy(sizes, device=args.device, seed=args.seed)]
-    ).to(torch.float32)
+    sizes = network_sizes(args.frames)
+    if args.init:
+        loaded, loaded_sizes = load_policy(args.init, device=args.device)
+        if tuple(loaded_sizes) != tuple(sizes):
+            raise SystemExit(
+                f"--init {args.init} tem formato {tuple(loaded_sizes)}, "
+                f"mas o treino espera {tuple(sizes)}"
+            )
+        start = loaded
+    else:
+        start = initial_policy(sizes, device=args.device, seed=args.seed)
+    theta = torch.cat([tensor.reshape(-1) for tensor in start]).to(torch.float32)
     parameters = theta.numel()
 
     best_theta = theta.clone()
     best_fitness = float("-inf")
     best_generation = 0
     history = []
+    plateau_best = float("inf")
+    plateau_wait = 0
+    level_first = None
 
     print(
         f"device={device} parameters={parameters} population={args.population} "
@@ -235,16 +282,26 @@ def main():
         drop_cap = cfg.DROP_BASE_SPEED
         print(
             f"curriculo ligado: rampa comeca com teto {drop_cap:.0f} px/s e sobe "
-            f"{args.curriculum_step:.0f} quando o dano do campeao cair abaixo de "
-            f"{args.curriculum_target * 100:.0f}% do teto",
+            f"{args.curriculum_step:.0f} quando o dano medio estagnar por "
+            f"{args.curriculum_patience} geracoes (ou cair abaixo de "
+            f"{args.curriculum_target * 100:.0f}% do teto)",
             flush=True,
         )
     else:
         drop_cap = cfg.DROP_MAX_SPEED
 
     started = time.time()
+    adam_m = torch.zeros_like(theta)
+    adam_v = torch.zeros_like(theta)
+    base_sigma = args.sigma
+    base_lr = args.learning_rate
+    stall = 0
+    last_damage = float("inf")
 
     for generation in range(1, args.generations + 1):
+        if args.lr_decay != 1.0 or args.lr_final > 0.0:
+            decayed = base_lr * (args.lr_decay ** (generation - 1))
+            args.learning_rate = max(decayed, args.lr_final)
         if args.mirrored:
             half = args.population // 2
             noise = torch.randn((half, parameters), device=device, dtype=torch.float32)
@@ -260,7 +317,26 @@ def main():
 
         gradient = (perturbations * weights[:, None]).sum(dim=0) / (args.population * args.sigma)
         centre_fitness = fitness.mean().item()
-        theta = theta + args.learning_rate * gradient
+
+        if args.optimizer == "adam":
+            adam_m = args.adam_beta1 * adam_m + (1.0 - args.adam_beta1) * gradient
+            adam_v = args.adam_beta2 * adam_v + (1.0 - args.adam_beta2) * gradient * gradient
+            m_hat = adam_m / (1.0 - args.adam_beta1**generation)
+            v_hat = adam_v / (1.0 - args.adam_beta2**generation)
+            theta = theta + args.learning_rate * m_hat / (v_hat.sqrt() + args.adam_eps)
+        else:
+            theta = theta + args.learning_rate * gradient
+
+        if args.sigma_adapt:
+            if mean_damage < last_damage * (1.0 - args.curriculum_tolerance):
+                stall = 0
+                args.sigma = max(args.sigma * args.sigma_shrink, args.sigma_min)
+            else:
+                stall += 1
+                if stall >= args.curriculum_patience:
+                    args.sigma = min(args.sigma * args.sigma_grow, args.sigma_max)
+                    stall = 0
+            last_damage = min(last_damage, mean_damage)
 
         top = fitness.max().item()
         if centre_fitness > best_fitness:
@@ -269,17 +345,27 @@ def main():
             best_generation = generation
 
         promoted = False
-        if (
-            args.curriculum
-            and drop_cap < cfg.DROP_MAX_SPEED
-            and mean_damage < args.curriculum_target * cfg.DAMAGE_CEILING
-        ):
-            drop_cap = min(drop_cap + args.curriculum_step, cfg.DROP_MAX_SPEED)
-            promoted = True
+        if args.curriculum and drop_cap < cfg.DROP_MAX_SPEED:
+            if level_first is None:
+                level_first = mean_damage
+            if mean_damage < plateau_best * (1.0 - args.curriculum_tolerance):
+                plateau_best = mean_damage
+                plateau_wait = 0
+            else:
+                plateau_wait += 1
+
+            learned = plateau_best < level_first * (1.0 - args.curriculum_min_gain)
+            mastered = mean_damage < args.curriculum_target * cfg.DAMAGE_CEILING
+            if mastered or (learned and plateau_wait >= args.curriculum_patience):
+                drop_cap = min(drop_cap + args.curriculum_step, cfg.DROP_MAX_SPEED)
+                plateau_best = float("inf")
+                plateau_wait = 0
+                level_first = None
+                promoted = True
 
         probe = None
         if args.eval_every > 0 and generation % args.eval_every == 0:
-            probe = held_out(best_theta, args, args.seed + 90000 + generation)
+            probe = held_out(best_theta, args, args.seed + 90000 + generation, drop_cap)
 
         entry = {
             "generation": generation,

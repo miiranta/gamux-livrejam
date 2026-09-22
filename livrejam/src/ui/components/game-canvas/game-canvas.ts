@@ -72,7 +72,7 @@ export class GameCanvas {
     private readonly trackingFrames = inject(TrackingFrameService);
     private readonly inference = new InferenceWorkerClient({
         url: FACE_SMASHING.ai.modelUrl,
-        expectedInputSize: FACE_SMASHING.ai.observationSize,
+        expectedInputSize: FACE_SMASHING.ai.observationSize * FACE_SMASHING.ai.frames,
         expectedOutputSize: FACE_SMASHING.ai.actionCount,
         onError: (message) => this.failModel(message),
     });
