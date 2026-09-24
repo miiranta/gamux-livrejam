@@ -40,6 +40,12 @@ body {
     height: 100%;
 }
 
+html {
+    /* Mobile browsers inflate text in landscape unless told not to. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
 body {
     display: grid;
     place-items: center;
@@ -50,6 +56,9 @@ body {
     font-size: 18px;
     letter-spacing: 0.02em;
     background: radial-gradient(circle at 50% 35%, #1a1411 0%, var(--lj-bg) 70%);
+    /* No rubber-band bounce or pull-to-refresh behind a full-screen game. */
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 button,

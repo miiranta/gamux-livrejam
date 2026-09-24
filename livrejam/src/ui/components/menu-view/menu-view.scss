@@ -5,6 +5,9 @@
     inset: 0;
     z-index: 20;
     display: grid;
+    /* Definite tracks all the way down: an auto row would let a tall panel
+       stretch the layer instead of scrolling inside its own frame. */
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
     place-items: center;
     /* The menu itself never scrolls: a panel too tall for the screen scrolls
        inside its own frame instead of handing the overflow to the browser. */
@@ -14,6 +17,7 @@
 
 .menu-view {
     display: grid;
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
     place-items: center;
     width: 100%;
     height: 100%;
@@ -97,8 +101,11 @@
 .menu-view__stack {
     position: relative;
     z-index: 1;
-    display: grid;
-    justify-items: center;
+    /* Flex rather than grid: a flex column shrinks an open panel to fit the
+       screen, where a grid row just grows past it. */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     gap: 1.75rem;
     width: min(90vw, 27rem);
     max-height: 100%;
@@ -115,6 +122,9 @@
 
 .menu-view__title {
     margin: 0;
+    /* Long translations ("Quebrando a Cara") break onto a second line, split
+       evenly rather than leaving one word alone. */
+    text-wrap: balance;
     color: var(--lj-ink);
     font-size: clamp(2.5rem, 9vw, 3.6rem);
     font-weight: 700;
@@ -170,6 +180,63 @@
     stroke: currentColor;
     stroke-width: 1.4;
     shape-rendering: crispEdges;
+}
+
+/* --- Small screens ------------------------------------------------------- */
+
+/* On a phone the toggles would land on the title or an open panel, so they
+   move into the corner brackets and the layer reserves room for them. */
+@media (max-width: 40rem), (orientation: landscape) and (max-height: 32rem) {
+    :host {
+        padding: 4.75rem 1rem 1.25rem;
+    }
+
+    .menu-view__fullscreen,
+    .menu-view__welcome {
+        --lj-fullscreen-inset: 1.35rem;
+    }
+}
+
+/* Phones on their side: too short for the brand above the buttons, so the
+   two sit side by side, and the toggles take the side margins instead. */
+@media (orientation: landscape) and (max-height: 32rem) {
+    :host {
+        padding: 1rem 4.75rem;
+    }
+
+    .menu-view__stack {
+        gap: 1.25rem;
+        width: min(100%, 27rem);
+    }
+
+    .menu-view__stack--home {
+        flex-direction: row;
+        gap: 2.5rem;
+        width: min(100%, 46rem);
+    }
+
+    .menu-view__stack--home > * {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .menu-view__title {
+        font-size: clamp(2rem, 5.5vw, 3rem);
+        line-height: 1.1;
+    }
+
+    .menu-view__subtitle {
+        font-size: 0.95rem;
+    }
+
+    .menu-view__actions {
+        gap: 0.5rem;
+        max-height: 100%;
+        /* Room for the focus ring and drop shadow inside the scroll box. */
+        padding: 0.25rem;
+
+        @include ornaments.pixel-scroll(transparent);
+    }
 }
 
 /* --- Panels ------------------------------------------------------------- */

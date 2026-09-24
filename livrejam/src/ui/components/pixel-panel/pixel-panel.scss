@@ -15,7 +15,8 @@
     display: flex;
     flex-direction: column;
     max-height: 100%;
-    min-width: 20rem;
+    /* Capped so a phone narrower than the panel never scrolls sideways. */
+    min-width: min(20rem, 100%);
     max-width: min(90vw, 34rem);
     padding: 1.6rem 1.75rem 1.75rem;
     background: linear-gradient(180deg, var(--lj-line-hi), var(--lj-line));

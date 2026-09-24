@@ -34,6 +34,12 @@
     align-content: safe center;
 
     @include ornaments.pixel-scroll(transparent);
+
+    /* On a phone the panel spans the width, so it starts below the corner
+       shortcut instead of running under it. */
+    @media (max-width: 40rem) {
+        padding: 4rem 1rem 0.5rem;
+    }
 }
 
 .welcome__panel {

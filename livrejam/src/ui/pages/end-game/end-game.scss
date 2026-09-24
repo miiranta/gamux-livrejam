@@ -263,3 +263,32 @@
         transform: translate3d(2.5px, -1.5px, 0) rotate(0.08deg);
     }
 }
+
+/* Phones on their side: the tall, airy stack does not fit, so it closes up
+   and every piece shrinks a step. */
+@media (orientation: landscape) and (max-height: 32rem) {
+    :host {
+        padding: 1rem;
+    }
+
+    .end-game__stack {
+        gap: 1.5rem;
+    }
+
+    .end-game__title {
+        font-size: 2rem;
+    }
+
+    .end-game__subtitle {
+        margin-top: 0.15rem;
+        font-size: 1rem;
+    }
+
+    .end-game__score {
+        padding: 0.8rem 2rem 0.9rem;
+    }
+
+    .end-game__score-value {
+        font-size: 2.4rem;
+    }
+}

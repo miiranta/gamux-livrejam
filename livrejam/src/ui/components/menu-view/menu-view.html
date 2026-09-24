@@ -9,7 +9,7 @@
     <app-welcome-toggle class="menu-view__welcome" />
     <app-fullscreen-toggle class="menu-view__fullscreen" />
 
-    <div class="menu-view__stack">
+    <div class="menu-view__stack" [class.menu-view__stack--home]="panel() === 'none'">
         @if (panel() === 'none') {
             <header class="menu-view__brand">
                 <h1 class="menu-view__title">{{ 'app.title' | translate }}</h1>

@@ -160,17 +160,40 @@
     );
 }
 
+/* Just below the canvas, so the cards never cover the play area. The shell
+   reserves the space through `--lj-hud-below`. */
 .game-canvas__players {
     position: absolute;
-    right: 0.5rem;
-    bottom: 0.5rem;
-    left: 0.5rem;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    left: 0;
     z-index: 2;
     display: flex;
     gap: 0.5rem;
     align-items: stretch;
     justify-content: space-between;
     pointer-events: none;
+}
+
+/* Phones on their side: the canvas already takes the full height, so the
+   cards move into the column beside it, under the camera. The shell sizes
+   that column through `--lj-camera-size` and leaves `--lj-hud-below` free. */
+@media (orientation: landscape) and (max-height: 32rem) {
+    .game-canvas__players {
+        top: auto;
+        right: calc(100% + var(--shell-gap, 0.75rem));
+        bottom: 0;
+        left: auto;
+        width: var(--lj-camera-size);
+    }
+
+    /* Nested so it outranks the base rule declared below. */
+    .game-canvas__players .game-canvas__player {
+        flex: 1 1 0;
+        width: auto;
+        min-width: 0;
+        max-width: 7.6rem;
+    }
 }
 
 .game-canvas__player {

@@ -6,12 +6,15 @@
 .app-shell {
     --shell-pad: 1rem;
     --shell-gap: 1rem;
+    /* Room under the canvas for the player cards (see `game-canvas`). */
+    --lj-hud-below: 3.6rem;
     --lj-camera-size: min(
         33.333vw,
-        calc((100dvh - 2 * var(--shell-pad) - var(--shell-gap)) / 3)
+        calc((100dvh - 2 * var(--shell-pad) - var(--shell-gap) - var(--lj-hud-below)) / 3)
     );
     --lj-stage-height: calc(
-        100dvh - 2 * var(--shell-pad) - var(--shell-gap) - var(--lj-camera-size)
+        100dvh - 2 * var(--shell-pad) - var(--shell-gap) - var(--lj-camera-size) -
+            var(--lj-hud-below)
     );
 
     display: flex;
@@ -40,6 +43,7 @@
 
 .app-shell__stage {
     position: relative;
+    margin-bottom: var(--lj-hud-below);
     display: grid;
     place-items: center;
     height: var(--lj-stage-height);
@@ -49,4 +53,57 @@
 .app-shell__camera {
     display: block;
     width: var(--lj-camera-size);
+}
+
+/* Phones held upright: the canvas is 4:3, so the stage only needs the height
+   the full width gives it. The rest goes to a larger camera, and the pair is
+   centred instead of leaving a gap between them. */
+@media (orientation: portrait) {
+    .app-shell {
+        --lj-stage-height: min(
+            calc(
+                100dvh - 2 * var(--shell-pad) - 2 * var(--shell-gap) - var(--lj-hud-below) - 30vw
+            ),
+            calc((100vw - 2 * var(--shell-pad)) * 0.75)
+        );
+        --lj-camera-size: min(
+            60vw,
+            calc(
+                100dvh - 2 * var(--shell-pad) - var(--shell-gap) - var(--lj-stage-height) -
+                    var(--lj-hud-below)
+            )
+        );
+
+        justify-content: center;
+    }
+
+}
+
+/* Phones on their side: stacking would leave the canvas a sliver of height,
+   so the camera moves beside it and the canvas takes the full height. */
+@media (orientation: landscape) and (max-height: 32rem) {
+    .app-shell {
+        --shell-pad: 0.75rem;
+        --shell-gap: 0.75rem;
+        /* Room under the camera for the player cards (see `game-canvas`). */
+        --lj-hud-below: 3.6rem;
+        --lj-stage-height: calc(100dvh - 2 * var(--shell-pad));
+        --lj-camera-size: min(
+            30vw,
+            calc(var(--lj-stage-height) - var(--lj-hud-below)),
+            calc(100vw - 2 * var(--shell-pad) - var(--shell-gap) - var(--lj-stage-height) * 4 / 3)
+        );
+
+        justify-content: center;
+    }
+
+    .app-shell__stage {
+        margin-bottom: 0;
+    }
+
+    .app-shell__match {
+        flex-direction: row;
+        align-items: flex-start;
+        justify-content: center;
+    }
 }
