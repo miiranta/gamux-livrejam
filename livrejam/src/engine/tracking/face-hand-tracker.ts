@@ -49,12 +49,12 @@ export class FaceHandTracker {
         await this.models.init(this.config, baseUrl);
     }
 
-    async process(image: ImageBitmap, timestamp: number): Promise<TrackingFrame> {
+    process(image: ImageBitmap, timestamp: number): TrackingFrame {
         if (!this.models.isReady) {
             throw new Error('FaceHandTracker.process() called before init().');
         }
 
-        await this.matchFrameSize(image);
+        this.matchFrameSize(image);
 
         const safeTimestamp = this.nextTimestamp(timestamp);
         const face = this.models.detectFace(image, safeTimestamp);
@@ -84,16 +84,13 @@ export class FaceHandTracker {
         this.frameSize = null;
     }
 
-    private async matchFrameSize(image: ImageBitmap): Promise<void> {
+    private matchFrameSize(image: ImageBitmap): void {
         const previous = this.frameSize;
         this.frameSize = { width: image.width, height: image.height };
 
-        if (!previous || (previous.width === image.width && previous.height === image.height)) {
-            return;
+        if (previous && (previous.width !== image.width || previous.height !== image.height)) {
+            this.gestures.reset();
         }
-
-        await this.models.resetTracking();
-        this.gestures.reset();
     }
 
     private toFaceState(
