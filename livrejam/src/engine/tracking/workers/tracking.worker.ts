@@ -14,7 +14,7 @@ async function handleInit(request: Extract<WorkerRequest, { type: 'init' }>): Pr
     respond({ type: 'ready', usingGpu: tracker.isUsingGpu });
 }
 
-function handleDetect(request: Extract<WorkerRequest, { type: 'detect' }>): void {
+async function handleDetect(request: Extract<WorkerRequest, { type: 'detect' }>): Promise<void> {
     const bitmap = request.bitmap;
 
     try {
@@ -22,7 +22,7 @@ function handleDetect(request: Extract<WorkerRequest, { type: 'detect' }>): void
             throw new Error('Worker received a frame before init.');
         }
 
-        const frame = tracker.process(bitmap, request.timestamp);
+        const frame = await tracker.process(bitmap, request.timestamp);
         respond({ type: 'frame', frame });
     } catch (error) {
         respond({ type: 'error', message: error instanceof Error ? error.message : String(error) });
@@ -45,7 +45,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
                 await handleInit(request);
                 break;
             case 'detect':
-                handleDetect(request);
+                await handleDetect(request);
                 break;
             case 'dispose':
                 handleDispose();

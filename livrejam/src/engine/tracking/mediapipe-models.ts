@@ -82,6 +82,10 @@ export class MediaPipeModels {
         };
     }
 
+    async resetTracking(): Promise<void> {
+        await Promise.all([this.face?.setOptions({}), this.hand?.setOptions({})]);
+    }
+
     close(): void {
         this.face?.close();
         this.hand?.close();

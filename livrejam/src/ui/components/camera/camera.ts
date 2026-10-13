@@ -322,9 +322,18 @@ export class Camera {
             return;
         }
 
+        this.syncVideoSize(video);
         void createImageBitmap(video)
             .then((bitmap) => this.tracker.detect(bitmap, performance.now()))
             .catch(() => undefined);
+    }
+
+    private syncVideoSize(video: HTMLVideoElement): void {
+        const { width, height } = this.videoSize();
+
+        if (video.videoWidth !== width || video.videoHeight !== height) {
+            this.videoSize.set({ width: video.videoWidth, height: video.videoHeight });
+        }
     }
 
     private fail(message: string): void {
