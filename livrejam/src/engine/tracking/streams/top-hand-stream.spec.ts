@@ -111,6 +111,23 @@ describe('TopHandStream', () => {
         expect(observation.value).toBe(0);
     });
 
+    it('keeps steering when tracking runs slower than the smoothing window', () => {
+        const stream = new TopHandStream();
+        stream.update(pair(0.3, 0.5), 0);
+        const observation = stream.update(pair(0.3, 0.5), 250);
+
+        expect(observation.active).toBe(true);
+        expect(observation.value).toBeLessThan(0);
+    });
+
+    it('steers from the latest frame alone when frames are far apart', () => {
+        const stream = new TopHandStream();
+        stream.update(pair(0.3, 0.5), 0);
+        const observation = stream.update(pair(0.5, 0.3), 400);
+
+        expect(observation.value).toBeGreaterThan(0);
+    });
+
     it('follows a brief crossing instead of sticking to the old side', () => {
         const stream = new TopHandStream();
         const { time } = settle(stream, pair(0.3, 0.5));

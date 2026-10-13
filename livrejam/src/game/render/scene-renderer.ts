@@ -444,11 +444,11 @@ export class SceneRenderer {
         const config = FACE_SMASHING.scorePopup;
 
         ctx.save();
-        ctx.font = `${config.fontSize}px 'Pixelify Sans', system-ui, sans-serif`;
+        ctx.font = `${camera.toScreenLength(config.fontSize)}px 'Pixelify Sans', system-ui, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.lineJoin = 'round';
-        ctx.lineWidth = 4;
+        ctx.lineWidth = camera.toScreenLength(config.outlineWidth);
         ctx.strokeStyle = config.outline;
 
         for (const popup of popups) {

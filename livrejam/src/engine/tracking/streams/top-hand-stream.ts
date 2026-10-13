@@ -26,6 +26,7 @@ interface Sample {
  */
 export class TopHandStream implements Stream<HandState[], TopHandObservation> {
     private samples: Sample[] = [];
+    private streak = 0;
 
     update(hands: HandState[], timestamp: number): TopHandObservation {
         const pair = this.pair(hands);
@@ -37,10 +38,11 @@ export class TopHandStream implements Stream<HandState[], TopHandObservation> {
 
         const margin = pair.right.center.y - pair.left.center.y;
         this.samples.push({ time: timestamp, margin });
+        this.streak++;
         this.prune(timestamp);
 
         const average = this.average();
-        const active = this.samples.length >= MIN_SAMPLES;
+        const active = this.streak >= MIN_SAMPLES;
 
         return {
             active,
@@ -51,6 +53,7 @@ export class TopHandStream implements Stream<HandState[], TopHandObservation> {
 
     reset(): void {
         this.samples = [];
+        this.streak = 0;
     }
 
     private pair(hands: HandState[]): { left: HandState; right: HandState } | null {

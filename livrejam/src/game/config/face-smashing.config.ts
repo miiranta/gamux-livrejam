@@ -1,5 +1,5 @@
 export const FACE_SMASHING = {
-    viewScale: 2.25,
+    viewScale: 1.5,
     postProcess: {
         shadowTint: [1.0, 0.9, 0.82] as const,
         highlightTint: [1.05, 0.99, 0.9] as const,
@@ -139,7 +139,8 @@ export const FACE_SMASHING = {
         duration: 0.9,
         rise: 30,
         capacity: 16,
-        fontSize: 26,
+        fontSize: 11.5,
+        outlineWidth: 1.75,
         color: '#f4ecd8',
         outline: '#0a0908',
     },

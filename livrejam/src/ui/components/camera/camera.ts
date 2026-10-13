@@ -94,6 +94,7 @@ export class Camera {
     private animationFrameId: number | null = null;
     private session = 0;
     private lastVideoTime = -1;
+    private capturing = false;
 
     protected readonly status = signal<CameraStatus>('idle');
     protected readonly errorMessage = signal<string>('');
@@ -305,27 +306,28 @@ export class Camera {
             return;
         }
 
-        if (video.currentTime !== this.lastVideoTime) {
-            this.lastVideoTime = video.currentTime;
-            this.captureAndDetect(video);
-        }
-
+        this.captureAndDetect(video);
         this.animationFrameId = requestAnimationFrame(this.loop);
     };
 
     private captureAndDetect(video: HTMLVideoElement): void {
         if (
+            this.capturing ||
             this.tracker.isBusy ||
             video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
-            !video.videoWidth
+            !video.videoWidth ||
+            video.currentTime === this.lastVideoTime
         ) {
             return;
         }
 
+        this.capturing = true;
+        this.lastVideoTime = video.currentTime;
         this.syncVideoSize(video);
         void createImageBitmap(video)
             .then((bitmap) => this.tracker.detect(bitmap, performance.now()))
-            .catch(() => undefined);
+            .catch(() => undefined)
+            .finally(() => (this.capturing = false));
     }
 
     private syncVideoSize(video: HTMLVideoElement): void {
@@ -345,6 +347,11 @@ export class Camera {
     private publishFrame(frame: TrackingFrame): void {
         this.frame.set(frame);
         this.trackingFrames.publish(frame);
+
+        const video = this.videoRef()?.nativeElement;
+        if (video && this.status() === 'running') {
+            this.captureAndDetect(video);
+        }
     }
 }
 
